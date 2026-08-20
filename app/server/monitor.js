@@ -4605,7 +4605,7 @@ async function handleFetch(req) {
   // 仅剥 monitor/custom_routes 自己实现的 /api/app/*、/api/voice/* 前缀，
   // 其余官方 API（profiles/model/config/cron 等）保留 /proxy/dashboard 前缀走 dashboard 代理，
   // 否则会因 monitor 无对应路由而 404（此前全量剥除导致 profiles/active 等大面积 404）。
-  if (/^\/proxy\/dashboard\/api\/(app|voice)\//.test(path) ) {
+  if (/^\/proxy\/dashboard\/api\/(app|voice)\//.test(path) || path === "/proxy/dashboard/api/petdex-image") {
     path = path.slice("/proxy/dashboard".length);
   }
 
@@ -10365,6 +10365,31 @@ async function handleFetch(req) {
     const block = "tts:\n  provider: edge\n  edge:\n    voice: " + _yamlQuote(voice);
     const yml = _setTopLevelBlock(_readHermesConfig(), "tts", block);
     return _writeHermesConfig(yml);
+  }
+  // ── 宠物图片代理：浏览器直连 assets.petdex.dev 被 CORS/403 阻止，经 monitor 服务器端抓取 ──
+  if (path === "/api/petdex-image") {
+    try {
+      const imgUrl = url.searchParams.get("u") || "";
+      if (!/^https:\/\/assets\.petdex\.dev\//.test(imgUrl)) {
+        return new Response("Forbidden", { status: 403, headers: jsonHeaders() });
+      }
+      const r = await fetch(imgUrl, {
+        headers: { "User-Agent": "Mozilla/5.0 (compatible; fnos-hermes-agent)", "Referer": "https://petdex.dev/", "Accept": "image/webp,image/*" },
+        signal: AbortSignal.timeout(20000),
+      });
+      if (!r.ok) return new Response("Not Found", { status: r.status, headers: jsonHeaders() });
+      const buf = Buffer.from(await r.arrayBuffer());
+      return new Response(buf, {
+        headers: {
+          "Content-Type": r.headers.get("content-type") || "image/webp",
+          "Cache-Control": "public, max-age=86400",
+          "Access-Control-Allow-Origin": "*",
+          "Content-Length": String(buf.length),
+        },
+      });
+    } catch (e) {
+      return new Response("Proxy error", { status: 502, headers: jsonHeaders() });
+    }
   }
   if (path === "/api/voice/config" && req.method === "GET") {
     return new Response(JSON.stringify({ ok: true, voice: _readTtsVoice(), voices: TTS_VOICE_OPTIONS }), { headers: jsonHeaders() });
