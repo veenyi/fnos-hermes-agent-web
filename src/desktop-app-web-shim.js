@@ -77,6 +77,11 @@
   }
   function _findPicked(id) {
     for (var i = 0; i < _pickedFiles.length; i++) if (_pickedFiles[i].id === id) return _pickedFiles[i].file;
+    // 兼容按文件名/路径匹配（拖放文件可能直接传 file.name 或本地路径）
+    for (var j = 0; j < _pickedFiles.length; j++) {
+      var n = _pickedFiles[j].file && _pickedFiles[j].file.name;
+      if (n && (n === id || (id && id.indexOf(n) >= 0) || (n && n.indexOf(String(id).replace(/^.*[\\/]/, '')) >= 0))) return _pickedFiles[j].file;
+    }
     return null;
   }
   function _readFile(file, asDataUrl) {
