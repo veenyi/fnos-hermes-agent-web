@@ -1,7 +1,6 @@
 model:
-  provider: custom:token.sensenova.cn
-  default: sensenova-6.8-flash-lite
-  base_url: https://token.sensenova.cn/v1
+  provider: 
+  default: 
 providers: {}
 fallback_providers: []
 credential_pool_strategies: {}

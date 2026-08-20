@@ -4937,7 +4937,7 @@ async function handleFetch(req) {
   }
 
   // ── 应用包更新（GitHub Releases / Actions）────────────────────────────────
-  const GITHUB_REPO = process.env.GITHUB_REPO || "your-github/fnos-hermes-agent-web";
+  const GITHUB_REPO = process.env.GITHUB_REPO || "veenyi/fnos-hermes-agent-web";
   const GITHUB_PAT_FILE = `${VAR_DIR}/github_pat`;
 
   function getGitHubPAT() {
@@ -5585,19 +5585,21 @@ async function handleFetch(req) {
   }
   
   if (path === "/api/start" && req.method === "POST") {
-    // 启动前检查：必须有至少一个真实模型服务商（非 Hermes Gateway 自身）
-    const statePath = `${VAR_DIR}/providers-state.yaml`;
-    let hasRealProvider = false;
+    // 模型服务商检查（放宽）：无 provider 也允许启动 gateway。
+    // 与官方行为一致——gateway 不因缺少模型配置而拒绝启动，用户可在设置中添加
+    // 模型服务商后直接对话。此处仅记录提示，不再阻断启动。
     try {
+      const statePath = `${VAR_DIR}/providers-state.yaml`;
+      let hasRealProvider = false;
       if (existsSync(statePath)) {
         const stateContent = readFileSync(statePath, "utf8");
         const provIds = [...stateContent.matchAll(/^  ([a-zA-Z0-9_-]+):\s*$/gm)].map(m => m[1]);
         hasRealProvider = provIds.some(id => id !== "hermes");
       }
+      if (!hasRealProvider) {
+        log("[start] 尚未配置模型服务商，网关将启动（可在设置中添加模型服务商后对话）");
+      }
     } catch {}
-    if (!hasRealProvider) {
-      return new Response(JSON.stringify({ ok: false, error: "请先在设置中添加至少一个模型服务商" }), { status: 400, headers: jsonHeaders() });
-    }
     try { ensureEmbedServer(); } catch (e) {}
     const r1 = spawnHermes("gateway",   PID_GATEWAY,   ["gateway", "run", "--replace"]);
     const r2 = spawnHermes("dashboard", PID_DASHBOARD, ["dashboard", "--host", DASHBOARD_BIND, "--port", String(DASHBOARD_PORT), "--no-open", "--insecure"]);
@@ -11260,23 +11262,15 @@ function startServer() {
   return server;
 }
 
-// 当 providers-state.yaml 中已有真实服务商时，monitor 启动后自动拉起服务
+// monitor 启动后自动拉起 gateway 与 dashboard（开箱即用，不要求先配置模型服务商；
+// 用户后续在设置中添加模型服务商即可对话，与官方行为一致）
 function maybeAutoStartServices() {
   try {
-    const statePath = `${VAR_DIR}/providers-state.yaml`;
-    if (!existsSync(statePath)) return;
-    const content = readFileSync(statePath, "utf8");
-    const ids = [...content.matchAll(/^  ([a-zA-Z0-9_-]+):\s*$/gm)].map(m => m[1]);
-    const hasRealProvider = ids.some(id => id !== "hermes");
-    if (!hasRealProvider) {
-      log("Auto-start skipped: no real provider in providers-state.yaml");
-      return;
-    }
     if (readPid(PID_GATEWAY) || readPid(PID_DASHBOARD)) {
       log("Auto-start skipped: gateway/dashboard already running");
       return;
     }
-    log("Auto-starting gateway & dashboard (provider config detected) ...");
+    log("Auto-starting gateway & dashboard ...");
     try { ensureEmbedServer(); } catch (e) {}
     spawnHermes("gateway",   PID_GATEWAY,   ["gateway", "run", "--replace"]);
     spawnHermes("dashboard", PID_DASHBOARD, ["dashboard", "--host", DASHBOARD_BIND, "--port", String(DASHBOARD_PORT), "--no-open", "--insecure"]);

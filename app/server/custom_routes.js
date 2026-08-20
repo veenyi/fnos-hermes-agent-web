@@ -24,7 +24,7 @@ const HERMES_CONFIG  = `${DATA_DIR}/config.yaml`;
 const HERMES_ENV     = `${DATA_DIR}/.env`;
 const CONFIG_VERSION = "1.0";
 
-const GITHUB_REPO     = process.env.GITHUB_REPO  || "your-github/fnos-hermes-agent-web";
+const GITHUB_REPO     = process.env.GITHUB_REPO  || "veenyi/fnos-hermes-agent-web";
 const GITHUB_PAT_FILE = `${VAR_DIR}/github_pat`;
 
 const TELEGRAM_ONBOARDING_URL = (process.env.TELEGRAM_ONBOARDING_URL || "https://setup.hermes-agent.nousresearch.com").replace(/\/+$/, "");
