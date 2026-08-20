@@ -5084,6 +5084,13 @@ async function handleFetch(req) {
       try {
         execSync(`rm -rf ${stage} && mkdir -p ${stage} && tar xzf ${fpkPath} -C ${stage}`, { timeout: 120000, encoding: "utf8" });
         execSync(`cd ${stage} && tar xzf app.tgz`, { timeout: 600000, encoding: "utf8" });
+        // 完整性校验：完整包必须含 hermes-src + bin/ui（骨架包/前端热补丁包缺少核心组件，
+        // 直接覆盖会把旧版 monitor/web-shim 换回来甚至导致 gateway 无法自动拉起——中止安装）
+        const _stageList = execSync(`ls ${stage}`, { encoding: "utf8" });
+        if (!/\bhermes-src\b/.test(_stageList) || !/\bbin\b/.test(_stageList) || !/\bui\b/.test(_stageList)) {
+          try { execSync(`rm -rf ${stage}`, { timeout: 30000 }); } catch {}
+          throw new Error("安装包不完整（缺少 hermes-src/bin/ui 核心组件），已中止更新；请改用完整版安装包");
+        }
         // 覆盖应用目录（bin/server/ui/hermes-src/package.json 等；config 为 fnOS 只读模板不覆盖）
         execSync(`cp -rf ${stage}/bin ${stage}/server ${stage}/ui ${stage}/hermes-src ${stage}/package.json ${APP_DIR}/ 2>/dev/null; true`, { timeout: 600000, encoding: "utf8" });
         // 更新 fnOS 应用壳 manifest（sudo cp 免密白名单已配置）
