@@ -22,6 +22,73 @@
   
 
 
+  // ── 网页版“打开文件夹”降级：弹出路径卡片（浏览器无法启动系统文件管理器）──
+  function _showLocalPathModal(path) {
+    try {
+      var old = document.getElementById("hermes-web-path-modal");
+      if (old && old.parentNode) old.parentNode.removeChild(old);
+    } catch (e) {}
+    var pathText = String(path == null ? "" : path);
+    var ov = document.createElement("div");
+    ov.id = "hermes-web-path-modal";
+    ov.style.cssText = "position:fixed;inset:0;z-index:2147483000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.45);padding:24px;font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif";
+    var card = document.createElement("div");
+    card.style.cssText = "max-width:560px;width:100%;border-radius:12px;padding:20px 22px;background:var(--ui-bg-elevated,#26262b);color:var(--ui-text-primary,#e8e8e8);border:1px solid var(--ui-stroke-secondary,rgba(255,255,255,.14));box-shadow:0 12px 40px rgba(0,0,0,.35)";
+    var title = document.createElement("div");
+    title.style.cssText = "font-size:15px;font-weight:600;margin-bottom:10px";
+    title.textContent = "文件夹路径";
+    var hint = document.createElement("div");
+    hint.style.cssText = "font-size:12px;line-height:1.6;color:var(--ui-text-secondary,#b0b0b5);margin-bottom:12px";
+    hint.textContent = "网页版无法直接打开文件管理器，请在 fnOS 文件管理器中访问以下路径：";
+    var box = document.createElement("div");
+    box.style.cssText = "font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12.5px;line-height:1.7;word-break:break-all;background:var(--ui-bg-primary,#1b1b1f);border:1px solid var(--ui-stroke-tertiary,rgba(255,255,255,.08));border-radius:8px;padding:10px 12px;margin-bottom:14px;user-select:text";
+    box.textContent = pathText || "(无路径)";
+    var row = document.createElement("div");
+    row.style.cssText = "display:flex;gap:8px;justify-content:flex-end";
+    var copyBtn = document.createElement("button");
+    copyBtn.type = "button";
+    copyBtn.style.cssText = "padding:6px 14px;font-size:12.5px;border-radius:8px;border:1px solid var(--ui-stroke-secondary,rgba(255,255,255,.18));background:transparent;color:inherit;cursor:pointer";
+    copyBtn.textContent = "复制路径";
+    var closeBtn = document.createElement("button");
+    closeBtn.type = "button";
+    closeBtn.style.cssText = "padding:6px 14px;font-size:12.5px;border-radius:8px;border:none;background:var(--ui-accent,#4c8dff);color:#fff;cursor:pointer";
+    closeBtn.textContent = "关闭";
+    function close() { try { if (ov.parentNode) ov.parentNode.removeChild(ov); } catch (e) {} }
+    function legacyCopy(txt) {
+      try {
+        var ta = document.createElement("textarea");
+        ta.value = txt;
+        ta.style.cssText = "position:fixed;opacity:0";
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+        copyBtn.textContent = "已复制";
+        setTimeout(function () { copyBtn.textContent = "复制路径"; }, 1200);
+      } catch (e) {}
+    }
+    copyBtn.onclick = function () {
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(pathText).then(function () {
+            copyBtn.textContent = "已复制";
+            setTimeout(function () { copyBtn.textContent = "复制路径"; }, 1200);
+          }, function () { legacyCopy(pathText); });
+        } else legacyCopy(pathText);
+      } catch (e) { legacyCopy(pathText); }
+    };
+    closeBtn.onclick = close;
+    ov.addEventListener("click", function (ev) { if (ev.target === ov) close(); });
+    row.appendChild(copyBtn);
+    row.appendChild(closeBtn);
+    card.appendChild(title);
+    card.appendChild(hint);
+    card.appendChild(box);
+    card.appendChild(row);
+    ov.appendChild(card);
+    document.body.appendChild(ov);
+  }
+
   function wsUrlFor() {
     var proto = location.protocol === "https:" ? "wss:" : "ws:";
     return proto + "//" + location.host + base + "/api/ws?token=" + encodeURIComponent(token);
@@ -216,6 +283,14 @@
 
     // ── 浏览器能力 ──
     openExternal: function (url) { window.open(url, "_blank"); return Promise.resolve(); },
+    // 打开文件夹 / 在文件管理器中显示：web 版降级为路径卡片
+    openDir: function (dir) { try { _showLocalPathModal(dir); } catch (e) {} return Promise.resolve({ ok: true }); },
+    showItemInFolder: function (p) { try { _showLocalPathModal(p); } catch (e) {} return Promise.resolve({ ok: true }); },
+    revealItemInFolder: function (p) { try { _showLocalPathModal(p); } catch (e) {} return Promise.resolve({ ok: true }); },
+    desktopPluginsRoot: function () {
+      var home = (CONFIG && CONFIG.home) || "";
+      return home ? home + "/desktop-plugins" : null;
+    },
     notify: function (payload) {
       try {
         if ("Notification" in window && Notification.permission === "granted") {
