@@ -1,0 +1,62 @@
+# fnos-hermes-agent-web
+
+飞牛 fnOS 上的 Hermes Agent 桌面端 Web 版。基于官方 [NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent) 集成，提供 fnOS 应用中心安装包（FPK）、桌面端 Web UI 汉化、飞牛管理技能（trim-cli）与 GitHub 增量更新。
+
+## 版本号机制
+
+版本号 = **官方版本 + Build 迭代号**：
+
+- 当前官方版本 `0.20.4` → 本项目 `0.20.4 Build V30`
+- 官方升级到 `0.20.5` → 本项目从 `0.20.5 Build V01` 重新开始迭代
+
+每次迭代 Build 号 +1（V30 → V31 → V32 ...），release tag 格式：`v0.20.4-build30`
+
+## 仓库结构
+
+```
+fnos-hermes-agent-web/
+├── src/                    # 源码（编译前的自定义文件）
+│   ├── server/             # monitor.js 等 Node 后端
+│   ├── ui/                 # 旧版控制台页面
+│   └── desktop-app-*.js    # 桌面端 Web UI 自定义（web-shim 汉化层/移动端适配）
+├── scripts/                # 构建与发布脚本
+│   ├── sync-upstream.sh    # 同步官方 hermes-agent 上游
+│   ├── build.sh            # 编译打包（FPK + 增量 tar）
+│   └── publish.sh          # 发布到 GitHub Release
+├── VERSION                 # 当前版本号
+└── .github/workflows/      # GitHub Actions 自动同步/编译/发布
+```
+
+## 增量更新机制
+
+每次 Release 上传三类资产：
+
+1. **`fnos-hermes-agent_v0.20.4-build30.fpk`** — 完整安装包（全新安装/跨大版本）
+2. **`incremental-v29-to-v30.tar.gz`** — 增量更新包（相对上一 Build 变更的文件，tar 解压）
+3. **`hot-patch.json`** — 更新元数据（base_version / version / 文件清单 / checksum）
+
+monitor 的 `/api/app/hot-patch` 检测到 `hot-patch.json` 时，下载增量 tar 解压到应用目录，更新版本号后自重启，无需全量重装。
+
+## 本地构建
+
+```bash
+# 1. 同步上游
+./scripts/sync-upstream.sh
+
+# 2. 编译打包
+./scripts/build.sh
+
+# 3. 发布（需 GITHUB_TOKEN）
+./scripts/publish.sh
+```
+
+## 上游同步
+
+自动检测官方 hermes-agent 新版本：
+
+- 官方版本变化（如 0.20.4 → 0.20.5）→ 全新同步 + Build V01
+- 官方版本不变 → 仅本地增量（Build +1）
+
+## 隐私声明
+
+本仓库**不含**任何个人数据：无密码、token、内网 IP、NAS 路径或个人信息。打包前自动执行隐私扫描，确保零残留。

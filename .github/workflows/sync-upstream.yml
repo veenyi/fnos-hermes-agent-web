@@ -1,0 +1,63 @@
+name: Sync Upstream & Build & Release
+
+on:
+  # 手动触发
+  workflow_dispatch:
+  # 定时检查上游（每天 4 次）
+  schedule:
+    - cron: '0 */6 * * *'
+
+permissions:
+  contents: write
+
+jobs:
+  sync-build-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Sync upstream
+        run: |
+          bash scripts/sync-upstream.sh
+
+      - name: Read new version
+        id: version
+        run: |
+          echo "version=$(cat VERSION)" >> "$GITHUB_OUTPUT"
+
+      - name: Check version changed
+        id: check
+        run: |
+          PREV_TAG="$(git describe --tags --abbrev=0 2>/dev/null || echo '')"
+          echo "prev_tag=$PREV_TAG"
+          echo "new_version=${{ steps.version.outputs.version }}"
+          if [ -n "$PREV_TAG" ] && [ "$PREV_TAG" = "v${{ steps.version.outputs.version }}" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "版本未变化，跳过发布"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build
+        if: steps.check.outputs.changed == 'true'
+        run: |
+          bash scripts/build.sh
+
+      - name: Publish
+        if: steps.check.outputs.changed == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          bash scripts/publish.sh
+
+      - name: Commit version bump
+        if: steps.check.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add VERSION
+          git commit -m "version: bump to ${{ steps.version.outputs.version }}" --allow-empty
+          git push origin HEAD:main
