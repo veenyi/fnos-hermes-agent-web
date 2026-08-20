@@ -446,13 +446,32 @@
             .catch(function () { return fallback; });
         } catch (e) { return Promise.resolve(fallback); }
       },
-      install: function () { return Promise.resolve(); },
+      install: function (status) { return this.apply ? this.apply(status) : Promise.resolve({ ok: false, error: "unavailable" }); },
       list: function () { return Promise.resolve([]); },
       updateAll: function () { return Promise.resolve(); },
       remove: function () { return Promise.resolve(); },
       setPrimary: function () { return Promise.resolve(); },
-      apply: function () { return Promise.resolve(); },
-      run: function () { return Promise.resolve(); },
+      apply: function (status) {
+        var base = (CONFIG && CONFIG.base) ? CONFIG.base : "/proxy/dashboard";
+        var url = base.replace(/\/+$/, "") + "/api/app/auto-update";
+        var ver = (status && (status.latestVersion || status.currentVersion)) || "";
+        var body = { source: "auto" };
+        if (ver) body.version = ver;
+        function err(e) { return { ok: false, error: "apply-failed", message: String((e && e.message) || e || "update failed") }; }
+        try {
+          return fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-Hermes-Session-Token": token },
+            body: JSON.stringify(body),
+          }).then(function (r) { return r.json().catch(function () { return {}; }); })
+            .then(function (d) {
+              if (d && d.ok) return { ok: true, handedOff: true, message: (d && d.note) || "" };
+              return { ok: false, error: "apply-failed", message: (d && d.error) || "update failed" };
+            })
+            .catch(function (e) { return err(e); });
+        } catch (e) { return Promise.resolve(err(e)); }
+      },
+      run: function (status) { return this.apply ? this.apply(status) : Promise.resolve({ ok: false, error: "unavailable" }); },
       test: function () { return Promise.resolve(); },
       save: function () { return Promise.resolve(); },
       emit: function () { return Promise.resolve(); },
