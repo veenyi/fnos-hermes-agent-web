@@ -1,0 +1,1 @@
+var e=`px-[clamp(1.25rem,4vw,4rem)]`,t=`max-w-[75rem]`,n=`(max-width: 768px)`;export{t as n,n as r,e as t};

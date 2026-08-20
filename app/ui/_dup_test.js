@@ -1,0 +1,1 @@
+function saveConfig(){return 1} function saveConfig(){return 2} console.log(saveConfig());

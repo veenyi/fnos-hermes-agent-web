@@ -1,0 +1,11324 @@
+
+/* ===== inlined ao_workflow_presets.js (V17) ===== */
+// AUTO-GENERATED from agency-orchestrator workflows
+window.AO_WORKFLOW_PRESETS = [
+  {
+    "key": "academic-paper-outline",
+    "file": "academic-paper-outline.yaml",
+    "name": "学术论文选题与大纲",
+    "description": "选题评估 + 研究方法设计 + 文献综述框架 + 完整大纲",
+    "category": "",
+    "featured": false,
+    "concurrency": 3,
+    "inputs": [
+      {
+        "name": "research_topic",
+        "description": "研究主题或初步方向（越具体越好）",
+        "required": true
+      },
+      {
+        "name": "paper_type",
+        "description": "论文类型（如：本科毕业论文 / 硕士学位论文 / 期刊论文 / 会议论文）",
+        "required": false
+      },
+      {
+        "name": "discipline",
+        "description": "学科（如：计算机科学 / 教育学 / 经济学）",
+        "required": true
+      }
+    ],
+    "steps": [
+      {
+        "id": "topic_eval",
+        "expert": "agency_academic_academic_study_planner",
+        "task": "评估研究主题「{{research_topic}}」在 {{discipline}} 领域、作为 {{paper_type}} 的可行性。\n\n输出（400 字）:\n1. **选题评分**:\n   - 创新性: 0-10 分（是否已被研究透）\n   - 可行性: 0-10 分（数据/方法是否可得）\n   - 理论价值: 0-10 分\n   - 实践价值: 0-10 分\n   - 综合建议: 推荐/可做/建议调整/不推荐\n2. **精准化建议**: 原主题太宽？太窄？具体应该怎么调整（给 2-3 个更好的表述方案）\n3. **研究问题**: 从选题中提炼出 1 个核心研究问题 + 2-3 个子问题\n4. **预期贡献**: 做完这个研究能填补什么空白",
+        "output": "topic_evaluation",
+        "depends_on": []
+      },
+      {
+        "id": "methodology",
+        "expert": "agency_academic_academic_study_planner",
+        "task": "为研究设计方法论。\n\n选题评估:\n{{topic_evaluation}}\n\n学科: {{discipline}}\n\n输出（400 字）:\n1. **研究范式**: 定量/定性/混合，并说明理由\n2. **具体方法**:\n   - 如果是定量: 抽样方法、样本量、问卷/实验设计、统计方法\n   - 如果是定性: 访谈/案例/民族志，编码方案\n   - 如果是计算机/工程类: 实验环境、数据集、基线模型、评估指标\n3. **数据来源**: 具体从哪里获取数据（公开数据集名称 / 需要采集的渠道）\n4. **可行性检查**: 上述方法在当前条件下是否可行，可能遇到的障碍\n5. **伦理考量**: 是否涉及人类受试者、数据隐私等，需要什么审批",
+        "output": "methodology",
+        "depends_on": [
+          "topic_eval"
+        ]
+      },
+      {
+        "id": "literature",
+        "expert": "agency_academic_academic_historian",
+        "task": "为选题设计文献综述的骨架。\n\n选题:\n{{topic_evaluation}}\n\n学科: {{discipline}}\n\n输出（400 字）:\n1. **理论基础**: 本研究依托的 2-3 个核心理论/经典概念，每个 1 句话解释\n2. **关键学者/流派**: 这个领域必须引用的 5-8 位学者或代表作（作者-年份-代表性贡献）\n3. **研究脉络**:\n   - 早期研究关注什么\n   - 近 5-10 年研究热点\n   - 当前未解决的争议\n4. **检索建议**:\n   - 中文关键词: 3-5 个\n   - 英文关键词: 3-5 个\n   - 推荐数据库: CNKI / Web of Science / ACM / IEEE 等（按学科推荐）\n5. **文献综述写作思路**: 按\"议题\"而非\"时间\"组织，分 3-4 个主题块\n\n⚠️ 具体学者名和年份不确定时明确标「需核实」，不要编造。",
+        "output": "literature_framework",
+        "depends_on": [
+          "topic_eval"
+        ]
+      },
+      {
+        "id": "outline",
+        "expert": "agency_academic_academic_study_planner",
+        "task": "整合生成完整论文大纲。\n\n选题: {{topic_evaluation}}\n方法: {{methodology}}\n文献: {{literature_framework}}\n\n论文类型: {{paper_type}}\n\n输出结构（按学位论文标准章节）:\n```\n# 【论文题目】\n<基于选题精准化建议确定的最终题目>\n\n# 【摘要要点】\n- 研究问题:\n- 方法:\n- 主要发现（预期）:\n- 贡献:\n\n# 【关键词】\n5-7 个\n\n# 第一章 绪论\n- 1.1 研究背景（写作要点）\n- 1.2 研究问题（引用选题评估中的核心问题）\n- 1.3 研究意义（理论+实践）\n- 1.4 研究方法简述\n- 1.5 论文结构\n\n# 第二章 文献综述\n<按文献框架的主题块组织>\n- 2.1 <主题块1>\n- 2.2 <主题块2>\n- 2.3 <主题块3>\n- 2.4 研究述评（指出空白）\n\n# 第三章 理论基础与研究设计\n<基于方法论>\n- 3.1 理论框架\n- 3.2 研究假设/研究问题细化\n- 3.3 研究方法\n- 3.4 数据来源与样本\n- 3.5 变量测量 / 实验设计\n\n# 第四章 数据分析与结果\n<占位，写作时填充>\n- 4.1 描述性分析\n- 4.2 主要发现\n- 4.3 稳健性检验 / 消融实验\n\n# 第五章 讨论与结论\n- 5.1 结果讨论（与文献对话）\n- 5.2 理论贡献\n- 5.3 实践启示\n- 5.4 研究局限\n- 5.5 未来研究方向\n\n# 【时间规划】\n<按 {{paper_type}} 给出 3-6 个月的分阶段时间表>\n\n# 【下一步行动】\n按优先级列 3 条最该立刻做的事\n```",
+        "output": "paper_outline",
+        "depends_on": [
+          "methodology",
+          "literature"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "ai-opinion-article",
+    "file": "ai-opinion-article.yaml",
+    "name": "AI 爆款深度文章",
+    "description": "多角色协作写一篇有深度、引人入胜的 AI 观点文章 — 调研、构思、写作、审校",
+    "category": "",
+    "featured": false,
+    "concurrency": 2,
+    "inputs": [
+      {
+        "name": "topic",
+        "description": "文章主题",
+        "required": true
+      },
+      {
+        "name": "style",
+        "description": "文章风格（如：深度思考、犀利观点、温情感悟）",
+        "required": true
+      },
+      {
+        "name": "platform",
+        "description": "发布平台",
+        "required": true
+      }
+    ],
+    "steps": [
+      {
+        "id": "trend_research",
+        "expert": "agency_product_product_trend_researcher",
+        "task": "针对以下主题，做深度趋势调研：\n主题：{{topic}}\n平台：{{platform}}\n\n请输出：\n1. 当前公众讨论的热点角度（至少5个）\n2. 大众最关心/焦虑/好奇的3个核心问题\n3. 常见观点中的盲区或误区（这是爆款切入点）\n4. 能引发共鸣的情感触发点\n5. 建议的爆款标题方向（至少5个，要有冲击力）",
+        "output": "trend_report",
+        "depends_on": []
+      },
+      {
+        "id": "narrative_design",
+        "expert": "agency_academic_academic_narratologist",
+        "task": "基于趋势调研，设计文章的叙事结构：\n\n调研报告：\n{{trend_report}}\n\n主题：{{topic}}\n风格：{{style}}\n\n请设计：\n1. 开篇钩子（第一段就要抓住读者，用一个具体场景或反直觉观点）\n2. 文章主线（一条贯穿始终的核心论点）\n3. 3-4个递进的论述层次（每层要有转折或意外）\n4. 情感节奏图（哪里激烈、哪里沉思、哪里共鸣）\n5. 结尾设计（不要鸡汤，要留有回味的思考）\n6. 最终确定的标题（1个主标题 + 1个副标题）",
+        "output": "narrative_structure",
+        "depends_on": [
+          "trend_research"
+        ]
+      },
+      {
+        "id": "depth_thinking",
+        "expert": "agency_academic_academic_narratologist",
+        "task": "作为一个深度思考者，针对这个主题提供独到的思考角度：\n\n主题：{{topic}}\n趋势调研：{{trend_report}}\n\n请提供：\n1. 3个大多数人没想到的深层观点（要有洞察力，不是陈词滥调）\n2. 2个有力的类比或隐喻（让抽象概念变得生动）\n3. 1个能引发争议但站得住脚的观点（爆款需要争议性）\n4. 2-3个真实或虚构的具体案例/场景（增加说服力）\n5. 对未来的一个大胆预判（有远见但不疯狂）",
+        "output": "deep_insights",
+        "depends_on": [
+          "trend_research"
+        ]
+      },
+      {
+        "id": "write_article",
+        "expert": "agency_marketing_marketing_content_creator",
+        "task": "你是一位顶级内容创作者。请基于以下素材，写一篇 {{platform}} 爆款文章。\n\n叙事结构：\n{{narrative_structure}}\n\n深度洞察：\n{{deep_insights}}\n\n风格要求：{{style}}\n\n写作要求：\n- 2000-3000字\n- 第一段就要抓人（场景化开头或反直觉观点）\n- 每200-300字要有一个吸引读者继续看的钩子\n- 用具体案例和场景替代抽象说教\n- 语言要有节奏感：长短句交替，偶尔用一句话单独成段\n- 观点要鲜明，不要两头讨好\n- 结尾要有力度，最好是一个让人想转发的金句\n- 适当用一些修辞手法（排比、反问、类比）但不要过度\n- 段落之间要有逻辑递进，不是并列堆砌\n\n请直接输出完整文章（包含标题）。",
+        "output": "article_draft",
+        "depends_on": [
+          "narrative_design",
+          "depth_thinking"
+        ]
+      },
+      {
+        "id": "polish",
+        "expert": "agency_marketing_marketing_content_creator",
+        "task": "请对以下文章做最终打磨：\n\n{{article_draft}}\n\n打磨要点：\n1. 检查开头是否足够抓人（不行就重写开头）\n2. 删掉所有废话和套话（\"众所周知\"、\"不可否认\"这类全删）\n3. 强化金句密度（每500字至少一句值得划线的话）\n4. 检查节奏：是否有连续超过3段的长段落？拆开\n5. 结尾是否有力？最后一句是否值得截图转发？\n6. 按 {{platform}} 的习惯排好版（分段、加粗重点），但排版本身体现在正文里，不要单独写\"排版提示\"\n\n⚠️ 严格只输出最终文章本身：不要开场白或寒暄、不要\"我改了什么/修改说明/复盘\"、不要排版备注小节、不要向用户提问或请其拍板、不要建议 ao 命令或后续动作、不要\"要我继续吗\"之类收尾。从文章第一个字开始，到文章最后一个字结束。",
+        "output": null,
+        "depends_on": [
+          "write_article"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "ai-startup-launch",
+    "file": "ai-startup-launch.yaml",
+    "name": "AI 一人公司：SaaS 产品发布决策",
+    "description": "CEO 一句话启动，5 个 AI 部门并行工作，30 秒出完整发布方案",
+    "category": "",
+    "featured": false,
+    "concurrency": 3,
+    "inputs": [
+      {
+        "name": "product_idea",
+        "description": "",
+        "required": true
+      }
+    ],
+    "steps": [
+      {
+        "id": "ceo_vision",
+        "expert": "agency_strategy_nexus_strategy",
+        "task": "作为 CEO，请基于以下产品创意制定一份简洁的产品愿景和战略方向：\n\n产品创意：{{product_idea}}\n\n输出 300 字以内，包含：产品定位（一句话）、目标用户、核心差异化、6个月目标。",
+        "output": "vision",
+        "depends_on": []
+      },
+      {
+        "id": "product_plan",
+        "expert": "agency_product_product_manager",
+        "task": "基于 CEO 愿景：{{vision}}\n\n作为产品经理，输出 MVP 功能规划（500字以内）：核心功能 3 个、用户故事、优先级排序、第一版交付范围。",
+        "output": "product_spec",
+        "depends_on": [
+          "ceo_vision"
+        ]
+      },
+      {
+        "id": "tech_plan",
+        "expert": "agency_engineering_engineering_backend_architect",
+        "task": "基于 CEO 愿景：{{vision}}\n\n作为技术架构师，输出技术方案（500字以内）：技术栈选型、系统架构、1人团队的开发路线图（4周冲刺计划）。",
+        "output": "tech_spec",
+        "depends_on": [
+          "ceo_vision"
+        ]
+      },
+      {
+        "id": "marketing_plan",
+        "expert": "agency_marketing_marketing_content_creator",
+        "task": "基于 CEO 愿景：{{vision}}\n\n作为市场负责人，输出 Go-to-Market 方案（500字以内）：发布文案（标题+副标题）、目标渠道 Top 3、首月增长策略、预算为 0 的冷启动方案。",
+        "output": "marketing_spec",
+        "depends_on": [
+          "ceo_vision"
+        ]
+      },
+      {
+        "id": "finance_plan",
+        "expert": "agency_finance_finance_financial_forecaster",
+        "task": "基于 CEO 愿景：{{vision}}\n\n作为财务顾问，输出商业模型（500字以内）：定价策略、收入预测（3/6/12个月）、成本结构、盈亏平衡分析。",
+        "output": "finance_spec",
+        "depends_on": [
+          "ceo_vision"
+        ]
+      },
+      {
+        "id": "launch_decision",
+        "expert": "agency_strategy_nexus_strategy",
+        "task": "作为 CEO，所有部门方案已提交：\n\n**产品方案**：{{product_spec}}\n**技术方案**：{{tech_spec}}\n**市场方案**：{{marketing_spec}}\n**财务方案**：{{finance_spec}}\n\n请做最终决策，输出一份 800 字以内的《产品发布执行计划》：\n1. Go/No-Go 决策及理由\n2. 各部门方案的采纳/调整要点\n3. 第一周具体行动清单（每个部门 3 件事）\n4. 风险预警和应对",
+        "output": "launch_plan",
+        "depends_on": [
+          "product_plan",
+          "tech_plan",
+          "marketing_plan",
+          "finance_plan"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "codex-cc-loop",
+    "file": "codex-cc-loop.yaml",
+    "name": "Codex + Claude Code 协作编程(闭环版)",
+    "description": "",
+    "category": "",
+    "featured": false,
+    "concurrency": 1,
+    "inputs": [
+      {
+        "name": "requirement",
+        "description": "",
+        "required": true
+      }
+    ],
+    "steps": [
+      {
+        "id": "plan",
+        "expert": "agency_engineering_engineering_backend_architect",
+        "task": "针对以下需求做技术规划,给出实现思路、模块拆分和验收标准:{{requirement}}",
+        "output": "plan_doc",
+        "depends_on": []
+      },
+      {
+        "id": "implement",
+        "expert": "agency_engineering_engineering_rapid_prototyper",
+        "task": "严格按下面的规划与验收标准实现代码:{{plan_doc}}",
+        "output": "code",
+        "depends_on": [
+          "plan"
+        ]
+      },
+      {
+        "id": "review",
+        "expert": "agency_testing_testing_reality_checker",
+        "task": "对照验收标准复核代码。通过则输出 APPROVED,否则列出具体问题。标准:{{plan_doc}}  代码:{{code}}",
+        "output": "review_result",
+        "depends_on": [
+          "implement"
+        ]
+      },
+      {
+        "id": "fix",
+        "expert": "agency_engineering_engineering_rapid_prototyper",
+        "task": "根据复核意见修改代码(已通过则原样保留):{{review_result}}  原代码:{{code}}",
+        "output": "code",
+        "depends_on": [
+          "review"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "codex-cc-simple",
+    "file": "codex-cc-simple.yaml",
+    "name": "Codex + Claude Code 协作编程(极简版)",
+    "description": "",
+    "category": "",
+    "featured": false,
+    "concurrency": 1,
+    "inputs": [
+      {
+        "name": "requirement",
+        "description": "",
+        "required": true
+      }
+    ],
+    "steps": [
+      {
+        "id": "plan",
+        "expert": "agency_engineering_engineering_backend_architect",
+        "task": "针对以下需求做技术规划,给出实现思路、模块拆分和验收标准:{{requirement}}",
+        "output": "plan_doc",
+        "depends_on": []
+      },
+      {
+        "id": "implement",
+        "expert": "agency_engineering_engineering_rapid_prototyper",
+        "task": "严格按下面的规划与验收标准实现代码:{{plan_doc}}",
+        "output": "code",
+        "depends_on": [
+          "plan"
+        ]
+      },
+      {
+        "id": "review",
+        "expert": "agency_testing_testing_reality_checker",
+        "task": "对照验收标准复核代码,指出问题或确认通过。标准:{{plan_doc}}  代码:{{code}}",
+        "output": "review_result",
+        "depends_on": [
+          "implement"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "content-pipeline",
+    "file": "content-pipeline.yaml",
+    "name": "内容创作流水线",
+    "description": "从主题到成稿的完整内容创作流程 — 研究、写作、品牌审核",
+    "category": "",
+    "featured": false,
+    "concurrency": 2,
+    "inputs": [
+      {
+        "name": "topic",
+        "description": "内容主题",
+        "required": true
+      },
+      {
+        "name": "target_audience",
+        "description": "目标受众",
+        "required": true
+      },
+      {
+        "name": "platform",
+        "description": "发布平台（如：公众号、知乎、小红书）",
+        "required": true
+      }
+    ],
+    "steps": [
+      {
+        "id": "research",
+        "expert": "agency_marketing_marketing_social_media_strategist",
+        "task": "为以下主题做内容研究：\n主题：{{topic}}\n目标受众：{{target_audience}}\n平台：{{platform}}\n\n请输出：\n1. 关键信息点\n2. 受众关注的痛点\n3. 竞品内容分析\n4. 建议的内容角度",
+        "output": "research_report",
+        "depends_on": []
+      },
+      {
+        "id": "draft",
+        "expert": "agency_marketing_marketing_content_creator",
+        "task": "基于以下研究，撰写一篇适合 {{platform}} 的文章：\n\n研究报告：\n{{research_report}}\n\n要求：\n- 目标受众：{{target_audience}}\n- 风格适合 {{platform}}\n- 包含引人注目的标题\n- 结构清晰，易于阅读",
+        "output": "draft_content",
+        "depends_on": [
+          "research"
+        ]
+      },
+      {
+        "id": "brand_review",
+        "expert": "agency_marketing_marketing_growth_hacker",
+        "task": "请审核以下内容的品牌一致性：\n\n{{draft_content}}\n\n评审要点：\n1. 品牌调性是否一致\n2. 信息准确性\n3. 是否有敏感内容\n4. 改进建议",
+        "output": "review_feedback",
+        "depends_on": [
+          "draft"
+        ]
+      },
+      {
+        "id": "final_edit",
+        "expert": "agency_marketing_marketing_content_creator",
+        "task": "根据品牌审核反馈，修改并定稿：\n\n原文：\n{{draft_content}}\n\n审核反馈：\n{{review_feedback}}\n\n请输出最终稿件。",
+        "output": null,
+        "depends_on": [
+          "brand_review"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "data/dashboard-design",
+    "file": "data\\dashboard-design.yaml",
+    "name": "数据仪表盘设计",
+    "description": "定义指标 → 设计布局 → 出视觉方案",
+    "category": "data",
+    "featured": false,
+    "concurrency": 2,
+    "inputs": [
+      {
+        "name": "business_goal",
+        "description": "业务目标（仪表盘要解决什么问题、服务哪些用户）",
+        "required": true
+      },
+      {
+        "name": "data_sources",
+        "description": "可用数据源及其字段说明",
+        "required": true
+      }
+    ],
+    "steps": [
+      {
+        "id": "define_metrics",
+        "expert": "agency_support_support_analytics_reporter",
+        "task": "请根据业务目标和可用数据源，定义仪表盘的关键指标：\n\n业务目标：{{business_goal}}\n\n数据源：{{data_sources}}\n\n请输出：\n1. 核心指标（North Star Metric）及其定义\n2. 支撑指标（按维度分组，如增长、留存、营收等）\n3. 每个指标的计算口径和数据来源\n4. 建议的时间粒度（实时 / 小时 / 天 / 周）\n5. 指标之间的关联关系和下钻路径",
+        "output": "metrics_definition",
+        "depends_on": []
+      },
+      {
+        "id": "design_layout",
+        "expert": "agency_design_design_ux_researcher",
+        "task": "请根据业务目标，设计仪表盘的信息架构和交互方案：\n\n业务目标：{{business_goal}}\n\n数据源：{{data_sources}}\n\n请输出：\n1. 用户角色分析（谁会看这个仪表盘、使用场景）\n2. 信息层级（概览 → 详情 → 明细的层次结构）\n3. 布局方案（各区域放什么内容、优先级排列）\n4. 交互设计（筛选器、时间选择、下钻、联动）\n5. 移动端适配建议",
+        "output": "layout_design",
+        "depends_on": []
+      },
+      {
+        "id": "visual_design",
+        "expert": "agency_design_design_ui_designer",
+        "task": "请综合指标定义和布局方案，输出仪表盘的视觉设计方案：\n\n## 指标定义\n{{metrics_definition}}\n\n## 布局方案\n{{layout_design}}\n\n业务目标：{{business_goal}}\n\n请输出：\n1. 图表类型选择（每个指标适合用什么图表展示）\n2. 配色方案（主色、辅色、语义色如红涨绿跌）\n3. 数据可视化规范（字号、间距、图表尺寸）\n4. 状态与预警的视觉表达（正常 / 警告 / 异常）\n5. 完整的仪表盘视觉设计说明",
+        "output": "visual_plan",
+        "depends_on": [
+          "define_metrics",
+          "design_layout"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "data/data-pipeline-review",
+    "file": "data\\data-pipeline-review.yaml",
+    "name": "数据管道审查",
+    "description": "数据工程师分析 → 数据库优化师检查 → 数据分析师验证输出质量",
+    "category": "data",
+    "featured": false,
+    "concurrency": 2,
+    "inputs": [
+      {
+        "name": "pipeline_description",
+        "description": "数据管道的描述（架构、数据流、技术栈等）",
+        "required": true
+      },
+      {
+        "name": "data_schema",
+        "description": "数据模型 / 表结构说明（可选）",
+        "required": false
+      }
+    ],
+    "steps": [
+      {
+        "id": "engineer_review",
+        "expert": "agency_engineering_engineering_data_engineer",
+        "task": "请分析以下数据管道的架构和数据流设计：\n\n管道描述：{{pipeline_description}}\n\n数据模型：{{data_schema}}\n\n请评估：\n1. 管道架构合理性（数据源、ETL/ELT 流程、目标存储）\n2. 数据流完整性（是否有数据丢失风险）\n3. 容错与重试机制\n4. 可扩展性（能否支撑数据量增长）\n5. 改进建议",
+        "output": "engineer_report",
+        "depends_on": []
+      },
+      {
+        "id": "db_optimize",
+        "expert": "agency_engineering_engineering_database_optimizer",
+        "task": "请从数据库性能角度审查以下数据管道：\n\n管道描述：{{pipeline_description}}\n\n数据模型：{{data_schema}}\n\n请检查：\n1. 查询效率（是否存在全表扫描、慢查询风险）\n2. 索引策略（索引是否合理，是否有冗余或缺失）\n3. 分区与分表策略\n4. 写入性能（批量插入 vs 逐行插入）\n5. 具体优化建议及预期收益",
+        "output": "db_report",
+        "depends_on": []
+      },
+      {
+        "id": "quality_check",
+        "expert": "agency_support_support_analytics_reporter",
+        "task": "请综合数据工程和数据库优化的评审结果，验证数据管道的输出质量：\n\n## 数据工程评审\n{{engineer_report}}\n\n## 数据库优化评审\n{{db_report}}\n\n原始管道描述：{{pipeline_description}}\n\n请验证：\n1. 输出数据的准确性和一致性\n2. 数据质量监控指标是否完善\n3. 异常数据的处理策略\n4. 数据时效性（延迟是否可接受）\n5. 综合改进建议和优先级排序",
+        "output": "quality_report",
+        "depends_on": [
+          "engineer_review",
+          "db_optimize"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "department-collab/ceo-org-delegation",
+    "file": "department-collab\\ceo-org-delegation.yaml",
+    "name": "CEO 组织架构协作",
+    "description": "CEO 分析需求 → 自动路由到对应部门（工程/市场/产品/HR）→ 部门内专业 Agent 并行执行 → CEO 汇总决策",
+    "category": "department-collab",
+    "featured": false,
+    "concurrency": 3,
+    "inputs": [
+      {
+        "name": "request",
+        "description": "CEO 收到的任务/需求/问题（如：我们要做一个新产品、竞对出了新功能怎么办、团队扩张计划…）",
+        "required": true
+      },
+      {
+        "name": "context",
+        "description": "背景信息（公司阶段、团队规模、预算约束等）",
+        "required": false
+      }
+    ],
+    "steps": [
+      {
+        "id": "ceo_analyze",
+        "expert": "agency_project-management_project_manager_senior",
+        "task": "你是公司 CEO。请分析以下需求，决定需要调动哪些部门协作。\n\n需求：{{request}}\n公司背景：{{context}}\n\n你可以调动的部门：\n- **工程部**：负责技术方案、架构设计、开发排期、技术债务\n- **市场部**：负责市场调研、竞品分析、品牌策略、内容营销\n- **产品部**：负责需求分析、产品规划、用户研究、优先级排序\n- **HR 部**：负责招聘规划、团队组建、人才发展、组织架构\n\n请输出：\n1. **需求解读**：一句话总结这个需求的核心问题\n2. **需要参与的部门**（必须明确写出部门名称：工程部 / 市场部 / 产品部 / HR部）\n3. **每个部门的具体任务**（给每个部门的简要指令）\n4. **优先级和时间预期**\n5. **关键风险点**",
+        "output": "ceo_decision",
+        "depends_on": []
+      },
+      {
+        "id": "engineering_dept",
+        "expert": "agency_engineering_engineering_software_architect",
+        "task": "你是工程部负责人。CEO 给了以下指示：\n\n{{ceo_decision}}\n\n原始需求：{{request}}\n\n请作为工程部负责人，输出：\n1. **技术可行性评估**（能不能做、难点在哪）\n2. **技术方案概要**（架构选型、技术栈建议）\n3. **人力评估**（需要几个人、什么角色）\n4. **排期估算**（里程碑拆分）\n5. **技术风险**（依赖、性能、安全方面的风险）\n6. **给 CEO 的建议**（你认为 CEO 应该知道的工程视角）",
+        "output": "engineering_report",
+        "depends_on": [
+          "ceo_analyze"
+        ]
+      },
+      {
+        "id": "marketing_dept",
+        "expert": "agency_marketing_marketing_social_media_strategist",
+        "task": "你是市场部负责人。CEO 给了以下指示：\n\n{{ceo_decision}}\n\n原始需求：{{request}}\n\n请作为市场部负责人，输出：\n1. **市场机会分析**（市场规模、竞争格局、时间窗口）\n2. **竞品动态**（主要竞品在做什么、我们的差异化定位）\n3. **品牌/传播策略**（怎么讲故事、什么渠道、什么节奏）\n4. **获客方案**（目标用户从哪来、获客成本预估）\n5. **预算需求**（市场费用的大致拆分）\n6. **给 CEO 的建议**（你认为 CEO 应该知道的市场视角）",
+        "output": "marketing_report",
+        "depends_on": [
+          "ceo_analyze"
+        ]
+      },
+      {
+        "id": "product_dept",
+        "expert": "agency_product_product_manager",
+        "task": "你是产品部负责人。CEO 给了以下指示：\n\n{{ceo_decision}}\n\n原始需求：{{request}}\n\n请作为产品部负责人，输出：\n1. **需求分析**（用户痛点、场景拆解、需求优先级）\n2. **产品方案**（核心功能定义、MVP 范围、用户旅程）\n3. **竞品产品分析**（功能对比、体验差异）\n4. **数据指标**（怎么衡量成功、关键北极星指标）\n5. **产品路线图**（P0/P1/P2 功能排序，3 个月规划）\n6. **给 CEO 的建议**（你认为 CEO 应该知道的产品视角）",
+        "output": "product_report",
+        "depends_on": [
+          "ceo_analyze"
+        ]
+      },
+      {
+        "id": "hr_dept",
+        "expert": "agency_hr_hr_recruiter",
+        "task": "你是 HR 部负责人。CEO 给了以下指示：\n\n{{ceo_decision}}\n\n原始需求：{{request}}\n公司背景：{{context}}\n\n请作为 HR 部负责人，输出：\n1. **团队现状评估**（当前团队能力是否匹配需求）\n2. **招聘计划**（需要补充什么岗位、JD 要点、人数）\n3. **组织架构建议**（是否需要调整汇报关系或新建团队）\n4. **人才发展**（现有团队需要什么培训或成长路径）\n5. **招聘时间表和成本**（招聘周期、预算）\n6. **给 CEO 的建议**（你认为 CEO 应该知道的组织视角）",
+        "output": "hr_report",
+        "depends_on": [
+          "ceo_analyze"
+        ]
+      },
+      {
+        "id": "ceo_decision_final",
+        "expert": "agency_support_support_executive_summary_generator",
+        "task": "你是 CEO。各部门已提交工作报告，请综合所有信息做最终决策。\n\n原始需求：{{request}}\n\nCEO 初步分析：\n{{ceo_decision}}\n\n各部门报告（仅包含被激活的部门）：\n\n工程部报告：\n{{engineering_report}}\n\n市场部报告：\n{{marketing_report}}\n\n产品部报告：\n{{product_report}}\n\nHR 部报告：\n{{hr_report}}\n\n请输出最终决策文档：\n\n# CEO 决策备忘录\n\n## 执行摘要\n[一段话总结决策和理由]\n\n## 决策要点\n1. [做什么 / 不做什么]\n2. [优先级排序]\n3. [资源分配]\n\n## 各部门行动项\n| 部门 | 行动项 | 负责人 | 截止日期 |\n|------|--------|--------|---------|\n[从各部门报告中提取具体可执行的行动]\n\n## 里程碑\n[关键节点和检查点]\n\n## 预算总览\n[汇总各部门的预算需求]\n\n## 风险与应对\n[综合各部门提出的风险，给出应对策略]\n\n## 下次复盘时间\n[建议的复盘节点]",
+        "output": null,
+        "depends_on": [
+          "engineering_dept",
+          "marketing_dept",
+          "product_dept",
+          "hr_dept"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "department-collab/code-review",
+    "file": "department-collab\\code-review.yaml",
+    "name": "代码评审流程",
+    "description": "架构/安全/性能并行评审 → 汇总 → 不通过则打回重审（最多 2 轮）",
+    "category": "department-collab",
+    "featured": false,
+    "concurrency": 3,
+    "inputs": [
+      {
+        "name": "code",
+        "description": "待评审的代码或 PR 描述",
+        "required": true
+      },
+      {
+        "name": "context",
+        "description": "代码背景说明（功能目的、影响范围等）",
+        "required": true
+      }
+    ],
+    "steps": [
+      {
+        "id": "arch_review",
+        "expert": "agency_engineering_engineering_software_architect",
+        "task": "请从架构角度评审以下代码：\n\n背景：{{context}}\n\n代码：\n{{code}}\n\n请评估：\n1. 架构合理性\n2. 设计模式使用\n3. 可维护性\n4. 改进建议",
+        "output": "arch_report",
+        "depends_on": []
+      },
+      {
+        "id": "security_review",
+        "expert": "agency_engineering_engineering_security_engineer",
+        "task": "请从安全角度评审以下代码：\n\n背景：{{context}}\n\n代码：\n{{code}}\n\n请检查：\n1. OWASP Top 10 风险\n2. 输入验证\n3. 认证授权\n4. 数据保护",
+        "output": "security_report",
+        "depends_on": []
+      },
+      {
+        "id": "perf_review",
+        "expert": "agency_testing_testing_performance_benchmarker",
+        "task": "请从性能角度评审以下代码：\n\n背景：{{context}}\n\n代码：\n{{code}}\n\n请评估：\n1. 时间复杂度\n2. 内存使用\n3. 并发安全性\n4. 性能瓶颈和优化建议",
+        "output": "perf_report",
+        "depends_on": []
+      },
+      {
+        "id": "summary",
+        "expert": "agency_engineering_engineering_code_reviewer",
+        "task": "请综合以下三方面评审结果，给出最终评审结论：\n\n## 架构评审\n{{arch_report}}\n\n## 安全评审\n{{security_report}}\n\n## 性能评审\n{{perf_report}}\n\n请输出：\n1. 总体结论（通过 / 需修改 / 不通过）\n2. 必须修改的问题清单\n3. 建议改进项\n如所有评审都没有严重问题，回复「通过」。",
+        "output": "review_feedback",
+        "depends_on": [
+          "arch_review",
+          "security_review",
+          "perf_review"
+        ]
+      },
+      {
+        "id": "revision_request",
+        "expert": "agency_engineering_engineering_code_reviewer",
+        "task": "第 {{_loop_iteration}} 轮评审反馈已出，请整理需要开发者修改的具体内容：\n\n评审结论：\n{{review_feedback}}\n\n请输出结构化的修改要求清单。",
+        "output": "revision_list",
+        "depends_on": [
+          "summary"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "department-collab/content-publish",
+    "file": "department-collab\\content-publish.yaml",
+    "name": "内容发布流程",
+    "description": "选题策划 → 文案撰写 → 品牌审核（不通过打回修改，最多 3 轮）→ 法务合规 → 发布清单",
+    "category": "department-collab",
+    "featured": false,
+    "concurrency": 1,
+    "inputs": [
+      {
+        "name": "topic",
+        "description": "内容主题",
+        "required": true
+      },
+      {
+        "name": "platform",
+        "description": "发布平台（公众号/小红书/抖音等）",
+        "required": true
+      }
+    ],
+    "steps": [
+      {
+        "id": "plan",
+        "expert": "agency_marketing_marketing_content_creator",
+        "task": "请为以下主题制定内容策划方案：\n\n主题：{{topic}}\n平台：{{platform}}\n\n请输出：\n1. 选题角度\n2. 目标受众\n3. 内容大纲\n4. 预期效果",
+        "output": "content_plan",
+        "depends_on": []
+      },
+      {
+        "id": "write",
+        "expert": "agency_marketing_marketing_content_creator",
+        "task": "根据以下策划方案撰写完整文案：\n\n{{content_plan}}\n\n平台：{{platform}}\n要求：符合平台调性，有吸引力",
+        "output": "copy",
+        "depends_on": [
+          "plan"
+        ]
+      },
+      {
+        "id": "brand_review",
+        "expert": "agency_design_design_brand_guardian",
+        "task": "请审核以下文案是否符合品牌规范：\n\n{{copy}}\n\n审核要点：\n1. 品牌调性一致性\n2. 用语规范性\n3. 视觉建议\n如合格请回复「通过」，否则给出具体修改意见。",
+        "output": "brand_feedback",
+        "depends_on": [
+          "write"
+        ]
+      },
+      {
+        "id": "revise",
+        "expert": "agency_marketing_marketing_content_creator",
+        "task": "根据品牌审核反馈修改文案（第 {{_loop_iteration}} 轮修改）：\n\n原稿：\n{{copy}}\n\n审核意见：\n{{brand_feedback}}\n\n请输出修改后的完整文案。",
+        "output": "copy",
+        "depends_on": [
+          "brand_review"
+        ]
+      },
+      {
+        "id": "legal_review",
+        "expert": "agency_support_support_legal_compliance_checker",
+        "task": "请对以下即将发布的内容进行法务合规审查：\n\n{{copy}}\n\n审查要点：\n1. 广告法合规性\n2. 知识产权风险\n3. 敏感词检查\n4. 免责声明建议",
+        "output": "legal_report",
+        "depends_on": [
+          "revise"
+        ]
+      },
+      {
+        "id": "publish_checklist",
+        "expert": "agency_marketing_marketing_content_creator",
+        "task": "综合以下信息，输出最终发布清单：\n\n最终文案：\n{{copy}}\n\n法务审查：\n{{legal_report}}\n\n平台：{{platform}}\n\n请输出：\n1. 发布时间建议\n2. 标签/话题建议\n3. 注意事项",
+        "output": null,
+        "depends_on": [
+          "legal_review"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "department-collab/hiring-pipeline",
+    "file": "department-collab\\hiring-pipeline.yaml",
+    "name": "招聘评估流程",
+    "description": "HR 筛选简历 → 按岗位类型分流技术/业务评估 → 薪酬方案 → 最终审批",
+    "category": "department-collab",
+    "featured": false,
+    "concurrency": 2,
+    "inputs": [
+      {
+        "name": "resume",
+        "description": "候选人简历内容",
+        "required": true
+      },
+      {
+        "name": "job_title",
+        "description": "应聘岗位名称",
+        "required": true
+      }
+    ],
+    "steps": [
+      {
+        "id": "screen",
+        "expert": "agency_hr_hr_recruiter",
+        "task": "请筛选以下简历，评估候选人是否符合「{{job_title}}」岗位要求：\n\n1. 基本条件匹配度\n2. 工作经验相关性\n3. 技能匹配程度\n4. 判断岗位类型，只回答一个词：技术岗 或 非技术岗\n\n简历：\n{{resume}}",
+        "output": "screen_result",
+        "depends_on": []
+      },
+      {
+        "id": "tech_eval",
+        "expert": "agency_engineering_engineering_software_architect",
+        "task": "请对以下候选人进行技术面评估：\n\n筛选报告：\n{{screen_result}}\n\n请评估：\n1. 技术深度和广度\n2. 系统设计能力\n3. 编码能力评估建议\n4. 技术成长潜力",
+        "output": "eval_result",
+        "depends_on": [
+          "screen"
+        ]
+      },
+      {
+        "id": "biz_eval",
+        "expert": "agency_product_product_manager",
+        "task": "请对以下候选人进行业务面评估：\n\n筛选报告：\n{{screen_result}}\n\n请评估：\n1. 业务理解能力\n2. 沟通协作能力\n3. 项目管理经验\n4. 发展潜力",
+        "output": "eval_result",
+        "depends_on": [
+          "screen"
+        ]
+      },
+      {
+        "id": "salary",
+        "expert": "agency_hr_hr_recruiter",
+        "task": "基于以下评估结果，制定薪酬方案建议：\n\n岗位：{{job_title}}\n评估报告：\n{{eval_result}}\n\n请输出：\n1. 建议薪资范围\n2. 福利方案\n3. 谈判策略建议",
+        "output": null,
+        "depends_on": [
+          "tech_eval",
+          "biz_eval"
+        ]
+      },
+      {
+        "id": "final_approval",
+        "expert": "agency_product_product_manager",
+        "task": "",
+        "output": null,
+        "depends_on": [
+          "salary"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "department-collab/incident-response",
+    "file": "department-collab\\incident-response.yaml",
+    "name": "故障响应流程",
+    "description": "故障分类 → 按类型分流给对应团队分析 → 复盘汇总",
+    "category": "department-collab",
+    "featured": false,
+    "concurrency": 2,
+    "inputs": [
+      {
+        "name": "incident_report",
+        "description": "故障报告内容（告警信息、影响范围等）",
+        "required": true
+      }
+    ],
+    "steps": [
+      {
+        "id": "classify",
+        "expert": "agency_engineering_engineering_sre",
+        "task": "请分析以下故障报告，判断故障类型并给出初步评估：\n\n{{incident_report}}\n\n请输出：\n1. 故障严重程度（P0/P1/P2/P3）\n2. 影响范围\n3. 故障类型（只回答一个：后端故障 / 前端故障 / 基础设施故障）\n4. 初步判断的根因方向",
+        "output": "classification",
+        "depends_on": []
+      },
+      {
+        "id": "backend_analysis",
+        "expert": "agency_engineering_engineering_backend_architect",
+        "task": "请深入分析以下后端故障：\n\n故障分类报告：\n{{classification}}\n\n原始报告：\n{{incident_report}}\n\n请输出：\n1. 根因分析\n2. 修复方案\n3. 临时缓解措施\n4. 预计恢复时间",
+        "output": "analysis_result",
+        "depends_on": [
+          "classify"
+        ]
+      },
+      {
+        "id": "frontend_analysis",
+        "expert": "agency_engineering_engineering_frontend_developer",
+        "task": "请深入分析以下前端故障：\n\n故障分类报告：\n{{classification}}\n\n原始报告：\n{{incident_report}}\n\n请输出：\n1. 根因分析\n2. 修复方案\n3. 回滚方案\n4. 用户影响评估",
+        "output": "analysis_result",
+        "depends_on": [
+          "classify"
+        ]
+      },
+      {
+        "id": "infra_analysis",
+        "expert": "agency_engineering_engineering_devops_automator",
+        "task": "请深入分析以下基础设施故障：\n\n故障分类报告：\n{{classification}}\n\n原始报告：\n{{incident_report}}\n\n请输出：\n1. 根因分析\n2. 修复方案\n3. 容灾切换建议\n4. 基础设施加固建议",
+        "output": "analysis_result",
+        "depends_on": [
+          "classify"
+        ]
+      },
+      {
+        "id": "postmortem",
+        "expert": "agency_engineering_engineering_sre",
+        "task": "请根据以下信息撰写故障复盘报告：\n\n故障分类：\n{{classification}}\n\n详细分析：\n{{analysis_result}}\n\n请输出完整复盘文档：\n1. 时间线\n2. 根因总结\n3. 修复措施\n4. 改进项（短期/长期）\n5. 经验教训",
+        "output": null,
+        "depends_on": [
+          "backend_analysis",
+          "frontend_analysis",
+          "infra_analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "department-collab/marketing-campaign",
+    "file": "department-collab\\marketing-campaign.yaml",
+    "name": "营销活动策划",
+    "description": "市场调研 → 创意策划 → 预算审批 → 投放方案 → 效果分析",
+    "category": "department-collab",
+    "featured": false,
+    "concurrency": 2,
+    "inputs": [
+      {
+        "name": "product",
+        "description": "产品/服务名称和简介",
+        "required": true
+      },
+      {
+        "name": "budget",
+        "description": "预算范围",
+        "required": true
+      },
+      {
+        "name": "goal",
+        "description": "营销目标（拉新/促活/品牌等）",
+        "required": true
+      }
+    ],
+    "steps": [
+      {
+        "id": "research",
+        "expert": "agency_product_product_trend_researcher",
+        "task": "请为以下产品进行市场调研分析：\n\n产品：{{product}}\n营销目标：{{goal}}\n预算：{{budget}}\n\n请输出：\n1. 目标市场分析\n2. 竞品营销策略\n3. 目标受众画像\n4. 渠道建议",
+        "output": "research_report",
+        "depends_on": []
+      },
+      {
+        "id": "creative",
+        "expert": "agency_marketing_marketing_content_creator",
+        "task": "基于以下市场调研，制定创意策划方案：\n\n{{research_report}}\n\n营销目标：{{goal}}\n预算：{{budget}}\n\n请输出：\n1. 活动主题和创意概念\n2. 内容矩阵规划\n3. 关键传播节点\n4. 预期 KPI",
+        "output": "creative_plan",
+        "depends_on": [
+          "research"
+        ]
+      },
+      {
+        "id": "budget_approval",
+        "expert": "agency_product_product_manager",
+        "task": "{{creative_plan}}",
+        "output": "approval_result",
+        "depends_on": [
+          "creative"
+        ]
+      },
+      {
+        "id": "channel_plan",
+        "expert": "agency_marketing_marketing_social_media_strategist",
+        "task": "已批准的营销方案如下，请制定详细的多渠道投放计划：\n\n{{creative_plan}}\n\n预算：{{budget}}\n\n请输出：\n1. 各渠道预算分配\n2. 投放时间表\n3. 素材需求清单\n4. A/B 测试计划",
+        "output": "channel_plan",
+        "depends_on": [
+          "budget_approval"
+        ]
+      },
+      {
+        "id": "analysis",
+        "expert": "agency_product_product_feedback_synthesizer",
+        "task": "请为以下营销活动设计效果评估框架：\n\n投放计划：\n{{channel_plan}}\n\n请输出：\n1. 核心监测指标\n2. 数据采集方案\n3. 归因模型建议\n4. 优化迭代机制",
+        "output": null,
+        "depends_on": [
+          "channel_plan"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "design/requirement-to-plan",
+    "file": "design\\requirement-to-plan.yaml",
+    "name": "需求到计划",
+    "description": "产品经理分析需求 → 架构师设计方案 → 项目经理拆任务",
+    "category": "design",
+    "featured": false,
+    "concurrency": 1,
+    "inputs": [
+      {
+        "name": "requirement",
+        "description": "需求描述（用户故事、功能说明、业务背景等）",
+        "required": true
+      },
+      {
+        "name": "constraints",
+        "description": "约束条件（时间、预算、技术栈限制等）",
+        "required": false
+      }
+    ],
+    "steps": [
+      {
+        "id": "analyze_req",
+        "expert": "agency_product_product_manager",
+        "task": "请分析以下需求，明确范围和优先级：\n\n需求描述：{{requirement}}\n\n约束条件：{{constraints}}\n\n请输出：\n1. 需求理解（用一段话概括核心诉求）\n2. 用户价值分析（解决了什么痛点、影响多少用户）\n3. 功能范围界定（MVP 包含什么、不包含什么）\n4. 优先级排序（P0/P1/P2，附理由）\n5. 验收标准（如何判定需求已完成）\n6. 风险点和待确认事项",
+        "output": "req_analysis",
+        "depends_on": []
+      },
+      {
+        "id": "tech_design",
+        "expert": "agency_engineering_engineering_software_architect",
+        "task": "请根据产品需求分析，设计技术方案：\n\n## 需求分析\n{{req_analysis}}\n\n原始需求：{{requirement}}\n\n约束条件：{{constraints}}\n\n请输出：\n1. 技术方案概述（一句话说明整体思路）\n2. 系统架构设计（模块划分、接口设计、数据流）\n3. 技术选型及理由\n4. 数据模型设计\n5. 关键技术难点及解决思路\n6. 非功能性需求方案（性能、安全、可扩展性）\n7. 技术风险评估",
+        "output": "tech_plan",
+        "depends_on": [
+          "analyze_req"
+        ]
+      },
+      {
+        "id": "task_breakdown",
+        "expert": "agency_project-management_project_manager_senior",
+        "task": "请根据需求分析和技术方案，拆解为可执行的任务：\n\n## 需求分析\n{{req_analysis}}\n\n## 技术方案\n{{tech_plan}}\n\n请输出：\n1. 任务清单（每个任务包含：ID、标题、描述、负责角色）\n2. 任务依赖关系（哪些可并行、哪些有先后）\n3. 工时估算（每个任务的预估人天）\n4. 里程碑规划（按阶段划分，含时间节点）\n5. 风险缓冲建议\n6. 总工期估算和关键路径",
+        "output": "task_plan",
+        "depends_on": [
+          "tech_design"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "design/ux-review",
+    "file": "design\\ux-review.yaml",
+    "name": "UX 体验审查",
+    "description": "UX 研究员评估 + 无障碍审核 → UX 架构师汇总",
+    "category": "design",
+    "featured": false,
+    "concurrency": 2,
+    "inputs": [
+      {
+        "name": "product_description",
+        "description": "产品描述（功能说明、目标用户、核心流程）",
+        "required": true
+      },
+      {
+        "name": "screenshots_or_flow",
+        "description": "界面截图描述或用户流程图（可选）",
+        "required": false
+      }
+    ],
+    "steps": [
+      {
+        "id": "ux_eval",
+        "expert": "agency_design_design_ux_researcher",
+        "task": "请对以下产品进行用户体验评估：\n\n产品描述：{{product_description}}\n\n界面/流程：{{screenshots_or_flow}}\n\n请从以下维度评估：\n1. 可用性启发式评估（基于 Nielsen 十大原则）\n2. 用户认知负荷分析\n3. 信息架构合理性\n4. 交互流程效率（关键任务步数、操作成本）\n5. 错误预防与恢复机制\n6. 体验优化建议（按优先级排序）",
+        "output": "ux_report",
+        "depends_on": []
+      },
+      {
+        "id": "a11y_check",
+        "expert": "agency_testing_testing_accessibility_auditor",
+        "task": "请对以下产品进行无障碍合规检查：\n\n产品描述：{{product_description}}\n\n界面/流程：{{screenshots_or_flow}}\n\n请检查：\n1. WCAG 2.1 AA 级合规性评估\n2. 视觉无障碍（色彩对比度、字号、间距）\n3. 键盘可访问性（Tab 顺序、焦点管理）\n4. 屏幕阅读器兼容性（语义化标签、ARIA 属性）\n5. 动态内容的无障碍处理（动画、弹窗、实时更新）\n6. 不合规项清单及修复建议",
+        "output": "a11y_report",
+        "depends_on": []
+      },
+      {
+        "id": "summary",
+        "expert": "agency_design_design_ux_architect",
+        "task": "请综合 UX 评估和无障碍审核结果，输出汇总审查报告：\n\n## UX 体验评估\n{{ux_report}}\n\n## 无障碍审核\n{{a11y_report}}\n\n产品描述：{{product_description}}\n\n请输出：\n1. 总体体验评分（满分 10 分，含各维度分项）\n2. 关键问题清单（严重程度：高/中/低）\n3. 改进路线图（短期速赢 → 中期优化 → 长期规划）\n4. 无障碍合规差距及修复优先级\n5. 最佳实践建议",
+        "output": "review_summary",
+        "depends_on": [
+          "ux_eval",
+          "a11y_check"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "dev/api-doc-gen",
+    "file": "dev\\api-doc-gen.yaml",
+    "name": "API 文档生成",
+    "description": "分析代码生成 API 文档 → 验证完整性 → 输出最终文档",
+    "category": "dev",
+    "featured": false,
+    "concurrency": 1,
+    "inputs": [
+      {
+        "name": "api_code",
+        "description": "API 源代码（路由定义、控制器、接口声明等）",
+        "required": true
+      },
+      {
+        "name": "api_context",
+        "description": "API 上下文说明（项目背景、认证方式、基础 URL 等）",
+        "required": false
+      }
+    ],
+    "steps": [
+      {
+        "id": "analyze",
+        "expert": "agency_engineering_engineering_technical_writer",
+        "task": "请分析以下 API 代码，生成完整的 API 文档：\n\n## API 代码\n{{api_code}}\n\n## 上下文信息\n{{api_context}}\n\n请按以下结构生成文档：\n\n### 对每个 API 端点，请提供：\n1. **接口路径**：HTTP 方法 + URL\n2. **功能描述**：简洁说明接口用途\n3. **请求参数**：\n   - Path 参数（类型、是否必填、说明）\n   - Query 参数（类型、是否必填、默认值、说明）\n   - Body 参数（完整的 JSON Schema，含嵌套结构）\n4. **请求头**：需要的认证头和自定义头\n5. **响应格式**：\n   - 成功响应（状态码 + 示例 JSON）\n   - 错误响应（各错误状态码 + 示例）\n6. **调用示例**：cURL 命令示例\n\n文档风格要求：清晰、准确、面向开发者。",
+        "output": "api_doc_draft",
+        "depends_on": []
+      },
+      {
+        "id": "validate",
+        "expert": "agency_testing_testing_api_tester",
+        "task": "请审查以下 API 文档的完整性和准确性：\n\n## API 文档草稿\n{{api_doc_draft}}\n\n## 原始 API 代码（供对照）\n{{api_code}}\n\n请检查以下方面：\n1. **完整性**：是否所有端点都已记录、是否有遗漏的参数或响应字段\n2. **准确性**：参数类型是否正确、必填/选填标注是否与代码一致\n3. **示例有效性**：请求和响应示例是否合法、是否能实际运行\n4. **错误处理**：是否记录了常见错误状态码和错误消息格式\n5. **一致性**：命名风格、描述格式是否全文一致\n\n请输出：\n- 发现的问题清单（按严重程度排序）\n- 每个问题的具体修改建议",
+        "output": "validation_report",
+        "depends_on": [
+          "analyze"
+        ]
+      },
+      {
+        "id": "finalize",
+        "expert": "agency_engineering_engineering_technical_writer",
+        "task": "请根据审查反馈，修正并输出最终版 API 文档：\n\n## 文档草稿\n{{api_doc_draft}}\n\n## 审查反馈\n{{validation_report}}\n\n请：\n1. 逐条修复审查中指出的所有问题\n2. 确保文档格式统一、排版美观\n3. 在文档开头添加概览部分（API 列表、认证说明、通用错误码）\n4. 在文档末尾添加更新日志模板\n\n输出完整的、可直接使用的 API 文档。",
+        "output": "final_api_doc",
+        "depends_on": [
+          "validate"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "dev/pr-review",
+    "file": "dev\\pr-review.yaml",
+    "name": "PR 代码审查",
+    "description": "三维度并行审查：代码质量、安全性、性能 → 汇总结论",
+    "category": "dev",
+    "featured": false,
+    "concurrency": 3,
+    "inputs": [
+      {
+        "name": "pr_diff",
+        "description": "PR 的 diff 内容（代码变更）",
+        "required": true
+      },
+      {
+        "name": "pr_description",
+        "description": "PR 描述（功能说明、变更目的、影响范围）",
+        "required": true
+      }
+    ],
+    "steps": [
+      {
+        "id": "code_quality",
+        "expert": "agency_engineering_engineering_code_reviewer",
+        "task": "请对以下 PR 进行代码质量审查：\n\n## PR 描述\n{{pr_description}}\n\n## 代码变更\n{{pr_diff}}\n\n请从以下维度进行详细审查：\n1. **代码规范**：命名是否清晰、风格是否一致、是否符合项目约定\n2. **逻辑正确性**：边界条件处理、错误处理是否完善、是否有逻辑漏洞\n3. **可维护性**：代码复杂度、函数拆分是否合理、是否有重复代码\n4. **可读性**：注释是否充分、代码意图是否清晰\n5. **测试覆盖**：关键路径是否有测试、边界情况是否覆盖\n\n请对每个维度给出评分（1-5）和具体问题列表。",
+        "output": "quality_report",
+        "depends_on": []
+      },
+      {
+        "id": "security_check",
+        "expert": "agency_engineering_engineering_security_engineer",
+        "task": "请对以下 PR 进行安全审查：\n\n## PR 描述\n{{pr_description}}\n\n## 代码变更\n{{pr_diff}}\n\n请重点检查以下安全风险：\n1. **注入风险**：SQL 注入、XSS、命令注入等\n2. **认证授权**：权限检查是否充分、是否存在越权风险\n3. **数据安全**：敏感数据是否加密、日志是否泄露敏感信息\n4. **依赖安全**：新引入的依赖是否有已知漏洞\n5. **配置安全**：是否有硬编码密钥、不安全的默认配置\n\n请对每个问题标注严重等级（高/中/低），并给出修复建议。",
+        "output": "security_report",
+        "depends_on": []
+      },
+      {
+        "id": "perf_check",
+        "expert": "agency_testing_testing_performance_benchmarker",
+        "task": "请对以下 PR 进行性能审查：\n\n## PR 描述\n{{pr_description}}\n\n## 代码变更\n{{pr_diff}}\n\n请重点评估以下方面：\n1. **算法效率**：时间复杂度和空间复杂度是否合理\n2. **资源使用**：内存分配、文件句柄、数据库连接是否正确管理\n3. **并发安全**：是否有竞态条件、死锁风险\n4. **I/O 性能**：网络请求、数据库查询是否有 N+1 问题或不必要的重复调用\n5. **缓存策略**：是否有适合缓存的场景未使用缓存\n\n请对每个性能问题给出影响评估和优化建议。",
+        "output": "perf_report",
+        "depends_on": []
+      },
+      {
+        "id": "summary",
+        "expert": "agency_engineering_engineering_code_reviewer",
+        "task": "综合三维度审查结果，给出最终结论。\n\n## 代码质量\n{{quality_report}}\n\n## 安全审查\n{{security_report}}\n\n## 性能审查\n{{perf_report}}\n\n输出格式（markdown）：\n### 结论：[✅ 可合并 / ⚠️ 需修改 / ❌ 需重写]\n\n### 综合评分\n| 维度 | 评分(1-5) | 关键发现 |\n|------|----------|---------|\n| 代码质量 | | |\n| 安全性 | | |\n| 性能 | | |\n\n### 必须修改（Blocking）\n1. [严重/高] 问题 → 修复建议\n\n### 建议改进（Non-blocking）\n1. 问题 → 优化方向\n\n### 亮点\n- 值得肯定的实践",
+        "output": "final_review",
+        "depends_on": [
+          "code_quality",
+          "security_check",
+          "perf_check"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "dev/readme-i18n",
+    "file": "dev\\readme-i18n.yaml",
+    "name": "README 国际化",
+    "description": "翻译 README → 审查技术术语 → 润色输出最终版",
+    "category": "dev",
+    "featured": false,
+    "concurrency": 1,
+    "inputs": [
+      {
+        "name": "readme_content",
+        "description": "原始 README 内容",
+        "required": true
+      },
+      {
+        "name": "target_language",
+        "description": "目标语言",
+        "required": false
+      }
+    ],
+    "steps": [
+      {
+        "id": "translate",
+        "expert": "agency_marketing_marketing_content_creator",
+        "task": "请将以下 README 文档翻译为 {{target_language}}：\n\n{{readme_content}}\n\n翻译要求：\n1. 保持 Markdown 格式不变（标题、链接、代码块、表格等）\n2. 代码示例中的注释翻译，代码本身不翻译\n3. 技术术语保留英文（如 API、Docker、CI/CD 等）\n4. 品牌名和项目名保留原文\n5. 语言自然流畅，不要机翻味\n6. 保留所有链接和图片引用",
+        "output": "translated_draft",
+        "depends_on": []
+      },
+      {
+        "id": "review_terms",
+        "expert": "agency_engineering_engineering_technical_writer",
+        "task": "请审查以下翻译后的 README 文档中的技术术语使用：\n\n## 翻译稿\n{{translated_draft}}\n\n## 原文（供对照）\n{{readme_content}}\n\n请检查：\n1. 术语一致性：同一术语在全文中翻译是否统一\n2. 术语准确性：技术概念翻译是否准确\n3. 保留原则：应保留英文的术语是否误翻了\n4. 格式完整性：Markdown 结构是否保持完好\n\n请输出需要修改的术语列表和修改建议。",
+        "output": "term_review",
+        "depends_on": [
+          "translate"
+        ]
+      },
+      {
+        "id": "polish",
+        "expert": "agency_marketing_marketing_content_creator",
+        "task": "请根据术语审查反馈，润色并输出最终版的翻译 README：\n\n## 翻译稿\n{{translated_draft}}\n\n## 术语审查反馈\n{{term_review}}\n\n请修正所有指出的术语问题，统一语言风格，输出完整最终版文档。",
+        "output": "final_readme",
+        "depends_on": [
+          "review_terms"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "dev/release-checklist",
+    "file": "dev\\release-checklist.yaml",
+    "name": "发布检查清单",
+    "description": "SRE + 性能 + 安全三方检查 → Go/No-Go 决策",
+    "category": "dev",
+    "featured": false,
+    "concurrency": 3,
+    "inputs": [
+      {
+        "name": "release_notes",
+        "description": "发布说明（变更列表、新功能、修复的 bug）",
+        "required": true
+      },
+      {
+        "name": "version",
+        "description": "版本号",
+        "required": true
+      }
+    ],
+    "steps": [
+      {
+        "id": "infra_check",
+        "expert": "agency_engineering_engineering_sre",
+        "task": "请对以下版本发布进行基础设施就绪检查：\n\n版本：{{version}}\n\n发布说明：\n{{release_notes}}\n\n请检查以下方面并给出 ✅/❌ 评估：\n1. 部署流水线是否就绪（CI/CD 配置、构建脚本）\n2. 回滚方案是否准备（回滚脚本、数据库迁移可逆性）\n3. 监控告警是否配置（关键指标、告警阈值）\n4. 容量规划是否充分（预期流量、资源预留）\n5. 依赖服务状态（上下游服务兼容性）\n6. 灰度发布计划（发布比例、观察时间）",
+        "output": "infra_report",
+        "depends_on": []
+      },
+      {
+        "id": "perf_check",
+        "expert": "agency_testing_testing_performance_benchmarker",
+        "task": "请对以下版本进行性能基准验证：\n\n版本：{{version}}\n\n发布说明：\n{{release_notes}}\n\n请评估：\n1. 变更是否可能引入性能回退\n2. 关键接口的预期延迟影响\n3. 数据库查询的性能影响\n4. 内存使用变化预估\n5. 并发处理能力影响\n6. 性能测试建议（需要额外测试的场景）",
+        "output": "perf_report",
+        "depends_on": []
+      },
+      {
+        "id": "security_final",
+        "expert": "agency_engineering_engineering_security_engineer",
+        "task": "请对以下版本进行最终安全检查：\n\n版本：{{version}}\n\n发布说明：\n{{release_notes}}\n\n请检查：\n1. 新增代码是否引入安全漏洞\n2. 依赖更新是否有已知 CVE\n3. 配置变更是否影响安全策略\n4. 数据处理变更是否合规\n5. API 变更是否影响认证授权\n6. 敏感信息是否意外暴露",
+        "output": "security_report",
+        "depends_on": []
+      },
+      {
+        "id": "go_no_go",
+        "expert": "agency_project-management_project_manager_senior",
+        "task": "请综合以下三方检查报告，做出发布决策：\n\n版本：{{version}}\n\n## 基础设施检查\n{{infra_report}}\n\n## 性能评估\n{{perf_report}}\n\n## 安全检查\n{{security_report}}\n\n请输出：\n1. **决策：🟢 Go / 🔴 No-Go / 🟡 有条件 Go**\n2. 决策依据（关键考量点）\n3. 如果是 No-Go，列出阻塞项和解决方案\n4. 如果是有条件 Go，列出必须在发布前/后完成的事项\n5. 发布后监控重点（前 24 小时关注什么）\n6. 回滚触发条件（什么情况下立即回滚）",
+        "output": "release_decision",
+        "depends_on": [
+          "infra_check",
+          "perf_check",
+          "security_final"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "dev/security-audit",
+    "file": "dev\\security-audit.yaml",
+    "name": "安全审计",
+    "description": "安全工程师 + 威胁检测并行审计 → 汇总安全报告",
+    "category": "dev",
+    "featured": false,
+    "concurrency": 2,
+    "inputs": [
+      {
+        "name": "code_or_system",
+        "description": "待审计的代码或系统描述",
+        "required": true
+      },
+      {
+        "name": "threat_model",
+        "description": "已知的威胁模型或关注的攻击面",
+        "required": false
+      }
+    ],
+    "steps": [
+      {
+        "id": "vuln_scan",
+        "expert": "agency_engineering_engineering_security_engineer",
+        "task": "请对以下代码/系统进行安全漏洞扫描：\n\n## 审计对象\n{{code_or_system}}\n\n## 威胁模型\n{{threat_model}}\n\n请检查以下方面：\n1. OWASP Top 10 漏洞（注入、XSS、CSRF、SSRF 等）\n2. 认证与授权缺陷\n3. 敏感数据泄露风险（硬编码密钥、日志泄露等）\n4. 不安全的依赖（已知 CVE）\n5. 配置安全（CORS、CSP、安全头）\n6. 加密使用是否正确\n\n对每个发现，请标注：\n- 严重程度（Critical / High / Medium / Low）\n- 影响描述\n- 修复建议",
+        "output": "vuln_report",
+        "depends_on": []
+      },
+      {
+        "id": "threat_detect",
+        "expert": "agency_engineering_engineering_threat_detection_engineer",
+        "task": "请对以下代码/系统进行威胁检测分析：\n\n## 审计对象\n{{code_or_system}}\n\n## 威胁模型\n{{threat_model}}\n\n请分析：\n1. 攻击面枚举（外部输入点、API 端点、文件上传等）\n2. 数据流中的信任边界\n3. 权限提升路径\n4. 侧信道攻击风险\n5. 供应链安全风险\n6. 运行时安全（内存安全、竞态条件）\n\n对每个威胁，请按 STRIDE 模型分类并评估利用难度。",
+        "output": "threat_report",
+        "depends_on": []
+      },
+      {
+        "id": "report",
+        "expert": "agency_engineering_engineering_security_engineer",
+        "task": "请综合以下两份安全分析报告，输出最终安全审计报告：\n\n## 漏洞扫描报告\n{{vuln_report}}\n\n## 威胁检测报告\n{{threat_report}}\n\n请输出结构化的安全审计报告：\n1. 执行摘要（总体安全评级 A-F）\n2. 关键发现（按严重程度排序的 Top 10 问题）\n3. 详细发现清单（含修复建议和优先级）\n4. 修复路线图建议（短期/中期/长期）\n5. 安全改进建议（架构层面）",
+        "output": "final_security_report",
+        "depends_on": [
+          "vuln_scan",
+          "threat_detect"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "dev/tech-debt-audit",
+    "file": "dev\\tech-debt-audit.yaml",
+    "name": "技术债务审计",
+    "description": "架构评估 + 代码扫描 + 测试分析 → 优先级排序",
+    "category": "dev",
+    "featured": false,
+    "concurrency": 3,
+    "inputs": [
+      {
+        "name": "codebase_description",
+        "description": "代码库描述（技术栈、模块结构、核心功能）",
+        "required": true
+      },
+      {
+        "name": "focus_area",
+        "description": "重点关注领域（如：数据库层、API 层、前端组件等）",
+        "required": false
+      }
+    ],
+    "steps": [
+      {
+        "id": "arch_review",
+        "expert": "agency_engineering_engineering_software_architect",
+        "task": "请对以下代码库进行架构合理性评估：\n\n## 代码库描述\n{{codebase_description}}\n\n## 重点关注\n{{focus_area}}\n\n请从以下维度分析架构债务：\n1. **分层合理性**：各层职责是否清晰、是否存在跨层依赖\n2. **模块耦合度**：模块间是否高内聚低耦合、循环依赖情况\n3. **扩展性**：架构是否能支撑未来业务增长、扩展点是否预留\n4. **一致性**：架构风格是否统一、是否存在多种模式混用\n5. **技术选型**：依赖的框架/库是否仍在活跃维护、是否有更优替代\n\n请为每项债务标注严重程度和修复成本（高/中/低）。",
+        "output": "arch_report",
+        "depends_on": []
+      },
+      {
+        "id": "code_scan",
+        "expert": "agency_engineering_engineering_code_reviewer",
+        "task": "请对以下代码库进行代码质量扫描：\n\n## 代码库描述\n{{codebase_description}}\n\n## 重点关注\n{{focus_area}}\n\n请识别以下类型的技术债务：\n1. **代码重复**：是否存在大量复制粘贴代码、可提取的公共逻辑\n2. **复杂度过高**：圈复杂度过高的函数、过长的文件/类\n3. **命名混乱**：不一致的命名风格、含义不清的变量名\n4. **注释与文档**：缺失关键注释、过时的文档、TODO/HACK 标记\n5. **错误处理**：不完善的异常处理、吞掉的错误、缺失的日志\n6. **废弃代码**：未使用的函数、注释掉的代码块、死代码路径\n\n请为每个问题给出具体位置描述和建议的修复方案。",
+        "output": "code_report",
+        "depends_on": []
+      },
+      {
+        "id": "test_analysis",
+        "expert": "agency_testing_testing_test_results_analyzer",
+        "task": "请对以下代码库的测试状况进行分析：\n\n## 代码库描述\n{{codebase_description}}\n\n## 重点关注\n{{focus_area}}\n\n请评估以下方面：\n1. **测试覆盖率**：哪些模块缺少测试、关键路径是否覆盖\n2. **测试质量**：测试是否只验证正常路径、边界条件是否覆盖\n3. **测试类型分布**：单元测试/集成测试/端到端测试的比例是否合理\n4. **测试可维护性**：测试代码是否有重复、测试数据管理是否规范\n5. **CI/CD 集成**：测试是否纳入自动化流水线、运行时间是否合理\n\n请为每个薄弱点给出优先级和改进建议。",
+        "output": "test_report",
+        "depends_on": []
+      },
+      {
+        "id": "prioritize",
+        "expert": "agency_product_product_sprint_prioritizer",
+        "task": "请综合以下三份技术债务分析报告，进行优先级排序：\n\n## 架构评估\n{{arch_report}}\n\n## 代码质量扫描\n{{code_report}}\n\n## 测试分析\n{{test_report}}\n\n请输出结构化的技术债务清单，按优先级排序：\n1. **P0 - 紧急修复**：影响系统稳定性或安全性的债务，需本迭代解决\n2. **P1 - 高优先级**：影响开发效率或代码质量的债务，建议近 2-3 个迭代解决\n3. **P2 - 中优先级**：改善代码可维护性的债务，可安排在季度规划中\n4. **P3 - 低优先级**：锦上添花的改进，有空闲时处理\n\n对每项债务请说明：\n- 问题描述\n- 影响范围\n- 修复成本估算（人天）\n- 建议的修复方案",
+        "output": "debt_priority_list",
+        "depends_on": [
+          "arch_review",
+          "code_scan",
+          "test_analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "dev/tech-design-review",
+    "file": "dev\\tech-design-review.yaml",
+    "name": "技术方案评审",
+    "description": "架构师出方案 → 后端架构师 + 安全工程师并行评审 → 代码审查员整合意见，输出评审结论",
+    "category": "dev",
+    "featured": false,
+    "concurrency": 2,
+    "inputs": [
+      {
+        "name": "requirement",
+        "description": "需求描述（要做什么、背景、约束条件）",
+        "required": true
+      },
+      {
+        "name": "tech_stack",
+        "description": "技术栈（如：Node.js + PostgreSQL + Redis）",
+        "required": false
+      }
+    ],
+    "steps": [
+      {
+        "id": "design",
+        "expert": "agency_engineering_engineering_software_architect",
+        "task": "请为以下需求设计技术方案：\n\n需求：{{requirement}}\n技术栈：{{tech_stack}}\n\n请输出完整的技术设计文档：\n1. **背景与目标**（问题是什么、成功标准）\n2. **方案概述**（一段话描述核心设计思路）\n3. **架构设计**（组件图、数据流、关键接口定义）\n4. **数据模型**（核心表/集合设计，字段说明）\n5. **关键技术决策**（为什么选 A 不选 B，tradeoff 分析）\n6. **API 设计**（核心接口的 URL、Method、请求/响应示例）\n7. **非功能需求**（性能目标、可用性、可扩展性）\n8. **里程碑与排期建议**",
+        "output": "design_doc",
+        "depends_on": []
+      },
+      {
+        "id": "arch_review",
+        "expert": "agency_engineering_engineering_backend_architect",
+        "task": "请从后端架构角度评审以下技术方案：\n\n{{design_doc}}\n\n评审维度：\n1. **架构合理性**（分层是否清晰、职责是否单一、耦合度）\n2. **性能**（有无性能瓶颈、是否需要缓存/队列/分库分表）\n3. **可扩展性**（流量增长 10 倍时方案是否能撑住）\n4. **容错与高可用**（单点故障、降级策略、数据一致性）\n5. **数据模型**（索引设计、查询模式匹配度）\n6. **技术债务风险**（是否引入难以维护的复杂度）\n\n每条意见标注：✅ 合理 / ⚠️ 建议优化 / ❌ 需要重新设计\n给出具体的改进建议，不要只说\"需要优化\"。",
+        "output": "arch_feedback",
+        "depends_on": [
+          "design"
+        ]
+      },
+      {
+        "id": "security_review",
+        "expert": "agency_engineering_engineering_security_engineer",
+        "task": "请从安全角度评审以下技术方案：\n\n{{design_doc}}\n\n评审维度：\n1. **认证与授权**（身份验证方案、权限模型、Token 管理）\n2. **数据安全**（敏感数据加密、传输加密、脱敏策略）\n3. **输入验证**（SQL 注入、XSS、SSRF 等 OWASP Top 10）\n4. **API 安全**（限流、防刷、签名验证）\n5. **依赖安全**（第三方库风险、供应链安全）\n6. **合规**（日志审计、数据留存、隐私保护）\n\n每条意见标注风险等级：🔴 高 / 🟡 中 / 🟢 低\n给出具体修复方案，不要只指出问题。",
+        "output": "security_feedback",
+        "depends_on": [
+          "design"
+        ]
+      },
+      {
+        "id": "review_summary",
+        "expert": "agency_engineering_engineering_code_reviewer",
+        "task": "请整合以下评审意见，输出最终的技术评审结论：\n\n## 原始设计\n{{design_doc}}\n\n## 架构评审\n{{arch_feedback}}\n\n## 安全评审\n{{security_feedback}}\n\n输出格式：\n\n# 技术方案评审结论\n\n## 总体评价\n[通过 / 有条件通过 / 需要重新设计]\n[一段话总结方案质量和主要问题]\n\n## 必须修改（阻塞项）\n[列出所有 ❌ 和 🔴 级别的问题及修改方案]\n\n## 建议修改（非阻塞）\n[列出所有 ⚠️ 和 🟡 级别的问题及优化建议]\n\n## 确认合理的设计决策\n[列出所有 ✅ 的点，给设计者信心]\n\n## 修改后复审清单\n[列出需要在修改后重点检查的项目]",
+        "output": null,
+        "depends_on": [
+          "arch_review",
+          "security_review"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "douyin-script",
+    "file": "douyin-script.yaml",
+    "name": "抖音口播脚本创作",
+    "description": "一句话选题 → 爆款选题分析 + 逐秒脚本 + 标题钩子 + 拍摄建议",
+    "category": "",
+    "featured": false,
+    "concurrency": 3,
+    "inputs": [
+      {
+        "name": "topic",
+        "description": "视频主题（如：程序员转行做自媒体 / 30 岁如何逆袭）",
+        "required": true
+      },
+      {
+        "name": "duration",
+        "description": "视频时长（秒）",
+        "required": false
+      },
+      {
+        "name": "style",
+        "description": "口播风格（如：情绪煽动 / 理性干货 / 犀利毒舌）",
+        "required": false
+      }
+    ],
+    "steps": [
+      {
+        "id": "angle",
+        "expert": "agency_marketing_marketing_douyin_strategist",
+        "task": "围绕主题「{{topic}}」分析爆款潜力，风格定位「{{style}}」。\n\n输出（300 字）:\n1. **用户痛点**: 观看者具体在焦虑什么 / 好奇什么\n2. **切入角度**: 3 个可能爆的角度（每个 1 句话说明钩子）\n3. **推荐角度**: 从 3 个里挑 1 个最可能破播放量的，说明理由\n4. **竞品参考**: 这类选题抖音里已有的典型视频模式（1-2 个）\n5. **差异化打法**: 怎么做才能不像\"又一个同质内容\"",
+        "output": "angle",
+        "depends_on": []
+      },
+      {
+        "id": "script",
+        "expert": "agency_marketing_marketing_content_creator",
+        "task": "根据选题写一个 {{duration}} 秒的口播脚本。\n\n选题方向:\n{{angle}}\n\n脚本要求（严格按格式）:\n```\n【0-3s 钩子】\n<开场 1-2 句，必须立刻引发好奇或共鸣，禁止\"大家好\"式寒暄>\n\n【3-10s 抛问题】\n<用一个反常识或痛点把观众黏住>\n\n【10-{{duration}}-10s 正文】\n<分 3-4 个要点讲清楚，每个要点 10-15 秒，口语化，不要书面语>\n要点1: ...\n要点2: ...\n要点3: ...\n\n【最后 10s 收尾】\n<给一个钩子让用户点赞/关注/评论，具体动作不要笼统说\"三连\">\n```\n\n注意:\n- 每句话 ≤ 15 字，短句为主，符合抖音语速\n- 避免专业术语，初中文化也能听懂\n- 可以用\"你\"直呼观众，增强代入",
+        "output": "script",
+        "depends_on": [
+          "angle"
+        ]
+      },
+      {
+        "id": "titles",
+        "expert": "agency_marketing_marketing_douyin_strategist",
+        "task": "围绕选题和脚本，产出抖音视频的标题和话题。\n\n选题:\n{{angle}}\n\n5 个候选标题要求:\n- 每个 ≤ 20 字\n- 至少 2 个带情绪（震惊/反差/质疑）\n- 至少 1 个带数字\n- 必须能让人划到不敢划走\n\n推荐 1 个最可能爆的，说明为什么。\n\n然后给 5 个话题标签（#xxx 格式），按热度和相关度排序。\n\n最后给 **封面文案**（3-5 个字，放在视频首帧做视觉钩子）。",
+        "output": "titles_and_tags",
+        "depends_on": [
+          "angle"
+        ]
+      },
+      {
+        "id": "final",
+        "expert": "agency_marketing_marketing_content_creator",
+        "task": "整合成可以直接拿去拍的完整方案。\n\n脚本:\n{{script}}\n\n标题和话题:\n{{titles_and_tags}}\n\n输出结构:\n```\n【最终标题】: <选推荐标题>\n\n【封面文案】: <3-5 字>\n\n【完整口播稿】:\n<整合后的完整口播，按秒数标注>\n\n【拍摄建议】:\n- 镜头: <主镜头景别、是否需要换镜>\n- 口播状态: <情绪基调，看镜头还是看旁边>\n- 字幕: <建议字幕样式/是否关键词放大>\n- BGM: <节奏建议，不推荐具体歌名>\n\n【话题标签】: <5 个 #xxx>\n\n【发布建议】:\n- 推荐时段:\n- 评论区引导语:\n```\n\n⚠️ 只输出上面这份脚本方案本身：不要开场白/寒暄、不要\"我改了什么/复盘/修改说明\"、不要向用户提问或请其拍板、不要建议 ao 命令或后续动作、不要\"要我继续吗\"之类收尾。",
+        "output": "final_video_plan",
+        "depends_on": [
+          "script",
+          "titles"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "en/business-plan",
+    "file": "en\\business-plan.yaml",
+    "name": "Business Plan",
+    "description": "Market research → financial forecast + product roadmap → executive summary — generates a complete business plan",
+    "category": "English",
+    "featured": false,
+    "concurrency": 2,
+    "inputs": [
+      {
+        "name": "idea",
+        "description": "Business idea / project description (one paragraph)",
+        "required": true
+      },
+      {
+        "name": "stage",
+        "description": "Project stage (e.g. seed round, Series A, internal greenfield)",
+        "required": false
+      },
+      {
+        "name": "market",
+        "description": "Target market (e.g. US SMBs, SEA e-commerce, global developers)",
+        "required": false
+      }
+    ],
+    "steps": [
+      {
+        "id": "market_research",
+        "expert": "agency_product_product_trend_researcher",
+        "task": "Conduct market research for the following business idea.\n\nIdea: {{idea}}\nTarget market: {{market}}\nStage: {{stage}}\n\nDeliver:\n1. **Market size** (TAM / SAM / SOM)\n2. **Industry trends** (3-5 growth drivers)\n3. **Competitive landscape** (incumbents, concentration, barriers)\n4. **Target customer persona** (early adopters, pain points, willingness to pay)\n5. **Regulatory / policy environment** (tailwinds and risks)",
+        "output": "market_report",
+        "depends_on": []
+      },
+      {
+        "id": "financial_model",
+        "expert": "agency_finance_finance_fpa_analyst",
+        "task": "Based on the market research, build a financial forecast model.\n\n{{market_report}}\n\nBusiness idea: {{idea}}\nStage: {{stage}}\n\nDeliver:\n1. **Business model** (revenue streams, pricing, unit economics)\n2. **3-year forecast** (table: revenue, COGS, gross margin, net income, by quarter)\n3. **Key assumptions** (CAC, conversion, retention, ARPU)\n4. **Funding requirement** (how much, use of funds, runway)\n5. **Break-even analysis**",
+        "output": "financial_plan",
+        "depends_on": [
+          "market_research"
+        ]
+      },
+      {
+        "id": "product_roadmap",
+        "expert": "agency_product_product_manager",
+        "task": "Based on the market research, design the product roadmap.\n\n{{market_report}}\n\nBusiness idea: {{idea}}\n\nDeliver:\n1. **Core value proposition** (one-sentence: for whom, solving what)\n2. **MVP definition** (what's in, what's explicitly out)\n3. **Roadmap** (3 phases: goals, features, milestones)\n4. **Defensibility** (tech / data / network effects / brand — what builds a moat)\n5. **Team needs** (what roles at each phase)",
+        "output": "product_plan",
+        "depends_on": [
+          "market_research"
+        ]
+      },
+      {
+        "id": "executive_summary",
+        "expert": "agency_support_support_executive_summary_generator",
+        "task": "Synthesize the above into a complete business plan.\n\n## Market Research\n{{market_report}}\n\n## Financial Forecast\n{{financial_plan}}\n\n## Product Roadmap\n{{product_plan}}\n\nFormat (for investors / decision makers):\n\n# [Project Name] Business Plan\n\n## Executive Summary (1 page — most important)\n- One-line description\n- Market opportunity\n- Business model\n- Team strengths\n- Funding ask and use of funds\n\n## Market Analysis\n[Synthesize market research]\n\n## Product Strategy\n[Synthesize product roadmap]\n\n## Financial Plan\n[Synthesize financial forecast]\n\n## Milestones & Timeline\n[Extract from roadmap]\n\n## Risks & Mitigation\n[Pull risks from each section, provide mitigation strategy]\n\nStyle: professional, data-driven, suitable for investor / executive review.",
+        "output": null,
+        "depends_on": [
+          "financial_model",
+          "product_roadmap"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "en/code-architecture-review",
+    "file": "en\\code-architecture-review.yaml",
+    "name": "Code Architecture Review",
+    "description": "Architecture design → backend deep-dive → code review for a feature or system.",
+    "category": "English",
+    "featured": false,
+    "concurrency": 2,
+    "inputs": [
+      {
+        "name": "feature",
+        "description": "The feature / system to design and review",
+        "required": true
+      }
+    ],
+    "steps": [
+      {
+        "id": "architecture",
+        "expert": "agency_engineering_engineering_software_architect",
+        "task": "Propose a clean architecture for: {{feature}}\nCover: components and their responsibilities, data flow, key trade-offs, and the\ntop failure modes with how the design handles them.",
+        "output": "architecture",
+        "depends_on": []
+      },
+      {
+        "id": "backend",
+        "expert": "agency_engineering_engineering_backend_architect",
+        "task": "Detail the backend for this architecture: API surface, data model, auth/isolation,\nconcurrency and rate-limiting, and where state lives.\n\n{{architecture}}",
+        "output": "backend",
+        "depends_on": [
+          "architecture"
+        ]
+      },
+      {
+        "id": "review",
+        "expert": "agency_engineering_engineering_code_reviewer",
+        "task": "Critically review the proposed design and backend plan: security, correctness under\nconcurrency, scalability, and operational risks. Give concrete, actionable findings.\n\nArchitecture: {{architecture}}\nBackend: {{backend}}",
+        "output": "review",
+        "depends_on": [
+          "backend"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "en/competitor-analysis",
+    "file": "en\\competitor-analysis.yaml",
+    "name": "Competitor Analysis Report",
+    "description": "Trend research → data analysis + SEO scan → executive summary — a report ready to present",
+    "category": "English",
+    "featured": false,
+    "concurrency": 2,
+    "inputs": [
+      {
+        "name": "product",
+        "description": "Your product / service name and brief",
+        "required": true
+      },
+      {
+        "name": "competitors",
+        "description": "Competitor names (comma-separated, e.g. Notion, Coda, ClickUp)",
+        "required": true
+      },
+      {
+        "name": "focus",
+        "description": "Focus areas (e.g. pricing, growth, feature gaps)",
+        "required": false
+      }
+    ],
+    "steps": [
+      {
+        "id": "trend_research",
+        "expert": "agency_product_product_trend_researcher",
+        "task": "Research market trends for the product and its competitors.\n\nOur product: {{product}}\nCompetitors: {{competitors}}\nFocus: {{focus}}\n\nOutput:\n1. Overall industry trends (3-5 key trends)\n2. Notable moves by each competitor in the past 6 months (launches, funding, partnerships)\n3. Market size and growth projection\n4. Technology trends and inflection points",
+        "output": "trend_report",
+        "depends_on": []
+      },
+      {
+        "id": "data_analysis",
+        "expert": "agency_support_support_analytics_reporter",
+        "task": "Based on the trend research, perform a quantitative competitor comparison.\n\n{{trend_report}}\n\nCompetitors: {{competitors}}\nFocus: {{focus}}\n\nOutput:\n1. Feature comparison matrix (table: which has what, strong/weak)\n2. Pricing comparison (free / paid / enterprise tiers)\n3. User sentiment analysis (common praises and complaints)\n4. SWOT (us vs each competitor)",
+        "output": "data_report",
+        "depends_on": [
+          "trend_research"
+        ]
+      },
+      {
+        "id": "seo_scan",
+        "expert": "agency_marketing_marketing_seo_specialist",
+        "task": "Analyze competitors from an SEO and content-marketing angle.\n\n{{trend_report}}\n\nCompetitors: {{competitors}}\n\nOutput:\n1. Content strategy per competitor (blog cadence, topics, keyword targeting)\n2. Search visibility comparison (who ranks for what)\n3. Social media share-of-voice comparison\n4. Content opportunities (valuable areas competitors are ignoring)",
+        "output": "seo_report",
+        "depends_on": [
+          "trend_research"
+        ]
+      },
+      {
+        "id": "executive_summary",
+        "expert": "agency_support_support_executive_summary_generator",
+        "task": "Consolidate the analysis into an executive-ready summary.\n\n## Market Trends\n{{trend_report}}\n\n## Data Comparison\n{{data_report}}\n\n## SEO & Content\n{{seo_report}}\n\nFormat:\n1. **One-line verdict**: our competitive position\n2. **Key findings** (3-5 bullets, 1-2 sentences each)\n3. **Threats & opportunities** (3 each)\n4. **Recommended actions** (prioritized, each with owner suggestion and timeframe)\n5. **Full comparison table** (preserve the feature matrix)\n\nStyle: concise, data-driven, ready to present.",
+        "output": null,
+        "depends_on": [
+          "data_analysis",
+          "seo_scan"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "en/content-pipeline",
+    "file": "en\\content-pipeline.yaml",
+    "name": "Content Creation Pipeline",
+    "description": "Topic to finished draft — research, write, brand review, final edit",
+    "category": "English",
+    "featured": false,
+    "concurrency": 2,
+    "inputs": [
+      {
+        "name": "topic",
+        "description": "Content topic",
+        "required": true
+      },
+      {
+        "name": "target_audience",
+        "description": "Target audience",
+        "required": true
+      },
+      {
+        "name": "platform",
+        "description": "Publishing platform (e.g. Substack, LinkedIn, Medium, Twitter)",
+        "required": true
+      }
+    ],
+    "steps": [
+      {
+        "id": "research",
+        "expert": "agency_marketing_marketing_social_media_strategist",
+        "task": "Research this topic for content.\nTopic: {{topic}}\nAudience: {{target_audience}}\nPlatform: {{platform}}\n\nOutput:\n1. Key information points\n2. Pain points the audience cares about\n3. Competitor / prior-art content analysis\n4. Suggested content angle",
+        "output": "research_report",
+        "depends_on": []
+      },
+      {
+        "id": "draft",
+        "expert": "agency_marketing_marketing_content_creator",
+        "task": "Based on this research, write an article suited for {{platform}}.\n\nResearch:\n{{research_report}}\n\nRequirements:\n- Audience: {{target_audience}}\n- Tone and structure suited to {{platform}}\n- Strong, attention-grabbing headline\n- Clear structure, easy to read",
+        "output": "draft_content",
+        "depends_on": [
+          "research"
+        ]
+      },
+      {
+        "id": "brand_review",
+        "expert": "agency_marketing_marketing_growth_hacker",
+        "task": "Review the content for brand fit and effectiveness.\n\n{{draft_content}}\n\nReview criteria:\n1. Tone consistency\n2. Factual accuracy\n3. Any sensitive or risky content\n4. Concrete improvement suggestions",
+        "output": "review_feedback",
+        "depends_on": [
+          "draft"
+        ]
+      },
+      {
+        "id": "final_edit",
+        "expert": "agency_marketing_marketing_content_creator",
+        "task": "Apply the brand review feedback and produce the final draft.\n\nOriginal:\n{{draft_content}}\n\nFeedback:\n{{review_feedback}}\n\nOutput the finalized article.",
+        "output": null,
+        "depends_on": [
+          "brand_review"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "en/investment-analysis",
+    "file": "en\\investment-analysis.yaml",
+    "name": "Investment Analysis",
+    "description": "Research → fundamentals → financial modeling: a structured analysis of a target.",
+    "category": "English",
+    "featured": false,
+    "concurrency": 2,
+    "inputs": [
+      {
+        "name": "target",
+        "description": "Stock / fund / sector to analyze",
+        "required": true
+      }
+    ],
+    "steps": [
+      {
+        "id": "research",
+        "expert": "agency_finance_finance_investment_researcher",
+        "task": "Research the target and produce an objective brief: {{target}}\nCover: what it is, the bull case, the bear case, key drivers, and the main risks.\nBe balanced — surface counter-arguments, not just upside.",
+        "output": "research",
+        "depends_on": []
+      },
+      {
+        "id": "fundamentals",
+        "expert": "agency_finance_finance_financial_analyst",
+        "task": "Analyze the fundamentals based on the research. Where exact figures aren't given,\nreason from public, well-known facts and clearly label assumptions.\n\n{{research}}",
+        "output": "fundamentals",
+        "depends_on": [
+          "research"
+        ]
+      },
+      {
+        "id": "plan",
+        "expert": "agency_finance_finance_fpa_analyst",
+        "task": "Synthesize a clear, decision-ready summary for an individual investor:\nthesis in one paragraph, scenarios (base / bull / bear), key metrics to watch,\nand an explicit \"this is not financial advice\" note.\n\nResearch: {{research}}\nFundamentals: {{fundamentals}}",
+        "output": "summary",
+        "depends_on": [
+          "fundamentals"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "en/okr-decomposition",
+    "file": "en\\okr-decomposition.yaml",
+    "name": "OKR Decomposition",
+    "description": "Annual goal → quarterly KRs → a concrete Q1 action plan.",
+    "category": "English",
+    "featured": false,
+    "concurrency": 2,
+    "inputs": [
+      {
+        "name": "annual_goal",
+        "description": "The annual objective",
+        "required": true
+      }
+    ],
+    "steps": [
+      {
+        "id": "analyze",
+        "expert": "agency_product_product_manager",
+        "task": "Analyze the annual goal and the current situation it implies: {{annual_goal}}\nIdentify the few levers that actually move this number and the biggest risks to it.",
+        "output": "analysis",
+        "depends_on": []
+      },
+      {
+        "id": "kr_design",
+        "expert": "agency_project-management_project_manager_senior",
+        "task": "From the analysis, design 3-4 quarterly Key Results that are measurable, ambitious but\nrealistic, and clearly ladder up to the annual goal.\n\n{{analysis}}",
+        "output": "krs",
+        "depends_on": [
+          "analyze"
+        ]
+      },
+      {
+        "id": "q1_plan",
+        "expert": "agency_project-management_project_management_project_shepherd",
+        "task": "Turn the KRs into a concrete Q1 action plan: weekly milestones, owners (by role),\ndependencies, and how each week's progress is measured.\n\nAnnual goal: {{annual_goal}}\nKRs: {{krs}}",
+        "output": "q1_plan",
+        "depends_on": [
+          "kr_design"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "en/pr-review",
+    "file": "en\\pr-review.yaml",
+    "name": "PR Code Review",
+    "description": "Three-dimensional parallel review: code quality, security, performance → unified verdict",
+    "category": "English",
+    "featured": false,
+    "concurrency": 3,
+    "inputs": [
+      {
+        "name": "pr_diff",
+        "description": "PR diff content (code changes)",
+        "required": true
+      },
+      {
+        "name": "pr_description",
+        "description": "PR description (what changed, why, scope of impact)",
+        "required": true
+      }
+    ],
+    "steps": [
+      {
+        "id": "code_quality",
+        "expert": "agency_engineering_engineering_code_reviewer",
+        "task": "Review the following PR for code quality.\n\n## PR Description\n{{pr_description}}\n\n## Code Changes\n{{pr_diff}}\n\nEvaluate across these dimensions:\n1. **Style & conventions**: naming clarity, consistency, adherence to project conventions\n2. **Logic correctness**: edge cases, error handling, logical flaws\n3. **Maintainability**: complexity, function decomposition, duplication\n4. **Readability**: comment quality, intent clarity\n5. **Test coverage**: critical paths, edge cases\n\nFor each dimension provide a score (1-5) and a concrete list of issues.",
+        "output": "quality_report",
+        "depends_on": []
+      },
+      {
+        "id": "security_check",
+        "expert": "agency_engineering_engineering_security_engineer",
+        "task": "Review the following PR for security risks.\n\n## PR Description\n{{pr_description}}\n\n## Code Changes\n{{pr_diff}}\n\nFocus on:\n1. **Injection risks**: SQL injection, XSS, command injection, etc.\n2. **Authn/authz**: permission checks, privilege escalation paths\n3. **Data security**: sensitive data encryption, log leakage\n4. **Dependency safety**: newly introduced packages with known CVEs\n5. **Config safety**: hardcoded secrets, insecure defaults\n\nFor each issue mark severity (high/medium/low) and give a remediation suggestion.",
+        "output": "security_report",
+        "depends_on": []
+      },
+      {
+        "id": "perf_check",
+        "expert": "agency_testing_testing_performance_benchmarker",
+        "task": "Review the following PR for performance impact.\n\n## PR Description\n{{pr_description}}\n\n## Code Changes\n{{pr_diff}}\n\nFocus on:\n1. **Algorithmic efficiency**: time/space complexity\n2. **Resource usage**: memory, file handles, DB connections\n3. **Concurrency safety**: race conditions, deadlock risk\n4. **I/O performance**: N+1 queries, redundant calls\n5. **Caching opportunities**: cacheable paths that aren't cached\n\nFor each finding, include an impact estimate and an optimization suggestion.",
+        "output": "perf_report",
+        "depends_on": []
+      },
+      {
+        "id": "summary",
+        "expert": "agency_engineering_engineering_code_reviewer",
+        "task": "Synthesize the three reviews into a final verdict.\n\n## Code Quality\n{{quality_report}}\n\n## Security\n{{security_report}}\n\n## Performance\n{{perf_report}}\n\nOutput (markdown):\n\n### Verdict: [✅ Mergeable / ⚠️ Needs changes / ❌ Needs rewrite]\n\n### Scorecard\n| Dimension | Score (1-5) | Key findings |\n|-----------|-------------|--------------|\n| Code quality | | |\n| Security | | |\n| Performance | | |\n\n### Must fix (blocking)\n1. [severity] issue → fix suggestion\n\n### Nice to have (non-blocking)\n1. issue → suggestion\n\n### Highlights\n- Things worth calling out positively",
+        "output": "final_review",
+        "depends_on": [
+          "code_quality",
+          "security_check",
+          "perf_check"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "en/product-review",
+    "file": "en\\product-review.yaml",
+    "name": "Product Requirements Review",
+    "description": "Multi-role PRD review — PM analyzes requirements, architect assesses tech, UX researcher assesses experience, then synthesis",
+    "category": "English",
+    "featured": false,
+    "concurrency": 2,
+    "inputs": [
+      {
+        "name": "prd_content",
+        "description": "PRD document content",
+        "required": true
+      }
+    ],
+    "steps": [
+      {
+        "id": "analyze",
+        "expert": "agency_product_product_manager",
+        "task": "Analyze the following PRD and output a structured review.\n\nPRD:\n{{prd_content}}\n\nFormat (markdown):\n\n### Core Requirements (ranked P0/P1/P2)\n- P0: ...\n- P1: ...\n\n### Target User Persona\nUser type | Core pain point | Use case\n\n### Risks & Uncertainties\n- [high/medium/low] risk description → suggested validation\n\n### Key Success Metrics\n- Metric | Target | How measured",
+        "output": "requirements",
+        "depends_on": []
+      },
+      {
+        "id": "tech_review",
+        "expert": "agency_engineering_engineering_software_architect",
+        "task": "Based on the requirements analysis, assess technical feasibility.\n\nRequirements:\n{{requirements}}\n\nFormat (markdown):\n\n### Feasibility Score: [high / medium / low]\n\n### Recommended Architecture\nCore components and interactions (3-5 sentences)\n\n### Build Complexity\n| Module | Complexity (1-5) | Est. person-days | Main challenges |\n\n### Technical Risks\n- [high/medium/low] risk → mitigation",
+        "output": "tech_report",
+        "depends_on": [
+          "analyze"
+        ]
+      },
+      {
+        "id": "design_review",
+        "expert": "agency_design_design_ux_researcher",
+        "task": "Based on the requirements analysis, evaluate UX.\n\nRequirements:\n{{requirements}}\n\nFormat (markdown):\n\n### UX Risks\n- [high/medium/low] risk → scope of impact\n\n### Usability Issues\n- Issue → proposed solution\n\n### Top 3 Design Recommendations\n1. Recommendation → expected impact\n\n### Assumptions to Validate\n- Assumption → validation method (user interviews / A-B test / prototype)",
+        "output": "design_report",
+        "depends_on": [
+          "analyze"
+        ]
+      },
+      {
+        "id": "final_summary",
+        "expert": "agency_product_product_manager",
+        "task": "Synthesize tech and design feedback into a final verdict.\n\n## Tech Review\n{{tech_report}}\n\n## Design Review\n{{design_report}}\n\nFormat (markdown):\n\n### Verdict: [✅ Approved / ⚠️ Needs changes / ❌ Rejected]\n\n### Must Resolve (before merge)\n1. [source: tech/design] issue → proposed fix\n\n### Suggested Improvements (later iteration)\n1. Issue → priority\n\n### Next Actions\n- [ ] Action item | Owner | Suggested timeline",
+        "output": "final_report",
+        "depends_on": [
+          "tech_review",
+          "design_review"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "en/solo-founder-plan",
+    "file": "en\\solo-founder-plan.yaml",
+    "name": "Solo Founder All-Hands",
+    "description": "One sentence in, 8 AI 'departments' collaborate, full launch plan out in 2 minutes — your one-person company",
+    "category": "English",
+    "featured": false,
+    "concurrency": 4,
+    "inputs": [
+      {
+        "name": "idea",
+        "description": "Your one-sentence idea (e.g. a tool that auto-generates invoices for freelancers)",
+        "required": true
+      }
+    ],
+    "steps": [
+      {
+        "id": "ceo_kickoff",
+        "expert": "agency_strategy_nexus_strategy",
+        "task": "You are the CEO of this one-person company. Kick off the all-hands.\n\nFounder's idea: {{idea}}\n\nOutput:\n1. Product positioning in one sentence\n2. What pain point we're solving\n3. Who the target user is\n4. What success looks like in 6 months\n\nTone: like a CEO at a morning standup — concise, concrete, no corporate fluff.",
+        "output": "vision",
+        "depends_on": []
+      },
+      {
+        "id": "market_research",
+        "expert": "agency_product_product_trend_researcher",
+        "task": "The CEO just set direction: {{vision}}\n\nAs the trend researcher, do rapid market research:\n1. Market size and growth rate for this category\n2. Top 3 competitors + their strengths/weaknesses\n3. Where the market gap is\n4. Trend forecast for the next 12 months\n\nEvery point must be concrete — real numbers, real reasoning, no generic filler.",
+        "output": "market_insight",
+        "depends_on": [
+          "ceo_kickoff"
+        ]
+      },
+      {
+        "id": "user_research",
+        "expert": "agency_design_design_ux_researcher",
+        "task": "The CEO just set direction: {{vision}}\n\nAs the user researcher, deliver user insights:\n1. Core user personas (2 typical users, specific about age, profession, mindset)\n2. How they currently solve this problem (existing solutions and their flaws)\n3. Top 3 pain points (scene-specific, not abstract)\n4. Key trigger that makes them willing to pay",
+        "output": "user_insight",
+        "depends_on": [
+          "ceo_kickoff"
+        ]
+      },
+      {
+        "id": "tech_feasibility",
+        "expert": "agency_engineering_engineering_backend_architect",
+        "task": "The CEO just set direction: {{vision}}\n\nAs the tech architect, assess feasibility:\n1. Recommended stack (something one person can own — explain why this not that)\n2. MVP architecture (clear module relationships, no over-engineering)\n3. 4-week build plan (week-by-week with deliverables)\n4. Real technical risks and mitigations (the ones you'll actually hit, not textbook lists)",
+        "output": "tech_plan",
+        "depends_on": [
+          "ceo_kickoff"
+        ]
+      },
+      {
+        "id": "brand_design",
+        "expert": "agency_design_design_brand_guardian",
+        "task": "The CEO just set direction: {{vision}}\n\nAs the brand designer, deliver the brand foundation:\n1. Product name candidates (3 options + rationale; memorable and domain-available)\n2. Brand tone and keywords\n3. Slogan candidates (3 options; conversational and sticky)\n4. Visual direction (palette + typography with specific hex codes)",
+        "output": "brand_plan",
+        "depends_on": [
+          "ceo_kickoff"
+        ]
+      },
+      {
+        "id": "product_plan",
+        "expert": "agency_product_product_manager",
+        "task": "Research is in:\n\n**Market**: {{market_insight}}\n**User**: {{user_insight}}\n\nAs the PM, output MVP plan:\n1. 3 core features (who uses each, what problem it solves)\n2. Top 5 user stories\n3. Priority + tradeoffs (explain what you're cutting and why)\n4. Launch criteria (concrete, measurable definition of \"usable\")",
+        "output": "product_spec",
+        "depends_on": [
+          "market_research",
+          "user_research"
+        ]
+      },
+      {
+        "id": "marketing_plan",
+        "expert": "agency_marketing_marketing_content_creator",
+        "task": "Research is in:\n\n**Market**: {{market_insight}}\n**User**: {{user_insight}}\n**Brand**: {{brand_plan}}\n\nAs the marketing lead, output a cold-start plan:\n1. Launch copy (hooky headline, shareable body)\n2. Top 3 launch channels + tactics (specific, not generic)\n3. Zero-budget growth strategy (executable — no \"make great content\" fluff)\n4. Week-by-week goals and actions for month one",
+        "output": "marketing_spec",
+        "depends_on": [
+          "market_research",
+          "user_research",
+          "brand_design"
+        ]
+      },
+      {
+        "id": "finance_plan",
+        "expert": "agency_finance_finance_fpa_analyst",
+        "task": "Research is in:\n\n**Market**: {{market_insight}}\n**Tech**: {{tech_plan}}\n\nAs the financial advisor, output the business model:\n1. Pricing strategy (free vs paid tiers, pricing logic)\n2. Cost structure (monthly fixed costs, line-by-line)\n3. Revenue forecast (3/6/12 months with key assumptions and math)\n4. Break-even analysis (how many users / how much revenue to survive)",
+        "output": "finance_spec",
+        "depends_on": [
+          "market_research",
+          "tech_feasibility"
+        ]
+      },
+      {
+        "id": "ceo_decision",
+        "expert": "agency_strategy_nexus_strategy",
+        "task": "All-hands reports are in:\n\n**Market**: {{market_insight}}\n**User**: {{user_insight}}\n**Tech**: {{tech_plan}}\n**Brand**: {{brand_plan}}\n**Product**: {{product_spec}}\n**Marketing**: {{marketing_spec}}\n**Finance**: {{finance_spec}}\n\nAs the CEO, make the final call. Output \"One-Person Company Launch Plan\":\n\n## Decision\nGo or No-Go? One-sentence reason.\n\n## Product Name\nPick one from brand options and explain why.\n\n## Week One Action List\nDay-by-day, concrete enough to execute.\n\n## Time Allocation\nHow to split your time (product / engineering / marketing %).\n\n## Risk Watch\nTop 3 risks + mitigation.\n\n## Note to Self\nAs a solo founder, what to hold on to and what to avoid.\n\nEvery section must have a clear decision and rationale. No hedging. Action items must be executable — no \"do great work\" filler.",
+        "output": "launch_plan",
+        "depends_on": [
+          "product_plan",
+          "marketing_plan",
+          "finance_plan"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "en/tech-blog",
+    "file": "en\\tech-blog.yaml",
+    "name": "Tech Blog",
+    "description": "Research → outline → draft → polish: a deep, credible technical blog post.",
+    "category": "English",
+    "featured": false,
+    "concurrency": 2,
+    "inputs": [
+      {
+        "name": "topic",
+        "description": "The technical topic / angle",
+        "required": true
+      }
+    ],
+    "steps": [
+      {
+        "id": "research",
+        "expert": "agency_product_product_trend_researcher",
+        "task": "Build a research brief for a technical blog post on: {{topic}}\nCover: who reads this and why, the core claim, prior art / common misconceptions,\nand the concrete examples or benchmarks the post should include.",
+        "output": "research_brief",
+        "depends_on": []
+      },
+      {
+        "id": "outline",
+        "expert": "agency_engineering_engineering_technical_writer",
+        "task": "From the research brief, write a section-by-section outline with a strong hook and\na clear arc (problem → approach → results → caveats).\n\n{{research_brief}}",
+        "output": "outline_doc",
+        "depends_on": [
+          "research"
+        ]
+      },
+      {
+        "id": "draft",
+        "expert": "agency_engineering_engineering_senior_developer",
+        "task": "Write the full draft from the outline. Be technically precise; include realistic code\nsnippets and numbers where relevant; call out trade-offs honestly.\n\nResearch: {{research_brief}}\nOutline: {{outline_doc}}",
+        "output": "blog_draft",
+        "depends_on": [
+          "research",
+          "outline"
+        ]
+      },
+      {
+        "id": "polish",
+        "expert": "agency_engineering_engineering_technical_writer",
+        "task": "Polish the draft into a final post: tighten prose, fix flow, ensure the hook and\nconclusion land, and verify every claim is supported by the body.\n\n{{blog_draft}}",
+        "output": "final_blog",
+        "depends_on": [
+          "draft"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "hr/interview-questions",
+    "file": "hr\\interview-questions.yaml",
+    "name": "面试题设计",
+    "description": "招聘专家定义考察维度 → 心理学家设计行为面试题 + 技术专家设计技术题 → 招聘专家整合评分表",
+    "category": "hr",
+    "featured": false,
+    "concurrency": 2,
+    "inputs": [
+      {
+        "name": "position",
+        "description": "招聘岗位（如：高级后端工程师、产品经理、数据分析师）",
+        "required": true
+      },
+      {
+        "name": "level",
+        "description": "级别（如：P6/P7、3-5年经验、应届）",
+        "required": true
+      },
+      {
+        "name": "focus",
+        "description": "重点考察方向（如：系统设计能力、团队协作、数据敏感度）",
+        "required": false
+      }
+    ],
+    "steps": [
+      {
+        "id": "define_dimensions",
+        "expert": "agency_hr_hr_recruiter",
+        "task": "请为以下岗位定义面试考察维度：\n\n岗位：{{position}}\n级别：{{level}}\n重点考察：{{focus}}\n\n请输出：\n1. **岗位核心胜任力模型**（4-6 个维度，每个维度说明考察什么）\n2. **各维度权重分配**（百分比）\n3. **每个维度的达标标准**（什么表现算\"通过\"）\n4. **红线项**（出现即否决的行为/回答）",
+        "output": "dimensions",
+        "depends_on": []
+      },
+      {
+        "id": "behavioral_questions",
+        "expert": "agency_academic_academic_psychologist",
+        "task": "基于以下考察维度，设计行为面试题（STAR 法则）：\n\n{{dimensions}}\n\n岗位：{{position}}\n级别：{{level}}\n\n每个考察维度设计 2 道题，每道题包含：\n1. **主问题**（开放式，引导候选人讲述真实经历）\n2. **追问清单**（3-4 个追问，深挖 Situation → Task → Action → Result）\n3. **优秀回答特征**（什么样的回答得高分）\n4. **警示信号**（什么样的回答是减分项）\n\n题目要自然不刻板，避免\"请举一个例子\"这种套话开头。",
+        "output": "behavioral",
+        "depends_on": [
+          "define_dimensions"
+        ]
+      },
+      {
+        "id": "technical_questions",
+        "expert": "agency_engineering_engineering_backend_architect",
+        "task": "基于以下考察维度，设计技术面试题：\n\n{{dimensions}}\n\n岗位：{{position}}\n级别：{{level}}\n\n请设计 4-6 道技术题，难度递进，包含：\n1. **基础题**（1-2 道，验证基本功）\n2. **场景题**（2 道，给出实际业务场景，考察设计和解决问题能力）\n3. **开放题**（1-2 道，考察技术深度和视野）\n\n每道题包含：\n- 题目描述\n- 考察点\n- 参考答案要点\n- 评分标准（1-5 分各档标准）\n\n如果岗位非技术类，请改为专业能力测试题。",
+        "output": "technical",
+        "depends_on": [
+          "define_dimensions"
+        ]
+      },
+      {
+        "id": "interview_guide",
+        "expert": "agency_hr_hr_recruiter",
+        "task": "请将以下面试题整合为一份完整的面试官指南：\n\n## 考察维度\n{{dimensions}}\n\n## 行为面试题\n{{behavioral}}\n\n## 技术/专业面试题\n{{technical}}\n\n输出格式：\n1. **面试流程安排**（时间分配建议，如开场5分钟、行为面20分钟等）\n2. **完整题目清单**（按面试顺序排列，标注考察维度和建议时间）\n3. **评分表模板**（表格形式，列出各维度的评分标准）\n4. **面试官注意事项**（提问技巧、避免的偏见等）\n\n风格：实用、可直接打印使用。",
+        "output": null,
+        "depends_on": [
+          "behavioral_questions",
+          "technical_questions"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "investment-analysis",
+    "file": "investment-analysis.yaml",
+    "name": "投资标的分析（股票/基金/行业）",
+    "description": "基本面研究 + 财务分析 + 风险识别 + CFO 综合建议",
+    "category": "",
+    "featured": false,
+    "concurrency": 3,
+    "inputs": [
+      {
+        "name": "target",
+        "description": "分析标的（如：贵州茅台 / 纳指ETF / 新能源汽车行业）",
+        "required": true
+      },
+      {
+        "name": "investor_profile",
+        "description": "投资者画像（可选，如：30 岁工薪，风险承受中等，持有期 3-5 年）",
+        "required": false
+      },
+      {
+        "name": "capital_size",
+        "description": "可投资金（可选，如：10 万元）",
+        "required": false
+      }
+    ],
+    "steps": [
+      {
+        "id": "research",
+        "expert": "agency_finance_finance_investment_researcher",
+        "task": "针对标的「{{target}}」做基本面研究。\n\n输出结构（400-500 字）:\n1. **标的性质**: 是什么（个股/基金/行业）、所属板块、当前关键特征\n2. **核心驱动**: 这个标的价值/价格受哪些因素驱动（3-5 个）\n3. **近期催化**: 当前有哪些事件可能影响（政策/业绩/行业周期）\n4. **竞争格局**: 如果是个股/行业，对手是谁、优劣势对比\n5. **估值水位**: PE / PB / 或同类对比的相对位置（如果数据不足请明确说明\"需核实\"）\n\n⚠️ 不知道的数据必须明确标注「需核实」，不要瞎编数字。",
+        "output": "research",
+        "depends_on": []
+      },
+      {
+        "id": "financial",
+        "expert": "agency_finance_finance_financial_analyst",
+        "task": "围绕「{{target}}」做财务维度分析。\n\n研究背景:\n{{research}}\n\n输出（300-400 字）:\n1. **盈利能力**: 营收增速、毛利率、净利率趋势（适用于个股/企业）\n2. **现金流健康度**: 经营性现金流情况，是否持续正向\n3. **负债与杠杆**: 资产负债率水平，是否健康\n4. **ROE / ROIC**: 股东回报率水平\n5. **同行对比**: 相比同类标的，财务质量排第几档\n\n对于基金/ETF，把上述项替换为：规模、费率、历史回报、夏普比率、跟踪误差。\n\n⚠️ 数据不确定处明确标注「需核实最新财报」。",
+        "output": "financial",
+        "depends_on": [
+          "research"
+        ]
+      },
+      {
+        "id": "risk",
+        "expert": "agency_finance_finance_fraud_detector",
+        "task": "基于研究和财务分析，盘点投资「{{target}}」的主要风险。\n\n研究:\n{{research}}\n\n财务:\n{{financial}}\n\n输出（300 字）:\n1. **系统性风险**: 宏观/政策层面的风险（2-3 个）\n2. **行业风险**: 行业特有的周期或结构性风险\n3. **个体风险**: 标的本身的致命弱点（商业模式/财务隐雷/管理层问题）\n4. **黑天鹅场景**: 最坏情况可能的亏损幅度\n5. **止损线建议**: 建议的止损点位或触发条件\n\n每条风险明确标「发生概率」（高/中/低）。",
+        "output": "risk",
+        "depends_on": [
+          "research",
+          "financial"
+        ]
+      },
+      {
+        "id": "cfo_opinion",
+        "expert": "agency_finance_finance_financial_forecaster",
+        "task": "你是 CFO 顾问，把前面研究员、财务分析师、风控专家的工作整合成一份**完整、可直接交付给投资者的投资分析报告**——不要只给结论，要把上游的分析内容整合进报告里。\n\n研究: {{research}}\n财务: {{financial}}\n风险: {{risk}}\n\n投资者画像: {{investor_profile}}\n可用资金: {{capital_size}}\n\n输出一份完整 markdown 报告，**充实展开、不要压缩**，必须包含全部四部分：\n\n# {{target}} 投资分析报告\n\n## 一、标的概览与基本面\n整合研究员结论：标的性质、核心驱动、近期催化、竞争格局、估值水位。\n\n## 二、财务质量\n整合财务分析师发现：盈利能力、现金流、负债杠杆、回报率、同行对比。\n\n## 三、风险评估\n整合风控发现：系统性/行业/个体风险、黑天鹅场景、止损线，每条标概率（高/中/低）。\n\n## 四、投资建议（CFO 综合判断）\n- **结论**: 买入 / 观望 / 不建议（明确选一个）\n- **核心逻辑**: 3-5 句\n- **仓位建议**: 配比 % + 买入节奏（含触发条件，结合投资者画像与资金）\n- **持有期与退出条件**\n- **关键跟踪指标**: 3-5 个\n- **不适合的情况**\n\n> 免责声明: 本分析仅供参考，不构成投资建议。股市有风险，投资需谨慎。\n\n⚠️ 只输出这份报告本身（四部分齐全、内容充实）：不要开场白/寒暄、不要\"我改了什么/复盘\"、不要向用户提问、不要建议 ao 命令或后续动作、不要\"要我继续吗\"之类收尾。",
+        "output": "final_advice",
+        "depends_on": [
+          "financial",
+          "risk"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "legal/contract-review",
+    "file": "legal\\contract-review.yaml",
+    "name": "合同审查",
+    "description": "合同审查专家逐条分析 → 法务合规员补充合规风险 → 整合输出审查意见和修改建议",
+    "category": "legal",
+    "featured": false,
+    "concurrency": 2,
+    "inputs": [
+      {
+        "name": "contract",
+        "description": "合同全文或核心条款（粘贴文本）",
+        "required": true
+      },
+      {
+        "name": "party",
+        "description": "我方身份（如：甲方/采购方/服务提供方/被投资方）",
+        "required": true
+      },
+      {
+        "name": "concern",
+        "description": "特别关注的问题（如：付款条件、竞业限制、知识产权）",
+        "required": false
+      }
+    ],
+    "steps": [
+      {
+        "id": "clause_analysis",
+        "expert": "agency_legal_legal_contract_reviewer",
+        "task": "请对以下合同进行逐条审查：\n\n我方身份：{{party}}\n特别关注：{{concern}}\n\n合同内容：\n{{contract}}\n\n请逐条分析，每条输出：\n1. **条款摘要**（一句话）\n2. **风险等级**（🔴高风险 / 🟡中风险 / 🟢低风险）\n3. **风险分析**（该条款对我方的不利影响）\n4. **修改建议**（具体的替代条款文本）\n\n重点关注：\n- 付款条件和违约金\n- 知识产权归属\n- 保密条款范围\n- 竞业限制\n- 争议解决方式\n- 合同终止条件\n- 不可抗力条款",
+        "output": "clause_review",
+        "depends_on": []
+      },
+      {
+        "id": "compliance_check",
+        "expert": "agency_support_support_legal_compliance_checker",
+        "task": "基于以下合同条款审查，补充合规风险分析：\n\n{{clause_review}}\n\n合同原文：\n{{contract}}\n\n请检查：\n1. **法律合规**（是否符合《民法典》合同编相关规定）\n2. **数据合规**（是否涉及个人信息处理，是否符合《个保法》《数安法》）\n3. **行业特殊合规**（是否有行业特定的合规要求）\n4. **格式条款问题**（是否有无效的格式条款）\n5. **缺失条款**（通常应有但合同中缺少的重要条款）",
+        "output": "compliance_report",
+        "depends_on": [
+          "clause_analysis"
+        ]
+      },
+      {
+        "id": "final_opinion",
+        "expert": "agency_legal_legal_contract_reviewer",
+        "task": "请整合以下审查结果，输出一份完整的合同审查意见书：\n\n## 条款审查\n{{clause_review}}\n\n## 合规检查\n{{compliance_report}}\n\n输出格式：\n\n# 合同审查意见书\n\n## 总体评价\n[一段话总结合同整体风险水平和建议]\n\n## 高风险条款（必须修改）\n[列出所有红色风险条款及修改建议]\n\n## 中风险条款（建议修改）\n[列出所有黄色风险条款及修改建议]\n\n## 缺失条款（建议补充）\n[列出应当补充的条款]\n\n## 合规问题\n[列出合规风险及整改建议]\n\n## 谈判要点\n[按优先级列出谈判时应争取的条款修改]\n\n风格：专业严谨，结论明确，修改建议可直接用于谈判。",
+        "output": null,
+        "depends_on": [
+          "compliance_check"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "legal-consultation",
+    "file": "legal-consultation.yaml",
+    "name": "法律咨询意见书",
+    "description": "事实梳理 + 合同/文书审查 + 风险识别 + 法律意见书",
+    "category": "",
+    "featured": false,
+    "concurrency": 3,
+    "inputs": [
+      {
+        "name": "case_description",
+        "description": "案情或咨询事项描述（越详细越好）",
+        "required": true
+      },
+      {
+        "name": "document_content",
+        "description": "相关合同/文书内容（可选，支持 @文件）",
+        "required": false
+      },
+      {
+        "name": "jurisdiction",
+        "description": "适用法域（默认中国大陆）",
+        "required": false
+      }
+    ],
+    "steps": [
+      {
+        "id": "intake",
+        "expert": "agency_specialized_legal_client_intake",
+        "task": "梳理案情并提取关键事实。\n\n咨询事项:\n{{case_description}}\n\n相关文书:\n{{document_content}}\n\n适用法域: {{jurisdiction}}\n\n输出（300-400 字）:\n1. **当事人关系**: 涉及哪些主体，彼此什么法律关系\n2. **核心事实**: 按时间顺序梳理的事实链（不要添油加醋）\n3. **争议焦点**: 本案的法律争议点（1-3 个）\n4. **诉求识别**: 咨询人实际想解决什么问题（经济补偿/继续履约/解除关系/追责）\n5. **信息缺口**: 还需要当事人补充哪些关键信息才能给出完整意见",
+        "output": "case_summary",
+        "depends_on": []
+      },
+      {
+        "id": "document_review",
+        "expert": "agency_legal_legal_contract_reviewer",
+        "task": "审查相关文书中的法律风险。\n\n案情梳理:\n{{case_summary}}\n\n文书内容:\n{{document_content}}\n\n如果没有提供文书，直接输出「未提供文书，跳过审查」。\n\n否则输出（300-400 字）:\n1. **文书性质**: 是什么类型的合同/文书，是否合法有效\n2. **条款风险 Top 3**: 最不利于咨询人的条款（引用原文片段）\n3. **缺失条款**: 应该有但没有的关键条款（违约责任/管辖/解除条件等）\n4. **模糊表述**: 可能引发歧义的措辞\n5. **整体评级**: 对咨询人是否有利（有利/中性/不利/极不利）",
+        "output": "document_risks",
+        "depends_on": [
+          "intake"
+        ]
+      },
+      {
+        "id": "legal_risk",
+        "expert": "agency_specialized_legal_document_review",
+        "task": "分析案情走诉讼或其他法律救济的可行性与风险。\n\n案情:\n{{case_summary}}\n\n文书风险:\n{{document_risks}}\n\n适用法域: {{jurisdiction}}\n\n输出（400 字）:\n1. **法律依据**: 支持咨询人诉求的主要法条（具体条款号，不确定请标\"需核实\"）\n2. **胜诉概率预估**: 高/中/低，说明理由\n3. **证据评估**: 现有证据是否足够，还需补充什么\n4. **诉讼成本**: 时间（月）、金钱（诉讼费/律师费区间）、精力投入\n5. **替代方案**: 协商/调解/仲裁等非诉讼路径是否更优\n6. **时效提醒**: 诉讼时效或除斥期间是否紧迫\n\n⚠️ 所有法条引用不确定处必须明确标「需核实最新法规」。",
+        "output": "risk_analysis",
+        "depends_on": [
+          "intake",
+          "document_review"
+        ]
+      },
+      {
+        "id": "opinion",
+        "expert": "agency_legal_legal_policy_writer",
+        "task": "综合所有分析，出具正式法律意见书。\n\n案情: {{case_summary}}\n文书风险: {{document_risks}}\n诉讼分析: {{risk_analysis}}\n\n输出格式（严格按正式意见书结构）:\n```\n# 法律意见书\n\n## 一、咨询事项\n<简述>\n\n## 二、事实摘要\n<基于案情梳理的关键事实>\n\n## 三、法律分析\n<引用法条，结合事实分析，2-3 段>\n\n## 四、结论意见\n<明确的法律结论：是否有理/是否违约/是否可诉等>\n\n## 五、行动建议\n按优先级列出 3-5 条:\n1. <立即行动 - 如固定证据/发函/申请保全>\n2. <短期行动 - 如协商/起诉/申请仲裁>\n3. <备选方案>\n\n## 六、风险提示\n<2-3 条可能的不利结果>\n\n## 七、免责声明\n本意见书基于咨询人提供的信息作出，若事实有出入结论可能不同。本意见\n不能替代律师介入后的个案分析，重要决定请委托执业律师办理。\n```",
+        "output": "legal_opinion",
+        "depends_on": [
+          "document_review",
+          "legal_risk"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "marketing/competitor-analysis",
+    "file": "marketing\\competitor-analysis.yaml",
+    "name": "竞品分析报告",
+    "description": "趋势研究 → 数据分析 + SEO 竞品扫描 → 高管摘要，输出一份可直接汇报的竞品报告",
+    "category": "marketing",
+    "featured": false,
+    "concurrency": 2,
+    "inputs": [
+      {
+        "name": "product",
+        "description": "你的产品/服务名称和简介",
+        "required": true
+      },
+      {
+        "name": "competitors",
+        "description": "竞品名称（逗号分隔，如：飞书,钉钉,企业微信）",
+        "required": true
+      },
+      {
+        "name": "focus",
+        "description": "分析重点（如：定价策略、用户增长、功能差异）",
+        "required": false
+      }
+    ],
+    "steps": [
+      {
+        "id": "trend_research",
+        "expert": "agency_product_product_trend_researcher",
+        "task": "请对以下产品和竞品进行市场趋势研究：\n\n我方产品：{{product}}\n竞品：{{competitors}}\n重点关注：{{focus}}\n\n请输出：\n1. 行业整体趋势（3-5 个关键趋势）\n2. 各竞品最近 6 个月的重大动作（产品发布、融资、合作等）\n3. 市场规模和增长预测\n4. 技术趋势和风口判断",
+        "output": "trend_report",
+        "depends_on": []
+      },
+      {
+        "id": "data_analysis",
+        "expert": "agency_support_support_analytics_reporter",
+        "task": "基于以下趋势研究，进行定量竞品对比分析：\n\n{{trend_report}}\n\n竞品列表：{{competitors}}\n分析重点：{{focus}}\n\n请输出：\n1. 功能对比矩阵（表格形式，列出各家核心功能的有/无/强/弱）\n2. 定价策略对比（免费版/付费版/企业版各档位）\n3. 用户评价分析（主要好评点和差评点）\n4. SWOT 分析（我方 vs 各竞品）",
+        "output": "data_report",
+        "depends_on": [
+          "trend_research"
+        ]
+      },
+      {
+        "id": "seo_scan",
+        "expert": "agency_marketing_marketing_seo_specialist",
+        "task": "从 SEO 和内容营销角度分析以下竞品：\n\n{{trend_report}}\n\n竞品列表：{{competitors}}\n\n请输出：\n1. 各竞品内容策略分析（博客频率、主题方向、SEO 关键词布局）\n2. 搜索可见度对比（哪些关键词谁排名更好）\n3. 社交媒体声量对比\n4. 内容营销机会点（竞品忽略但有价值的领域）",
+        "output": "seo_report",
+        "depends_on": [
+          "trend_research"
+        ]
+      },
+      {
+        "id": "executive_summary",
+        "expert": "agency_support_support_executive_summary_generator",
+        "task": "请将以下竞品分析整合成一份高管可读的摘要报告：\n\n## 市场趋势\n{{trend_report}}\n\n## 数据对比\n{{data_report}}\n\n## SEO 与内容分析\n{{seo_report}}\n\n输出格式：\n1. **一句话结论**：我方竞争地位\n2. **核心发现**（3-5 条，每条 1-2 句话）\n3. **威胁与机会**（各 3 条）\n4. **建议行动**（按优先级排序，每条包含负责人建议和时间框架）\n5. **完整对比表**（保留数据分析中的功能矩阵）\n\n风格：简洁、数据驱动、可直接用于汇报。",
+        "output": null,
+        "depends_on": [
+          "data_analysis",
+          "seo_scan"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "marketing/seo-content-matrix",
+    "file": "marketing\\seo-content-matrix.yaml",
+    "name": "SEO 内容矩阵",
+    "description": "SEO 关键词研究 → 内容策略 + 批量内容生成 → SEO 优化审核，一次性生成一组 SEO 友好的文章",
+    "category": "marketing",
+    "featured": false,
+    "concurrency": 2,
+    "inputs": [
+      {
+        "name": "domain",
+        "description": "业务领域/网站主题（如：SaaS 项目管理工具、跨境电商培训）",
+        "required": true
+      },
+      {
+        "name": "target_keywords",
+        "description": "核心关键词（逗号分隔，如：项目管理软件,团队协作工具,敏捷开发）",
+        "required": true
+      },
+      {
+        "name": "article_count",
+        "description": "生成文章数量",
+        "required": false
+      }
+    ],
+    "steps": [
+      {
+        "id": "keyword_research",
+        "expert": "agency_marketing_marketing_seo_specialist",
+        "task": "请围绕以下核心关键词进行 SEO 关键词研究：\n\n业务领域：{{domain}}\n核心关键词：{{target_keywords}}\n目标文章数：{{article_count}}\n\n请输出：\n1. **关键词矩阵**（表格：关键词、搜索意图、预估难度、预估流量）\n2. **长尾词扩展**（每个核心词扩展 5-8 个长尾词）\n3. **内容缺口分析**（竞品有排名但我方缺失的主题）\n4. **推荐的 {{article_count}} 篇文章选题**（每篇的目标关键词、搜索意图、建议标题）",
+        "output": "keyword_plan",
+        "depends_on": []
+      },
+      {
+        "id": "content_strategy",
+        "expert": "agency_marketing_marketing_social_media_strategist",
+        "task": "基于以下关键词研究，制定内容矩阵策略：\n\n{{keyword_plan}}\n\n业务领域：{{domain}}\n\n请输出：\n1. **内容金字塔**（支柱页 → 集群页 → 长尾页的关系图）\n2. **每篇文章的内容大纲**（H1/H2/H3 结构、字数建议、内链策略）\n3. **发布节奏**（建议的发布顺序和频率）\n4. **转化路径**（每篇文章的 CTA 设计和转化目标）",
+        "output": "content_plan",
+        "depends_on": [
+          "keyword_research"
+        ]
+      },
+      {
+        "id": "write_articles",
+        "expert": "agency_marketing_marketing_content_creator",
+        "task": "基于以下内容策略，撰写 {{article_count}} 篇 SEO 文章：\n\n{{content_plan}}\n\n每篇文章要求：\n- 按大纲的 H1/H2/H3 结构撰写\n- 自然融入目标关键词（密度 1-2%）\n- 开头直击用户痛点/搜索意图\n- 包含实用信息、数据或案例\n- 结尾有明确的 CTA\n- 每篇 800-1500 字\n\n用 --- 分隔每篇文章，每篇开头标注：\n- 目标关键词\n- Meta Title（60 字符内）\n- Meta Description（155 字符内）",
+        "output": "articles",
+        "depends_on": [
+          "content_strategy"
+        ]
+      },
+      {
+        "id": "seo_review",
+        "expert": "agency_marketing_marketing_seo_specialist",
+        "task": "请对以下文章进行 SEO 优化审核：\n\n{{articles}}\n\n原始关键词计划：\n{{keyword_plan}}\n\n每篇文章检查并输出：\n1. **关键词优化**（标题/H2/首段/尾段是否包含目标词）\n2. **内链建议**（文章之间可以互链的锚文本位置）\n3. **Schema 标记建议**（FAQ、HowTo、Article 等结构化数据）\n4. **优化后的 Meta 信息**（如需修改）\n5. **可读性评分**（段落长度、句子复杂度、被动语态比例）\n6. **最终修改建议**（具体到哪一段哪一句需要改什么）",
+        "output": null,
+        "depends_on": [
+          "write_articles"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "marketing/xiaohongshu-content",
+    "file": "marketing\\xiaohongshu-content.yaml",
+    "name": "小红书种草笔记",
+    "description": "小红书专家选题策划 → 内容创作 + 视觉方案 → 小红书运营优化，批量生成高质量种草内容",
+    "category": "marketing",
+    "featured": false,
+    "concurrency": 2,
+    "inputs": [
+      {
+        "name": "product",
+        "description": "产品/品牌名称和核心卖点",
+        "required": true
+      },
+      {
+        "name": "category",
+        "description": "品类（如：护肤、数码、家居、美食、穿搭）",
+        "required": true
+      },
+      {
+        "name": "count",
+        "description": "需要生成几篇笔记",
+        "required": false
+      }
+    ],
+    "steps": [
+      {
+        "id": "topic_planning",
+        "expert": "agency_marketing_marketing_xiaohongshu_specialist",
+        "task": "请为以下产品策划 {{count}} 篇小红书种草笔记的选题：\n\n产品：{{product}}\n品类：{{category}}\n\n每个选题输出：\n1. **笔记标题**（符合小红书爆款标题公式，带 emoji）\n2. **内容角度**（测评/教程/好物分享/避雷/合集，选最适合的）\n3. **目标人群**（具体到场景，如\"25岁加班党的急救护肤\"）\n4. **关键词布局**（搜索词 + 长尾词，各 3-5 个）\n5. **封面方向**（什么样的封面图最吸引点击）\n\n要求：选题要差异化，覆盖不同搜索意图（种草/教程/对比）。",
+        "output": "topics",
+        "depends_on": []
+      },
+      {
+        "id": "write_notes",
+        "expert": "agency_marketing_marketing_content_creator",
+        "task": "基于以下选题，撰写 {{count}} 篇完整的小红书笔记正文：\n\n{{topics}}\n\n产品：{{product}}\n\n每篇笔记要求：\n- 开头用个人经历/痛点切入（不要广告感）\n- 正文结构：痛点共鸣 → 发现产品 → 使用体验 → 效果对比 → 总结推荐\n- 语气：真实分享感，像在跟闺蜜/朋友聊天\n- 适当使用 emoji 分段，增加可读性\n- 字数 300-500 字\n- 末尾带 3-5 个话题标签\n- 自然植入关键词，不要硬塞\n\n避免：过度营销感、虚假宣传、绝对化用语。",
+        "output": "notes",
+        "depends_on": [
+          "topic_planning"
+        ]
+      },
+      {
+        "id": "visual_plan",
+        "expert": "agency_design_design_visual_storyteller",
+        "task": "基于以下笔记内容，设计配图方案：\n\n{{notes}}\n\n产品：{{product}}\n品类：{{category}}\n\n每篇笔记输出：\n1. **封面图方案**（构图、色调、文字排版、拍摄角度）\n2. **内页图片**（3-6 张图的内容和顺序安排）\n3. **拍摄/设计建议**（光线、道具、场景、滤镜风格）\n4. **文字覆盖建议**（图片上需要加的关键文字）\n\n风格参考：小红书当前热门的视觉趋势。",
+        "output": "visual_plan",
+        "depends_on": [
+          "topic_planning",
+          "write_notes"
+        ]
+      },
+      {
+        "id": "optimize",
+        "expert": "agency_marketing_marketing_xiaohongshu_operator",
+        "task": "请对以下小红书笔记做最终优化和发布建议：\n\n## 笔记正文\n{{notes}}\n\n## 视觉方案\n{{visual_plan}}\n\n请输出：\n1. **各笔记的最终优化版本**（修正标题、正文细节、标签）\n2. **发布时间建议**（最佳发布时段）\n3. **互动策略**（评论区预埋、回复话术）\n4. **数据监测指标**（关注哪些数据判断效果）\n5. **迭代建议**（如果某篇效果好/差，下一步怎么做）",
+        "output": null,
+        "depends_on": [
+          "write_notes",
+          "visual_plan"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "meeting-notes",
+    "file": "meeting-notes.yaml",
+    "name": "会议纪要整理",
+    "description": "输入原始会议记录，自动整理为结构化纪要：决策、TODO、争议点 三视角并行 → 完整纪要",
+    "category": "",
+    "featured": false,
+    "concurrency": 3,
+    "inputs": [
+      {
+        "name": "raw_notes",
+        "description": "原始会议记录（口语/速记/录音转文字都可以）",
+        "required": true
+      },
+      {
+        "name": "meeting_type",
+        "description": "会议类型，如：产品评审 / 周会 / 1on1 / 客户访谈",
+        "required": false
+      }
+    ],
+    "steps": [
+      {
+        "id": "organize",
+        "expert": "agency_specialized_specialized_meeting_assistant",
+        "task": "把以下会议原始记录清理成结构化的\"按发言人分段\"版本。\n会议类型: {{meeting_type}}\n\n原始记录:\n{{raw_notes}}\n\n整理要求:\n- 删掉口语化的\"嗯/啊/那个/就是说\"等填充词\n- 修复明显的速记错别字（不要改原意）\n- 按发言人分段，每段加 [发言人] 前缀（如果原文没有人名，用 \"A\" / \"B\" 代号）\n- 不要总结，不要加你自己的判断，只做清理\n\n输出格式（markdown）:\n[发言人A] 整理后的发言内容\n[发言人B] 整理后的发言内容\n...",
+        "output": "cleaned_notes",
+        "depends_on": []
+      },
+      {
+        "id": "extract_decisions",
+        "expert": "agency_specialized_specialized_meeting_assistant",
+        "task": "从以下整理后的会议记录中提取所有\"已经达成的决策\"。\n\n会议记录:\n{{cleaned_notes}}\n\n只提取真正的决策（\"我们决定 X\"、\"那就 Y 吧\"），不要把讨论过的选项当决策。\n\n输出格式（markdown）:\n### 决策清单\n| # | 决策内容 | 决策依据 | 影响范围 |\n|---|---------|---------|---------|\n| 1 | ... | ... | ... |\n\n如果没有明确决策，写 \"本次会议未达成决策\"。",
+        "output": "decisions",
+        "depends_on": [
+          "organize"
+        ]
+      },
+      {
+        "id": "extract_todos",
+        "expert": "agency_specialized_specialized_meeting_assistant",
+        "task": "从以下会议记录中提取所有 TODO/行动项（谁要在什么时候做什么）。\n\n会议记录:\n{{cleaned_notes}}\n\n提取标准:\n- 含责任人（即使是模糊的\"@某某\"也保留）\n- 含动作（一个明确的动词）\n- 时间不明确就写 \"未定\"，不要编\n\n输出格式（markdown）:\n### 行动项清单\n| # | 负责人 | 行动 | 截止时间 | 验收标准 |\n|---|-------|-----|---------|---------|\n| 1 | ... | ... | ... | ... |\n\n如果没有明确行动项，写 \"本次会议未产生行动项\"。",
+        "output": "todos",
+        "depends_on": [
+          "organize"
+        ]
+      },
+      {
+        "id": "extract_concerns",
+        "expert": "agency_specialized_specialized_meeting_assistant",
+        "task": "从以下会议记录中提取\"未解决的分歧/疑问/风险\"。\n\n会议记录:\n{{cleaned_notes}}\n\n提取标准:\n- 双方明确表达不同立场但没有结论的争议\n- 任何被提出但没人回答的关键问题\n- 提到的潜在风险（即使只是顺嘴一句）\n\n输出格式（markdown）:\n### 未解决的分歧/疑问/风险\n| # | 类型 [分歧/疑问/风险] | 内容 | 涉及方 | 建议处理方式 |\n|---|----------------------|------|-------|------------|\n| 1 | ... | ... | ... | 一句话建议 |\n\n如果都解决了，写 \"本次会议无遗留议题\"。",
+        "output": "concerns",
+        "depends_on": [
+          "organize"
+        ]
+      },
+      {
+        "id": "final_notes",
+        "expert": "agency_specialized_specialized_meeting_assistant",
+        "task": "整合三个视角，输出最终会议纪要（可直接发邮件/群里）。\n\n会议类型: {{meeting_type}}\n\n整理后的发言:\n{{cleaned_notes}}\n\n决策清单:\n{{decisions}}\n\n行动项清单:\n{{todos}}\n\n未解决议题:\n{{concerns}}\n\n输出格式（markdown，可直接复制发送）:\n# {{meeting_type}}纪要\n\n## 一句话总结\n（30 字以内）\n\n## 关键决策\n（从决策清单中转录，不要改）\n\n## 行动项\n（从行动项清单中转录，按截止时间排序）\n\n## 待跟进\n（从未解决议题中转录，按重要性排序）\n\n## 完整记录\n（从整理后发言转录）",
+        "output": "meeting_summary",
+        "depends_on": [
+          "extract_decisions",
+          "extract_todos",
+          "extract_concerns"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "okr-decomposition",
+    "file": "okr-decomposition.yaml",
+    "name": "OKR 拆解",
+    "description": "输入年度目标，自动完成现状分析 → 4 个季度 KR 拆解 → 首季度行动方案 → 完整 OKR 文档",
+    "category": "",
+    "featured": false,
+    "concurrency": 2,
+    "inputs": [
+      {
+        "name": "annual_goal",
+        "description": "年度目标（一句话），如：让产品 MAU 从 5 万做到 50 万",
+        "required": true
+      },
+      {
+        "name": "team_context",
+        "description": "团队/公司现状（人数、阶段、资源、关键约束）",
+        "required": false
+      }
+    ],
+    "steps": [
+      {
+        "id": "situation_analysis",
+        "expert": "agency_product_product_manager",
+        "task": "分析达成年度目标的关键现状和挑战。\n\n年度目标: {{annual_goal}}\n团队现状: {{team_context}}\n\n输出格式（markdown，不超过 600 字）:\n### 当前位置\n用 1-2 句话描述团队/产品当前的状态（数据 + 阶段）\n\n### 关键差距（要达成目标必须填的坑）\n1. 差距描述 → 为什么这是瓶颈\n2. ...\n（3-5 条，按\"如果不解决就一定达不成目标\"的程度排序）\n\n### 可用杠杆（已有的优势）\n1. 杠杆 → 怎么用\n2. ...\n\n### 关键假设（如果错就全盘崩）\n- 假设 → 风险等级 [高/中/低]",
+        "output": "situation",
+        "depends_on": []
+      },
+      {
+        "id": "quarterly_plan",
+        "expert": "agency_project-management_project_manager_senior",
+        "task": "把年度目标拆成 4 个季度的 KR（关键结果）。\n\n年度目标: {{annual_goal}}\n现状分析:\n{{situation}}\n\n拆解原则:\n- Q1 重点解决\"关键差距\"中最致命的 1-2 个\n- Q2-Q4 渐进推进，不要 Q4 才做风险高的事\n- KR 必须可量化（数字+时间）\n- 每季度 3-5 个 KR，不要超\n\n输出格式（markdown）:\n## Q1 (聚焦: 一句话主题)\n| KR | 指标 | 当前 → 目标 | 验收方式 |\n|---|------|------------|---------|\n\n## Q2 (聚焦: 一句话主题)\n...\n\n## Q3 (聚焦: 一句话主题)\n...\n\n## Q4 (聚焦: 一句话主题)\n...\n\n## 季度间依赖\n用 1-2 句话说明 Q1→Q2→Q3→Q4 的递进关系",
+        "output": "quarters",
+        "depends_on": [
+          "situation_analysis"
+        ]
+      },
+      {
+        "id": "q1_action_plan",
+        "expert": "agency_marketing_marketing_growth_hacker",
+        "task": "给 Q1 出具体可执行的行动方案（3 个月内每周/每月做什么）。\n\nQ1 KR（从季度计划提取）:\n{{quarters}}\n\n输出格式（markdown）:\n### Q1 月度路线图\n\n**Month 1（聚焦: 一句话）**\n- Week 1-2: 行动项 → 期望产出\n- Week 3-4: 行动项 → 期望产出\n\n**Month 2（聚焦: 一句话）**\n- ...\n\n**Month 3（聚焦: 一句话）**\n- ...\n\n### Q1 关键里程碑（3 个）\n1. [日期] 里程碑事件 → 验收标志\n2. ...\n\n### Q1 资源需求\n- 人力: 谁要做什么、是否需要外援\n- 预算: 大致数额（如不确定写\"待估算\"）\n- 工具: 关键工具/平台",
+        "output": "q1_plan",
+        "depends_on": [
+          "quarterly_plan"
+        ]
+      },
+      {
+        "id": "final_okr",
+        "expert": "agency_project-management_project_manager_senior",
+        "task": "整合输出最终 OKR 文档（可直接发团队评审）。\n\n年度目标: {{annual_goal}}\n团队现状: {{team_context}}\n\n现状分析:\n{{situation}}\n\n季度拆解:\n{{quarters}}\n\nQ1 行动方案:\n{{q1_plan}}\n\n输出格式（markdown，可直接复制评审）:\n# 年度 OKR\n\n## Objective\n{{annual_goal}}\n\n## 立项背景\n（从现状分析提炼 1 段，不超过 100 字）\n\n## 关键差距 & 杠杆\n（从现状分析提炼，5 条总数以内）\n\n## 季度 KR 拆解\n（从季度计划转录）\n\n## Q1 详细方案\n（从 Q1 行动方案转录）\n\n## 风险与假设\n（从现状分析的关键假设 + 添加 1-2 条 Q1 执行风险）\n\n## 评审检查清单\n- [ ] KR 是否量化？\n- [ ] 季度间依赖是否清晰？\n- [ ] Q1 行动是否周级别可执行？\n- [ ] 资源是否到位？\n\n⚠️ 只输出上面这份 OKR 文档本身：不要开场白/寒暄、不要\"我改了什么/复盘/修改说明\"、不要向用户提问或请其拍板、不要建议 ao 命令或后续动作、不要\"要我继续吗\"之类收尾。",
+        "output": "okr_document",
+        "depends_on": [
+          "q1_action_plan"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "ops/incident-postmortem",
+    "file": "ops\\incident-postmortem.yaml",
+    "name": "事故复盘",
+    "description": "故障指挥官梳理时间线 → SRE 分析根因 → 项目经理输出改进计划",
+    "category": "ops",
+    "featured": false,
+    "concurrency": 1,
+    "inputs": [
+      {
+        "name": "incident_description",
+        "description": "事故描述（现象、影响范围、持续时间等）",
+        "required": true
+      },
+      {
+        "name": "timeline",
+        "description": "事件时间线（可选，如已有初步记录）",
+        "required": false
+      }
+    ],
+    "steps": [
+      {
+        "id": "timeline_review",
+        "expert": "agency_engineering_engineering_incident_response_commander",
+        "task": "请梳理以下事故的完整时间线和响应过程：\n\n事故描述：{{incident_description}}\n\n已有时间线：{{timeline}}\n\n请输出：\n1. 事件时间线（从发现到恢复，精确到分钟）\n2. 响应过程评估（告警是否及时、响应是否迅速）\n3. 沟通协调记录（谁在什么时间做了什么决策）\n4. 恢复手段及生效时间\n5. 影响评估（受影响用户数、业务损失）\n6. 响应过程中的问题和不足",
+        "output": "timeline_report",
+        "depends_on": []
+      },
+      {
+        "id": "root_cause",
+        "expert": "agency_engineering_engineering_sre",
+        "task": "请根据事件时间线，深入分析事故的根本原因：\n\n## 事件时间线\n{{timeline_report}}\n\n原始事故描述：{{incident_description}}\n\n请分析：\n1. 直接原因（触发事故的具体操作或事件）\n2. 根本原因（为什么会发生，5 Why 分析）\n3. 贡献因素（哪些条件加剧了问题）\n4. 防护缺失（监控、告警、限流等为何未能阻止）\n5. 类似风险排查（其他系统是否有相同隐患）",
+        "output": "root_cause_report",
+        "depends_on": [
+          "timeline_review"
+        ]
+      },
+      {
+        "id": "action_plan",
+        "expert": "agency_project-management_project_manager_senior",
+        "task": "请根据事件时间线和根因分析，输出改进计划和预防措施：\n\n## 事件时间线\n{{timeline_report}}\n\n## 根因分析\n{{root_cause_report}}\n\n请输出：\n1. 短期修复项（1 周内，防止同类事故再次发生）\n2. 中期改进项（1 个月内，增强系统韧性）\n3. 长期优化项（1 季度内，系统性提升）\n4. 每个改进项的负责人角色、优先级、预期完成时间\n5. 流程改进建议（on-call、告警、演练等）\n6. 跟踪与验证机制（如何确认改进已落地）",
+        "output": "improvement_plan",
+        "depends_on": [
+          "root_cause"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "ops/sre-health-check",
+    "file": "ops\\sre-health-check.yaml",
+    "name": "SRE 健康检查",
+    "description": "可靠性 + 性能 + 基础设施三方检查 → SRE 汇总",
+    "category": "ops",
+    "featured": false,
+    "concurrency": 3,
+    "inputs": [
+      {
+        "name": "system_description",
+        "description": "系统描述（架构、技术栈、部署方式、用户规模等）",
+        "required": true
+      },
+      {
+        "name": "current_metrics",
+        "description": "当前监控指标数据（可选，如有可提供）",
+        "required": false
+      }
+    ],
+    "steps": [
+      {
+        "id": "reliability",
+        "expert": "agency_engineering_engineering_sre",
+        "task": "请对以下系统进行可靠性评估：\n\n系统描述：{{system_description}}\n\n当前指标：{{current_metrics}}\n\n请评估：\n1. SLO/SLI 定义是否合理（可用性、延迟、吞吐量）\n2. 错误预算使用情况和策略\n3. 故障模式分析（单点故障、级联故障风险）\n4. 容灾与高可用方案（多活、灾备、自动切换）\n5. 告警策略评估（是否有噪声、是否有盲区）\n6. 可靠性改进建议",
+        "output": "reliability_report",
+        "depends_on": []
+      },
+      {
+        "id": "performance",
+        "expert": "agency_testing_testing_performance_benchmarker",
+        "task": "请对以下系统进行性能基准检查：\n\n系统描述：{{system_description}}\n\n当前指标：{{current_metrics}}\n\n请评估：\n1. 响应时间分布（P50/P90/P99）\n2. 吞吐量与并发承载能力\n3. 资源利用率（CPU、内存、磁盘 I/O、网络）\n4. 性能瓶颈识别（慢查询、热点、资源竞争）\n5. 容量规划建议（当前水位、扩容阈值）\n6. 性能优化建议及预期收益",
+        "output": "performance_report",
+        "depends_on": []
+      },
+      {
+        "id": "infra",
+        "expert": "agency_support_support_infrastructure_maintainer",
+        "task": "请对以下系统进行基础设施健康检查：\n\n系统描述：{{system_description}}\n\n当前指标：{{current_metrics}}\n\n请检查：\n1. 基础设施配置合理性（实例规格、存储、网络）\n2. 安全合规（补丁更新、访问控制、加密）\n3. 备份与恢复策略（RPO/RTO 是否达标）\n4. 成本效率（资源利用率、是否有浪费）\n5. 自动化水平（IaC、CI/CD、自动扩缩容）\n6. 基础设施改进建议",
+        "output": "infra_report",
+        "depends_on": []
+      },
+      {
+        "id": "summary",
+        "expert": "agency_engineering_engineering_sre",
+        "task": "请综合可靠性、性能和基础设施三方面的检查结果，输出系统健康报告：\n\n## 可靠性评估\n{{reliability_report}}\n\n## 性能基准检查\n{{performance_report}}\n\n## 基础设施检查\n{{infra_report}}\n\n系统描述：{{system_description}}\n\n请输出：\n1. 总体健康评分（满分 100 分，含各维度分项）\n2. 风险矩阵（影响 × 概率，标注高危项）\n3. Top 5 优先改进事项（附理由和预期效果）\n4. 各维度详细评分和关键发现\n5. 30/60/90 天改进路线图",
+        "output": "health_report",
+        "depends_on": [
+          "reliability",
+          "performance",
+          "infra"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "ops/weekly-report",
+    "file": "ops\\weekly-report.yaml",
+    "name": "周报/月报生成",
+    "description": "数据整理 → 亮点提炼 → 高管摘要，从原始信息快速生成结构化周报",
+    "category": "ops",
+    "featured": false,
+    "concurrency": 2,
+    "inputs": [
+      {
+        "name": "raw_notes",
+        "description": "本周工作记录（流水账、会议纪要、完成事项等原始素材）",
+        "required": true
+      },
+      {
+        "name": "team",
+        "description": "团队/部门名称",
+        "required": true
+      },
+      {
+        "name": "period",
+        "description": "报告周期（如：2026-W13、3月）",
+        "required": false
+      }
+    ],
+    "steps": [
+      {
+        "id": "organize",
+        "expert": "agency_specialized_specialized_meeting_assistant",
+        "task": "请将以下原始工作记录整理成结构化信息：\n\n团队：{{team}}\n周期：{{period}}\n原始记录：\n{{raw_notes}}\n\n请输出：\n1. **已完成事项**（按重要度排序，每项一句话）\n2. **进行中事项**（进度百分比 + 下一步）\n3. **阻塞/风险项**（原因 + 影响）\n4. **关键数据/指标变化**（如有）\n5. **下周计划**（从记录中推断）",
+        "output": "organized_data",
+        "depends_on": []
+      },
+      {
+        "id": "highlights",
+        "expert": "agency_marketing_marketing_content_creator",
+        "task": "基于以下结构化数据，提炼本周亮点和叙事：\n\n{{organized_data}}\n\n团队：{{team}}\n\n请输出：\n1. **本周一句话总结**（概括最大成果）\n2. **Top 3 亮点**（每个亮点用\"成果 + 价值\"结构，如\"上线 X 功能，预计提升 Y%\"）\n3. **需要关注的风险**（用\"现状 → 影响 → 建议\"结构）\n4. **数据看板**（用表格展示关键指标的本周 vs 上周对比）",
+        "output": "highlights",
+        "depends_on": [
+          "organize"
+        ]
+      },
+      {
+        "id": "final_report",
+        "expert": "agency_support_support_executive_summary_generator",
+        "task": "请生成一份正式的周报，可直接发送给领导：\n\n{{highlights}}\n\n格式要求：\n## {{team}} {{period}}周报\n\n### 一句话总结\n[总结]\n\n### 本周亮点\n[亮点列表]\n\n### 关键指标\n[数据表格]\n\n### 进行中\n[事项列表]\n\n### 风险与阻塞\n[风险列表]\n\n### 下周计划\n[计划列表]\n\n风格：专业简洁，突出成果和价值，避免流水账。",
+        "output": null,
+        "depends_on": [
+          "highlights"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "pitch-deck-outline",
+    "file": "pitch-deck-outline.yaml",
+    "name": "创业 Pitch Deck 大纲",
+    "description": "输入一句话项目，并行输出市场分析 / 商业模式 / 财务预估 → 整合 5 屏 deck 大纲（创始人评审用）",
+    "category": "",
+    "featured": false,
+    "concurrency": 3,
+    "inputs": [
+      {
+        "name": "startup_idea",
+        "description": "项目一句话描述（解决什么问题 + 给谁）",
+        "required": true
+      },
+      {
+        "name": "target_market",
+        "description": "主战场地区",
+        "required": false
+      },
+      {
+        "name": "stage",
+        "description": "融资阶段（影响 deck 侧重）",
+        "required": false
+      }
+    ],
+    "steps": [
+      {
+        "id": "market_analysis",
+        "expert": "agency_product_product_trend_researcher",
+        "task": "分析项目所在市场的痛点和机会。\n\n项目: {{startup_idea}}\n市场: {{target_market}}\n阶段: {{stage}}\n\n输出格式（markdown，不超过 500 字）:\n### 用户痛点（按强度排序）\n1. 痛点 → 现有方案为什么不够\n2. ...\n3. ...\n\n### 市场规模（粗估）\n- TAM（总市场）: 数字 + 估算逻辑（哪怕粗糙也写）\n- SAM（可服务市场）: 数字 + 缩小逻辑\n- SOM（3 年内可拿下）: 数字 + 凭什么\n\n### 时机为什么是现在\n为什么今天做比 3 年前做更可能成（技术/政策/用户习惯任一角度，1-2 句话）\n\n### 主要竞争对手\n| 对手 | 核心打法 | 我们的差异点 |\n|------|---------|------------|",
+        "output": "market",
+        "depends_on": []
+      },
+      {
+        "id": "solution_design",
+        "expert": "agency_product_product_manager",
+        "task": "设计项目的产品/服务方案。\n\n项目: {{startup_idea}}\n市场: {{target_market}}\n\n输出格式（markdown，不超过 500 字）:\n### 核心方案（一句话）\n用户最终拿到的是什么（产品/服务）\n\n### 关键能力（3 个最强）\n1. 能力 → 解决了哪个痛点 → 用户感受\n2. ...\n3. ...\n\n### 产品形态\n- 交付方式（APP/Web/SaaS/线下/其他）\n- 用户使用频率（每天/每周/按需）\n- 关键体验路径（用户从注册到产生价值的最短路径，3-5 步）\n\n### 技术/资源壁垒\n为什么这个方案别人不能轻易复制（数据/网络效应/品牌/技术任一角度）",
+        "output": "solution",
+        "depends_on": []
+      },
+      {
+        "id": "business_model",
+        "expert": "agency_specialized_specialized_pricing_optimizer",
+        "task": "设计项目的商业模式和定价策略。\n\n项目: {{startup_idea}}\n市场: {{target_market}}\n阶段: {{stage}}\n\n输出格式（markdown，不超过 400 字）:\n### 收入模式\n- 主要收入来源（如订阅/交易抽成/广告/Saas/硬件）\n- 一句话单笔收入逻辑（\"用户每月付 X 元，因为 Y\"）\n\n### 定价（建议初期）\n| 套餐 | 价格 | 包含 | 目标人群 |\n|------|-----|------|---------|\n\n### 单位经济（粗估）\n- 获客成本 CAC（推测）: 多少元 + 来源\n- 用户生命周期价值 LTV（推测）: 多少元 + 推算逻辑\n- LTV/CAC 比例: X\n\n### 增长引擎\n产品有没有内生的增长机制（推荐 / 内容 / 网络效应 / 都没有靠投放），一句话说明",
+        "output": "business",
+        "depends_on": []
+      },
+      {
+        "id": "financial_projection",
+        "expert": "agency_finance_finance_financial_forecaster",
+        "task": "给项目做 3 年简易财务预估。\n\n项目: {{startup_idea}}\n阶段: {{stage}}\n\n要求:\n- 数字可以是粗估（标 \"粗估\" 即可）\n- 假设条件要写出来，方便投资人质疑\n- 不要假装精确，但要逻辑自洽\n\n输出格式（markdown）:\n### 关键假设\n1. 假设 → 数值\n2. ...\n（3-5 条最关键的）\n\n### 3 年预估\n| 维度 | 第 1 年 | 第 2 年 | 第 3 年 |\n|------|--------|--------|--------|\n| 用户数 | | | |\n| 付费用户数 | | | |\n| 月经常性收入 MRR | | | |\n| 团队规模 | | | |\n| 月度烧钱 | | | |\n| 现金跑道（月） | | | |\n\n### 资金需求\n本轮融资多少（{{stage}}）→ 用在哪 → 能撑多久 → 关键里程碑",
+        "output": "financials",
+        "depends_on": []
+      },
+      {
+        "id": "deck_outline",
+        "expert": "agency_product_product_manager",
+        "task": "整合所有材料，输出 5 屏（每屏 1 页）的 pitch deck 大纲。\n\n项目: {{startup_idea}}\n市场分析:\n{{market}}\n\n产品方案:\n{{solution}}\n\n商业模式:\n{{business}}\n\n财务预估:\n{{financials}}\n\n要求:\n- 每屏只讲一件事，2-3 句话能说完\n- 5 屏顺序: 问题 → 方案 → 市场 → 商业模式 → 财务/融资\n- 每屏给\"标题 + 主信息 + 视觉建议\"三部分\n- 数据从前面材料中转录，不要新编\n\n输出格式（markdown）:\n# Pitch Deck 大纲：{{startup_idea}}\n\n## Slide 1: 问题\n**标题**: 一句话点题\n**主信息（≤ 3 行）**: ...\n**视觉建议**: 用什么图/数据让评审一眼相信痛点真实存在\n\n## Slide 2: 方案\n...\n\n## Slide 3: 市场\n...\n\n## Slide 4: 商业模式\n...\n\n## Slide 5: 财务 & 融资\n...\n\n## 附录建议（可选 backup slide）\n- 团队介绍\n- 竞争对比表\n- 已有进展（数据 / 用户 / 合作）\n\n## Pitch 演讲节奏建议\n（5 屏总共讲多久，哪几屏要重点停留）\n\n⚠️ 只输出上面这份 deck 大纲本身：不要开场白/寒暄、不要\"我改了什么/复盘/修改说明\"、不要向用户提问或请其拍板、不要建议 ao 命令或后续动作、不要\"要我继续吗\"之类收尾。",
+        "output": "pitch_deck",
+        "depends_on": [
+          "market_analysis",
+          "solution_design",
+          "business_model",
+          "financial_projection"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "product-launch-comms",
+    "file": "product-launch-comms.yaml",
+    "name": "产品发布物料生成",
+    "description": "输入新产品/功能简介，并行产出发布通稿 + 社交短文 + 客户邮件 → 整合发布物料包",
+    "category": "",
+    "featured": false,
+    "concurrency": 3,
+    "inputs": [
+      {
+        "name": "product_name",
+        "description": "产品/功能名",
+        "required": true
+      },
+      {
+        "name": "product_summary",
+        "description": "一句话核心价值（用户角度，不要技术术语）",
+        "required": true
+      },
+      {
+        "name": "key_features",
+        "description": "3-5 个关键能力，每个一句话（换行分隔）",
+        "required": true
+      },
+      {
+        "name": "launch_audience",
+        "description": "目标受众",
+        "required": false
+      }
+    ],
+    "steps": [
+      {
+        "id": "positioning",
+        "expert": "agency_marketing_marketing_social_media_strategist",
+        "task": "基于产品信息，输出统一的发布定位（所有物料都基于这一份）。\n\n产品: {{product_name}}\n一句话价值: {{product_summary}}\n关键能力:\n{{key_features}}\n受众: {{launch_audience}}\n\n输出格式（markdown，不超过 500 字）:\n### 核心 Hook（一句话钩子）\n最能让目标受众停下来的那一句话。\n\n### 三个最强卖点（按打动力排序）\n1. 卖点 → 替代了什么旧痛苦 / 解锁了什么新可能\n2. ...\n3. ...\n\n### 产品口吻\n用 3 个形容词定位语气（如\"专业、简洁、稍带克制的兴奋\"）\n\n### 目标行动\n读完这次发布，受众应该做什么（点链接/试用/分享/其他）",
+        "output": "positioning",
+        "depends_on": []
+      },
+      {
+        "id": "press_release",
+        "expert": "agency_marketing_marketing_content_creator",
+        "task": "基于定位写一篇可投递媒体或发到公司博客的发布通稿。\n\n产品: {{product_name}}\n产品价值: {{product_summary}}\n关键能力:\n{{key_features}}\n统一定位:\n{{positioning}}\n\n要求:\n- 800-1200 字\n- 结构: 钩子段 → 解决了什么 → 产品能力（每个能力一段）→ 用户故事 / 案例（编 1 个合理的）→ 上线信息（CTA）\n- 标题用定位中的\"核心 Hook\"改写成媒体风格\n- 不要写\"在 AI 时代\"、\"新一代\"、\"颠覆性\"这种空话\n- 直接输出可发布的 markdown 文章",
+        "output": "press",
+        "depends_on": [
+          "positioning"
+        ]
+      },
+      {
+        "id": "social_short",
+        "expert": "agency_marketing_marketing_social_media_strategist",
+        "task": "基于定位写 3 条不同平台的社交短文。\n\n产品: {{product_name}}\n统一定位:\n{{positioning}}\n\n输出格式（markdown）:\n### 微博 / 推特（≤ 140 字）\n（直接发的内容，含 emoji，不要标记 #标签 留位置让用户自己加）\n\n### LinkedIn / 朋友圈（≤ 300 字）\n（专业语气，3 段：钩子 / 价值 / CTA）\n\n### 小红书风格（≤ 250 字）\n（第一人称体验，2-3 个 emoji，结尾问句引互动）\n\n每条都要从定位中的\"核心 Hook\"出发，不要堆能力列表。",
+        "output": "socials",
+        "depends_on": [
+          "positioning"
+        ]
+      },
+      {
+        "id": "customer_email",
+        "expert": "agency_marketing_marketing_content_creator",
+        "task": "基于定位写一封发给老用户的产品发布邮件。\n\n产品: {{product_name}}\n产品价值: {{product_summary}}\n统一定位:\n{{positioning}}\n\n要求:\n- 收件人是已经使用我们产品的老用户（已注册），所以不要重新介绍公司\n- 250-400 字\n- 结构: 称呼（\"嗨\"，不要\"尊敬的\"）→ 一句话钩子 → 这次更新带来什么实际改变 → 怎么开始用（具体步骤）→ 反馈渠道\n- 标题（subject line）用定位 hook 改写，加上\"NEW:\" 或 emoji 让收件箱里能被看见\n- 直接输出邮件内容（含 Subject 行）",
+        "output": "email",
+        "depends_on": [
+          "positioning"
+        ]
+      },
+      {
+        "id": "launch_pack",
+        "expert": "agency_marketing_marketing_content_creator",
+        "task": "把所有物料整合成一份\"发布日物料包\"，方便市场/运营/客服当天取用。\n\n统一定位:\n{{positioning}}\n\n发布通稿:\n{{press}}\n\n社交短文:\n{{socials}}\n\n老用户邮件:\n{{email}}\n\n输出格式（markdown，单文档可直接发）:\n# 产品发布物料包：{{product_name}}\n\n## 发布定位（共享语言）\n（摘录定位中的核心 Hook 和三个卖点，30 行内）\n\n## 渠道物料（按使用场景分组）\n\n### 媒体投放 / 公司博客\n（直接转录通稿）\n\n### 社交渠道\n（直接转录三条社交短文）\n\n### 老用户邮件\n（直接转录邮件）\n\n## 发布日检查清单\n- [ ] 通稿审核（公关/法务）\n- [ ] 社交短文图片素材准备\n- [ ] 邮件 EDM 列表确认\n- [ ] 客服回应口径同步\n- [ ] 发布时间确认（建议工作日上午）",
+        "output": "full_pack",
+        "depends_on": [
+          "press_release",
+          "social_short",
+          "customer_email"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "product-review",
+    "file": "product-review.yaml",
+    "name": "产品需求评审",
+    "description": "多角色协作评审 PRD 文档 — 产品经理分析需求，架构师评估技术，设计师评估体验，最后汇总结论",
+    "category": "",
+    "featured": false,
+    "concurrency": 2,
+    "inputs": [
+      {
+        "name": "prd_content",
+        "description": "PRD 文档内容",
+        "required": true
+      }
+    ],
+    "steps": [
+      {
+        "id": "analyze",
+        "expert": "agency_product_product_manager",
+        "task": "分析以下 PRD 文档，输出结构化评审。\n\nPRD 内容：\n{{prd_content}}\n\n输出格式（markdown）：\n### 核心需求（按优先级 P0/P1/P2 排列）\n- P0: ...\n- P1: ...\n\n### 目标用户画像\n用户类型 | 核心痛点 | 使用场景\n\n### 风险与不确定性\n- [高/中/低] 风险描述 → 建议的验证方式\n\n### 关键成功指标\n- 指标名 | 目标值 | 衡量方式",
+        "output": "requirements",
+        "depends_on": []
+      },
+      {
+        "id": "tech_review",
+        "expert": "agency_engineering_engineering_software_architect",
+        "task": "基于以下需求分析，进行技术可行性评估。\n\n需求分析：\n{{requirements}}\n\n输出格式（markdown）：\n### 技术可行性评分：[高/中/低]\n\n### 推荐技术架构\n简要描述核心组件和交互方式（3-5 句话）\n\n### 开发复杂度\n| 模块 | 复杂度(1-5) | 预估人天 | 主要挑战 |\n\n### 技术风险\n- [高/中/低] 风险描述 → 缓解方案",
+        "output": "tech_report",
+        "depends_on": [
+          "analyze"
+        ]
+      },
+      {
+        "id": "design_review",
+        "expert": "agency_design_design_ux_researcher",
+        "task": "基于以下需求分析，进行用户体验评估。\n\n需求分析：\n{{requirements}}\n\n输出格式（markdown）：\n### UX 风险评估\n- [高/中/低] 风险描述 → 影响范围\n\n### 可用性问题\n- 问题 → 建议的解决方案\n\n### 设计建议（Top 3）\n1. 建议 → 预期效果\n\n### 需验证假设\n- 假设 → 建议的验证方法（用户访谈/A-B测试/原型测试）",
+        "output": "design_report",
+        "depends_on": [
+          "analyze"
+        ]
+      },
+      {
+        "id": "final_summary",
+        "expert": "agency_product_product_manager",
+        "task": "综合技术和设计反馈，输出最终评审结论。\n\n## 技术评估\n{{tech_report}}\n\n## 设计评估\n{{design_report}}\n\n输出格式（markdown）：\n### 评审结论：[✅ 通过 / ⚠️ 需修改 / ❌ 不通过]\n\n### 必须解决（合并前）\n1. [来源: 技术/设计] 问题 → 建议方案\n\n### 建议改进（可后续迭代）\n1. 问题 → 优先级\n\n### 下一步行动\n- [ ] 行动项 | 负责方 | 建议时间\n\n⚠️ 只输出上面这份评审报告本身：不要开场白/寒暄、不要\"我改了什么/复盘/修改说明\"、不要向用户提问或请其拍板、不要建议 ao 命令或后续动作、不要\"要我继续吗\"之类收尾。",
+        "output": "final_report",
+        "depends_on": [
+          "tech_review",
+          "design_review"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "resume-and-interview-prep",
+    "file": "resume-and-interview-prep.yaml",
+    "name": "简历优化与面试准备",
+    "description": "简历诊断 → 简历重写 + 面试问题预测 + STAR 答题框架",
+    "category": "",
+    "featured": false,
+    "concurrency": 3,
+    "inputs": [
+      {
+        "name": "resume_content",
+        "description": "当前简历内容（纯文本粘贴即可，支持 @文件）",
+        "required": true
+      },
+      {
+        "name": "target_role",
+        "description": "目标岗位（如：字节跳动高级产品经理 / 腾讯后端开发）",
+        "required": true
+      },
+      {
+        "name": "job_description",
+        "description": "目标岗位 JD（可选，越具体越好）",
+        "required": false
+      }
+    ],
+    "steps": [
+      {
+        "id": "diagnose",
+        "expert": "agency_hr_hr_recruiter",
+        "task": "作为招聘过 {{target_role}} 的资深 HR，诊断以下简历的问题。\n\n目标岗位: {{target_role}}\nJD 参考: {{job_description}}\n\n简历内容:\n{{resume_content}}\n\n输出（300-400 字）:\n1. **硬伤 Top 3**: 最影响通过初筛的 3 个问题（每个 1 句话 + 为什么）\n2. **优势盘点**: 简历里最有价值的 2-3 个点（应当被放大）\n3. **ATS 关键词缺失**: 目标岗位必备但简历未提及的关键词（10 个以内）\n4. **简历整体得分**: 按招聘官视角打 0-10 分，并说明扣分点",
+        "output": "diagnosis",
+        "depends_on": []
+      },
+      {
+        "id": "rewrite",
+        "expert": "agency_hr_hr_recruiter",
+        "task": "根据诊断结果重写简历。\n\n诊断:\n{{diagnosis}}\n\n原简历:\n{{resume_content}}\n\n目标岗位: {{target_role}}\n\n重写要求:\n- 每条工作经历改写成 STAR 结构的 bullet（用数字和结果说话）\n- 补齐 ATS 关键词，但不要堆砌\n- 砍掉与目标岗位无关的内容\n- 技能栏按目标岗位重排序\n- 输出 markdown 格式的完整简历，直接可用",
+        "output": "new_resume",
+        "depends_on": [
+          "diagnose"
+        ]
+      },
+      {
+        "id": "predict_questions",
+        "expert": "agency_hr_hr_recruiter",
+        "task": "预测 {{target_role}} 面试中高概率会问的问题。\n\n参考诊断里的\"硬伤\"和\"优势\"，尤其要覆盖硬伤的追问:\n{{diagnosis}}\n\nJD:\n{{job_description}}\n\n输出 10 个问题，按以下 4 类各 2-3 个:\n- **基础能力类**: 岗位硬技能\n- **项目深挖类**: 简历中最可能被刨根问底的点\n- **硬伤追问类**: 针对诊断里的硬伤，HR 会怎么问\n- **软素质类**: 团队协作、抗压、冲突处理\n\n每个问题注明「考察意图」。",
+        "output": "interview_questions",
+        "depends_on": [
+          "diagnose"
+        ]
+      },
+      {
+        "id": "star_answers",
+        "expert": "agency_hr_hr_performance_reviewer",
+        "task": "为下面每个面试问题写一个 STAR 答题框架（不是模板答案，是答题思路）。\n\n问题列表:\n{{interview_questions}}\n\n候选人背景:\n{{new_resume}}\n\n每个问题输出:\n- **S (情境)**: 要提及的背景（1 句）\n- **T (任务)**: 要凸显的责任（1 句）\n- **A (行动)**: 应该讲的 2-3 个关键动作\n- **R (结果)**: 要突出的数字或成果\n- **⚠️ 避雷**: 这题最容易踩的 1 个坑\n\n保持简洁，每题 5-6 行。",
+        "output": "final_prep",
+        "depends_on": [
+          "rewrite",
+          "predict_questions"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "story-creation",
+    "file": "story-creation.yaml",
+    "name": "短篇小说创作",
+    "description": "从创意到成稿：叙事学家设计结构 → 心理学家塑造人物 + 叙事设计师构建冲突 → 内容创作者执笔成稿",
+    "category": "",
+    "featured": false,
+    "concurrency": 2,
+    "inputs": [
+      {
+        "name": "premise",
+        "description": "故事创意/主题/一句话梗概",
+        "required": true
+      },
+      {
+        "name": "style",
+        "description": "风格偏好（如：悬疑、温情、荒诞、科幻）",
+        "required": false
+      },
+      {
+        "name": "length",
+        "description": "目标字数（默认 800）",
+        "required": false
+      }
+    ],
+    "steps": [
+      {
+        "id": "story_structure",
+        "expert": "agency_academic_academic_narratologist",
+        "task": "请为以下创意设计短篇小说的叙事结构。\n\n创意：{{premise}}\n风格：{{style}}\n\n要求输出（用 markdown 格式）：\n1. **核心冲突**：一句话概括\n2. **叙事视角**：人称 + 视角人物 + 是否为不可靠叙述者\n3. **结构安排**：\n   - 开头钩子（用一个画面/细节抓住读者）\n   - 发展（2-3 个递进事件）\n   - 高潮（情感最大张力点）\n   - 结尾（收束方式：开放/闭合/回环）\n4. **叙事技巧**：选 1-2 种最适合的（倒叙/留白/反转/双线等）\n5. **核心情感/主题**：一句话\n\n保持简洁，每项不超过 2 句话。",
+        "output": "structure",
+        "depends_on": []
+      },
+      {
+        "id": "character_design",
+        "expert": "agency_academic_academic_psychologist",
+        "task": "基于以下叙事结构，设计主要人物（2-3 个）。\n\n{{structure}}\n\n每个人物输出（用 markdown 格式）：\n### [人物名]（身份，年龄）\n- **一句话**：用一句话概括这个人物\n- **核心动机**：想要什么\n- **内心矛盾**：害怕什么 / 不愿面对什么\n- **记忆点**：一个让读者记住的具体细节或习惯\n- **弧线**：从 [起点状态] → [终点状态]\n\n人物要真实可信，避免脸谱化。配角也需要独立动机。",
+        "output": "characters",
+        "depends_on": [
+          "story_structure"
+        ]
+      },
+      {
+        "id": "conflict_design",
+        "expert": "agency_game-development_narrative_designer",
+        "task": "基于以下叙事结构，设计具体的冲突场景。\n\n{{structure}}\n\n输出（用 markdown 格式）：\n### 开头钩子\n用 3-5 句话描绘具体画面（环境、动作、感官细节）\n\n### 核心冲突场景\n写出 3-5 句关键对话（要有潜台词和张力，不是直白表达）\n\n### 高潮转折\n描述情感最大张力时刻的具体画面\n\n### 结尾留白\n最后一个画面或声音（用一个意象收束）\n\n要求：具体、有画面感，不要抽象概括。每个场景像电影分镜一样可视化。",
+        "output": "scenes",
+        "depends_on": [
+          "story_structure"
+        ]
+      },
+      {
+        "id": "write_story",
+        "expert": "agency_marketing_marketing_content_creator",
+        "task": "根据以下素材，写一篇完整的短篇小说（约 {{length}} 字）。\n\n## 叙事结构\n{{structure}}\n\n## 人物设定\n{{characters}}\n\n## 关键场景\n{{scenes}}\n\n写作要求：\n- 直接输出小说正文，不要标题、说明或元评论\n- 第一句话就要制造悬念或画面感\n- 对话自然口语化，每个人物有独特的说话方式\n- 用具体感官细节（声音、气味、触感）代替形容词堆砌\n- 叙事节奏：短句加速紧张感，长句放慢沉浸感\n- 结尾留有余韵，让读者读完后还会想一想",
+        "output": "story",
+        "depends_on": [
+          "character_design",
+          "conflict_design"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "strategy/business-plan",
+    "file": "strategy\\business-plan.yaml",
+    "name": "商业计划书",
+    "description": "趋势研究 → 财务预测 + 产品规划 → 高管摘要，生成一份完整的商业计划书",
+    "category": "strategy",
+    "featured": false,
+    "concurrency": 2,
+    "inputs": [
+      {
+        "name": "idea",
+        "description": "商业创意/项目简介（一段话描述你要做什么）",
+        "required": true
+      },
+      {
+        "name": "stage",
+        "description": "项目阶段（如：种子轮融资、天使轮、内部立项、新产品线）",
+        "required": false
+      },
+      {
+        "name": "market",
+        "description": "目标市场（如：中国中小企业、东南亚电商、全球开发者）",
+        "required": false
+      }
+    ],
+    "steps": [
+      {
+        "id": "market_research",
+        "expert": "agency_product_product_trend_researcher",
+        "task": "请为以下商业创意进行市场研究：\n\n创意：{{idea}}\n目标市场：{{market}}\n项目阶段：{{stage}}\n\n请输出：\n1. **市场规模**（TAM/SAM/SOM 三层分析）\n2. **行业趋势**（3-5 个驱动增长的趋势）\n3. **竞争格局**（现有玩家、市场集中度、进入壁垒）\n4. **目标客群画像**（早期用户是谁、痛点是什么、付费意愿如何）\n5. **政策环境**（利好/风险）",
+        "output": "market_report",
+        "depends_on": []
+      },
+      {
+        "id": "financial_model",
+        "expert": "agency_finance_finance_financial_forecaster",
+        "task": "基于以下市场研究，构建财务预测模型：\n\n{{market_report}}\n\n商业创意：{{idea}}\n项目阶段：{{stage}}\n\n请输出：\n1. **商业模式**（收入来源、定价策略、单位经济模型）\n2. **3 年财务预测**（表格：收入、成本、毛利、净利，按季度）\n3. **关键假设**（客户获取成本、转化率、留存率、ARPU 等）\n4. **资金需求**（需要多少钱、怎么花、能撑多久）\n5. **盈亏平衡分析**（什么时候开始赚钱）",
+        "output": "financial_plan",
+        "depends_on": [
+          "market_research"
+        ]
+      },
+      {
+        "id": "product_roadmap",
+        "expert": "agency_product_product_manager",
+        "task": "基于以下市场研究，规划产品路线图：\n\n{{market_report}}\n\n商业创意：{{idea}}\n\n请输出：\n1. **核心价值主张**（一句话：我们为谁解决什么问题）\n2. **MVP 定义**（最小可行产品包含哪些功能，不包含哪些）\n3. **产品路线图**（3 个阶段，每阶段的目标、功能、里程碑）\n4. **竞争壁垒**（技术/数据/网络效应/品牌，哪些能构建护城河）\n5. **团队需求**（各阶段需要什么样的人）",
+        "output": "product_plan",
+        "depends_on": [
+          "market_research"
+        ]
+      },
+      {
+        "id": "executive_summary",
+        "expert": "agency_support_support_executive_summary_generator",
+        "task": "请将以下内容整合为一份完整的商业计划书：\n\n## 市场研究\n{{market_report}}\n\n## 财务预测\n{{financial_plan}}\n\n## 产品规划\n{{product_plan}}\n\n输出格式（投资人/决策者阅读）：\n\n# [项目名称] 商业计划书\n\n## 执行摘要（1 页，最重要）\n- 一句话描述\n- 市场机会\n- 商业模式\n- 团队优势\n- 融资需求和用途\n\n## 市场分析\n[整合市场研究]\n\n## 产品方案\n[整合产品规划]\n\n## 财务计划\n[整合财务预测]\n\n## 里程碑与时间表\n[从产品路线图提取]\n\n## 风险与应对\n[从各部分提取风险项，给出应对策略]\n\n风格：专业、数据驱动、适合给投资人/领导审阅。",
+        "output": null,
+        "depends_on": [
+          "financial_model",
+          "product_roadmap"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "tech-blog",
+    "file": "tech-blog.yaml",
+    "name": "技术博客创作",
+    "description": "输入一句话主题，自动完成趋势调研 → 大纲 → 正文 → 润色，输出可直接发布的技术博客",
+    "category": "",
+    "featured": false,
+    "concurrency": 2,
+    "inputs": [
+      {
+        "name": "topic",
+        "description": "博客主题（一句话），如：用 Rust 重写 Python 热点函数的实战经验",
+        "required": true
+      },
+      {
+        "name": "audience",
+        "description": "目标读者画像",
+        "required": false
+      }
+    ],
+    "steps": [
+      {
+        "id": "research",
+        "expert": "agency_product_product_trend_researcher",
+        "task": "围绕主题做调研，输出技术博客的核心论点和支撑材料。\n\n主题: {{topic}}\n目标读者: {{audience}}\n\n输出格式（markdown，不超过 600 字）:\n### 核心论点（3 个，按重要性排序）\n1. 论点 → 为什么读者会关心\n2. ...\n3. ...\n\n### 关键事实/数据\n- 事实/数据 → 来源类型（论文/官方文档/常识/经验）\n\n### 容易踩的坑\n- 坑 → 一句话规避方法\n\n### 推荐角度\n最适合切入的写作角度（一句话）。",
+        "output": "research_brief",
+        "depends_on": []
+      },
+      {
+        "id": "outline",
+        "expert": "agency_engineering_engineering_technical_writer",
+        "task": "基于以下调研，搭建博客大纲。\n\n调研:\n{{research_brief}}\n\n主题: {{topic}}\n\n输出格式（markdown，不超过 400 字）:\n### 标题（3 个候选，按吸引力排序）\n1. ...\n2. ...\n3. ...\n\n### 文章大纲（5-7 节）\n1. 节标题 → 一句话本节要点\n2. ...\n\n### 写作风格定位\n语气、节奏、深度 一句话指引（如\"先讲故事再上代码，避免论文腔\"）",
+        "output": "outline_doc",
+        "depends_on": [
+          "research"
+        ]
+      },
+      {
+        "id": "draft",
+        "expert": "agency_engineering_engineering_senior_developer",
+        "task": "基于调研和大纲，写出完整博客正文（包含代码示例）。\n\n调研:\n{{research_brief}}\n\n大纲:\n{{outline_doc}}\n\n要求:\n- 选大纲第一个标题\n- 每节 200-400 字，节内逻辑紧凑\n- 必须包含至少 1 段可直接运行的代码示例（带注释）\n- 不要写\"在本文中我们将\"这种 AI 套话\n- 直接给读者价值，避免泛泛而谈\n- 总字数 1500-2500 字",
+        "output": "blog_draft",
+        "depends_on": [
+          "research",
+          "outline"
+        ]
+      },
+      {
+        "id": "polish",
+        "expert": "agency_engineering_engineering_technical_writer",
+        "task": "对以下博客做最终润色，输出可直接发布的版本。\n\n原稿:\n{{blog_draft}}\n\n润色要求:\n- 删掉 AI 套话（\"综上所述\"、\"在本文中\"、\"让我们一起\"等）\n- 简化冗长句式\n- 检查代码示例是否可运行（syntax 错误就修正并标注 \"// 修正\"）\n- 标题用大纲第一个候选\n- 在文末加一段\"延伸阅读\"（3 条相关概念，不需要 URL）\n- 保留所有原稿的核心论点和数据，不要漏内容\n\n直接输出润色后的完整 markdown 博客（含标题）。\n\n⚠️ 只输出博客成品本身：不要开场白/寒暄、不要\"我改了什么/复盘/修改说明\"、不要向用户提问或请其拍板、不要建议 ao 命令或后续动作、不要\"要我继续吗\"之类收尾。",
+        "output": "final_blog",
+        "depends_on": [
+          "draft"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "xiaohongshu-viral-post",
+    "file": "xiaohongshu-viral-post.yaml",
+    "name": "小红书爆款笔记创作",
+    "description": "一句话主题 → 策略分析 + 文案撰写 + SEO 标题 + 整合成稿",
+    "category": "",
+    "featured": false,
+    "concurrency": 3,
+    "inputs": [
+      {
+        "name": "topic",
+        "description": "笔记主题（如：秋季穿搭技巧 / 职场新人避坑指南）",
+        "required": true
+      },
+      {
+        "name": "target_audience",
+        "description": "目标人群（如：25-35 岁女性白领，可选）",
+        "required": false
+      }
+    ],
+    "steps": [
+      {
+        "id": "strategy",
+        "expert": "agency_marketing_marketing_xiaohongshu_specialist",
+        "task": "围绕主题「{{topic}}」做爆款策略分析，目标人群：{{target_audience}}。\n\n输出结构（300-400 字）:\n1. **选题角度**：3 个具体的切入角度，每个说明爆款潜力\n2. **情绪钩子**：应该激发用户什么情绪（共鸣 / 焦虑 / 好奇 / 获得感）\n3. **内容骨架**：建议的内容结构（开头钩子→主体价值→结尾互动）\n4. **互动设计**：让用户评论/收藏的 1 个具体触发点",
+        "output": "strategy",
+        "depends_on": []
+      },
+      {
+        "id": "copy",
+        "expert": "agency_marketing_marketing_content_creator",
+        "task": "根据策略写一篇小红书正文（500-700 字）。\n\n策略要点：\n{{strategy}}\n\n正文要求：\n- 开头 1 句话抓人（不要寒暄、不要自我介绍）\n- 用\"我\"视角讲亲身经历或观察，真实感\n- 分 3-5 个小节，每节有明确价值点\n- 夹杂 emoji 让视觉轻盈（不要堆砌）\n- 结尾 1 句引导评论/收藏",
+        "output": "post_body",
+        "depends_on": [
+          "strategy"
+        ]
+      },
+      {
+        "id": "title",
+        "expert": "agency_marketing_marketing_baidu_seo_specialist",
+        "task": "围绕主题「{{topic}}」和策略要点，产出:\n\n1. **5 个候选标题**（每个 ≤20 字）：\n   - 至少 2 个带数字\n   - 至少 1 个带对比反差\n   - 至少 1 个带结果承诺\n2. **推荐标题**：从 5 个里选 1 个最可能爆的，说明理由\n3. **10 个话题标签**：按搜索量和相关性排序（#xxx 格式）\n\n参考策略：\n{{strategy}}",
+        "output": "title_and_tags",
+        "depends_on": [
+          "strategy"
+        ]
+      },
+      {
+        "id": "final",
+        "expert": "agency_marketing_marketing_content_creator",
+        "task": "把下面内容整合成一篇可以直接发布的小红书笔记。\n\n标题和标签：\n{{title_and_tags}}\n\n正文：\n{{post_body}}\n\n输出格式（严格按此结构）:\n```\n【标题】：<选用推荐标题>\n\n【正文】：\n<完整正文，可微调以适配标题>\n\n【话题标签】：\n<10 个标签，每个前面加 #，用空格分隔>\n\n【发布建议】：\n<2-3 行，包含建议发布时间、是否配图、评论区引导语>\n```",
+        "output": "final_post",
+        "depends_on": [
+          "copy",
+          "title"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "一人公司-做产品",
+    "file": "一人公司-做产品.yaml",
+    "name": "一人公司·做产品",
+    "description": "你出想法，AI 团队出货：产品经理写 PRD、架构师定方案、工程师排计划，老板（你）拿到能直接开工的启动包",
+    "category": "一人公司",
+    "featured": true,
+    "concurrency": 2,
+    "inputs": [
+      {
+        "name": "idea",
+        "description": "你的产品想法（如：帮自由职业者自动记账开发票的小工具）",
+        "required": true
+      }
+    ],
+    "steps": [
+      {
+        "id": "ceo_brief",
+        "expert": "agency_strategy_nexus_strategy",
+        "task": "你是这家一人公司的 CEO。创始人的想法：{{idea}}\n\n给团队下达开工简报：\n1. 产品一句话定位\n2. 目标用户与核心痛点\n3. 这一版只做什么、坚决不做什么（范围栅栏）\n4. 四周后的验收画面\n\n像晨会讲话一样简洁有力，说人话。",
+        "output": "brief",
+        "depends_on": []
+      },
+      {
+        "id": "prd",
+        "expert": "agency_product_product_manager",
+        "task": "老板的开工简报：{{brief}}\n\n作为产品经理，输出 MVP 的 PRD：\n1. 用户画像与使用场景（具体到人、时间、动机）\n2. 核心功能 3 个（每个写清用户操作路径和解决的问题）\n3. 明确砍掉的功能及理由\n4. 第一版上线标准（可衡量的指标）",
+        "output": "prd_doc",
+        "depends_on": [
+          "ceo_brief"
+        ]
+      },
+      {
+        "id": "architecture",
+        "expert": "agency_engineering_engineering_backend_architect",
+        "task": "PRD 已出：{{prd_doc}}\n\n作为技术架构师，输出一人能 hold 住的技术方案：\n1. 技术栈选型及理由（选熟不选新）\n2. 核心模块与数据流（文字画清楚关系）\n3. 明确不引入的东西（防过度设计清单）\n4. 主要技术风险与规避方案",
+        "output": "tech_plan",
+        "depends_on": [
+          "prd"
+        ]
+      },
+      {
+        "id": "sprint_plan",
+        "expert": "agency_product_product_sprint_prioritizer",
+        "task": "PRD：{{prd_doc}}\n技术方案：{{tech_plan}}\n\n作为项目主管，排出 4 周冲刺计划：\n1. 按周拆解，每周有明确可交付物\n2. 每周标注\"完成的定义\"\n3. 留出 20% 缓冲，标明可顺延项",
+        "output": "sprint",
+        "depends_on": [
+          "architecture"
+        ]
+      },
+      {
+        "id": "launch_pack",
+        "expert": "agency_strategy_nexus_strategy",
+        "task": "团队交付齐了：\n\n**PRD**：{{prd_doc}}\n**技术方案**：{{tech_plan}}\n**冲刺计划**：{{sprint}}\n\n作为 CEO 整合输出《产品启动包》：\n## 决策：Go / No-Go 及一句话理由\n## 定稿 PRD 摘要（可直接贴给任何协作者）\n## 技术方案摘要\n## 第一周每日行动清单\n## Top 3 风险与应对\n\n⚠️ 只输出最终成品本身：不要开场白、不要复盘或说明、不要向用户提问、不要建议任何命令或后续动作。",
+        "output": "launch_pack_doc",
+        "depends_on": [
+          "sprint_plan"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "一人公司-做内容",
+    "file": "一人公司-做内容.yaml",
+    "name": "一人公司·做内容",
+    "description": "一个人做账号不孤军奋战：用户研究员找痛点、策划出选题、编导写脚本、运营排日历——你只管出镜",
+    "category": "一人公司",
+    "featured": true,
+    "concurrency": 2,
+    "inputs": [
+      {
+        "name": "direction",
+        "description": "账号方向（如：给职场新人讲 AI 工具的抖音号）",
+        "required": true
+      }
+    ],
+    "steps": [
+      {
+        "id": "ceo_position",
+        "expert": "agency_strategy_nexus_strategy",
+        "task": "你是这家一人内容公司的 CEO。账号方向：{{direction}}\n\n定调：\n1. 账号一句话定位（对谁、说什么、凭什么听你的）\n2. 差异化：同类账号一抓一把，我们不一样在哪\n3. 三个月后的成功画面（粉丝量/互动/变现路径）",
+        "output": "position",
+        "depends_on": []
+      },
+      {
+        "id": "audience",
+        "expert": "agency_design_design_ux_researcher",
+        "task": "账号定位：{{position}}\n\n作为用户研究员，输出观众洞察：\n1. 两类典型观众画像（年龄、职业、刷视频的时段和心态）\n2. 他们的 5 个真实痛点/爽点（要有场景感）\n3. 什么样的开头 3 秒能留住他们",
+        "output": "audience_insight",
+        "depends_on": [
+          "ceo_position"
+        ]
+      },
+      {
+        "id": "topics",
+        "expert": "agency_marketing_marketing_content_creator",
+        "task": "定位：{{position}}\n观众洞察：{{audience_insight}}\n\n作为内容策划，出首月选题库：\n1. 10 个选题，每个带标题钩子（观众为什么点进来）\n2. 每个选题标注类型（干货/共鸣/争议/热点）\n3. 标注前 3 条冷启动选题及理由",
+        "output": "topic_list",
+        "depends_on": [
+          "audience"
+        ]
+      },
+      {
+        "id": "script",
+        "expert": "agency_marketing_marketing_douyin_strategist",
+        "task": "选题库：{{topic_list}}\n\n作为编导，把冷启动第 1 条选题写成完整脚本：\n1. 逐句口播稿（含开头 3 秒钩子）\n2. 分镜提示（画面/字幕/节奏）\n3. 时长控制在 60 秒内",
+        "output": "first_script",
+        "depends_on": [
+          "topics"
+        ]
+      },
+      {
+        "id": "calendar",
+        "expert": "agency_marketing_marketing_social_media_strategist",
+        "task": "定位：{{position}}\n选题库：{{topic_list}}\n首条脚本：{{first_script}}\n\n作为运营，输出《首月作战日历》：\n## 发布节奏（每周几更、几点发、为什么）\n## 四周排期表（哪天发哪个选题）\n## 每周数据复盘要看的 3 个指标及调整规则\n## 首条视频发布 checklist\n\n⚠️ 只输出最终成品本身：不要开场白、不要复盘或说明、不要向用户提问、不要建议任何命令或后续动作。",
+        "output": "content_calendar",
+        "depends_on": [
+          "script"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "一人公司-做投研",
+    "file": "一人公司-做投研.yaml",
+    "name": "一人公司·做投研",
+    "description": "像券商研究所一样做功课：宏观→行业→标的→风控四道工序，重大结论须你签字放行。仅供研究参考，不构成投资建议",
+    "category": "一人公司",
+    "featured": true,
+    "concurrency": 2,
+    "inputs": [
+      {
+        "name": "target",
+        "description": "研究对象（赛道或标的，如：新能源储能行业 / 某上市公司）",
+        "required": true
+      },
+      {
+        "name": "horizon",
+        "description": "研究视角（长期配置 / 中短期波段 / 学习研究）",
+        "required": false
+      }
+    ],
+    "steps": [
+      {
+        "id": "macro",
+        "expert": "agency_finance_finance_financial_analyst",
+        "task": "研究对象：{{target}}\n研究视角：{{horizon}}\n\n作为宏观分析师，输出宏观与政策环境分析：\n1. 当前宏观周期位置及对该领域的影响\n2. 相关政策/监管动向（利好利空分开列）\n3. 流动性与资金面环境\n每一条注明判断依据。",
+        "output": "macro_view",
+        "depends_on": []
+      },
+      {
+        "id": "industry",
+        "expert": "agency_finance_finance_investment_researcher",
+        "task": "宏观环境：{{macro_view}}\n研究对象：{{target}}\n\n作为行业研究员，输出行业分析：\n1. 产业链结构与价值分布（谁赚走了利润）\n2. 竞争格局与集中度趋势\n3. 行业所处生命周期阶段及证据\n4. 未来 1-3 年的关键变量",
+        "output": "industry_view",
+        "depends_on": [
+          "macro"
+        ]
+      },
+      {
+        "id": "fundamentals",
+        "expert": "agency_finance_finance_financial_forecaster",
+        "task": "行业分析：{{industry_view}}\n研究对象：{{target}}\n\n作为财务分析师，输出基本面与估值框架：\n1. 核心财务指标怎么看（针对该领域该看什么、健康线在哪）\n2. 估值方法选择及理由（PE/PS/DCF/PB 择其适者）\n3. 乐观/中性/悲观三种情景的关键假设",
+        "output": "valuation_view",
+        "depends_on": [
+          "industry"
+        ]
+      },
+      {
+        "id": "risk",
+        "expert": "agency_finance_finance_fpa_analyst",
+        "task": "宏观：{{macro_view}}\n行业：{{industry_view}}\n估值：{{valuation_view}}\n\n作为风控官，输出风险清单：\n1. Top 5 风险，按\"发生概率 × 影响程度\"排序\n2. 每个风险的预警信号（看到什么就该警惕）\n3. 与 {{horizon}} 视角的适配性提示（这个研究对象适不适合这种打法）",
+        "output": "risk_report",
+        "depends_on": [
+          "fundamentals"
+        ]
+      },
+      {
+        "id": "boss_signoff",
+        "expert": "agency_product_product_manager",
+        "task": "",
+        "output": null,
+        "depends_on": [
+          "risk"
+        ]
+      },
+      {
+        "id": "final_report",
+        "expert": "agency_finance_finance_investment_researcher",
+        "task": "各道工序已完成并经老板签字放行：\n\n**宏观**：{{macro_view}}\n**行业**：{{industry_view}}\n**估值**：{{valuation_view}}\n**风控**：{{risk_report}}\n\n作为首席研究员，整合输出《研究报告》：\n## 核心观点（三句话以内）\n## 宏观与行业结论\n## 基本面与估值判断（含三情景）\n## 风险提示（每条观点旁标注对应风险）\n## 跟踪清单（后续按什么节奏看什么信号）\n## 免责声明：本报告由 AI 生成，仅供研究学习参考，不构成任何投资建议\n\n⚠️ 只输出最终成品本身：不要开场白、不要复盘或说明、不要向用户提问、不要建议任何命令或后续动作。",
+        "output": "research_report",
+        "depends_on": [
+          "boss_signoff"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "一人公司全员大会",
+    "file": "一人公司全员大会.yaml",
+    "name": "AI 一人公司：全员大会",
+    "description": "你说一句话，9 个 AI 部门自动协作，2 分钟出完整商业方案——这就是一人公司",
+    "category": "一人公司",
+    "featured": true,
+    "concurrency": 4,
+    "inputs": [
+      {
+        "name": "idea",
+        "description": "你的一句话创意（如：做一个帮自由职业者自动开发票的工具）",
+        "required": true
+      }
+    ],
+    "steps": [
+      {
+        "id": "ceo_kickoff",
+        "expert": "agency_strategy_nexus_strategy",
+        "task": "你是这家一人公司的 CEO。现在开全员大会，你先做开场：\n\n创始人的想法：{{idea}}\n\n请输出：\n1. 产品一句话定位\n2. 我们要解决什么痛点\n3. 目标用户是谁\n4. 6 个月后的成功画面\n\n语气要像 CEO 在晨会上讲话，简洁有力，说人话，不要套话。",
+        "output": "vision",
+        "depends_on": []
+      },
+      {
+        "id": "market_research",
+        "expert": "agency_product_product_trend_researcher",
+        "task": "CEO 刚定了方向：{{vision}}\n\n作为趋势研究员，请做快速市场调研：\n1. 这个赛道的市场规模和增速\n2. 现有竞品 Top 3 及各自优劣\n3. 市场空白点在哪里\n4. 未来 12 个月的趋势判断\n\n要求：每一点说透说到位，给出具体数据和判断依据，不要空洞的套话。",
+        "output": "market_insight",
+        "depends_on": [
+          "ceo_kickoff"
+        ]
+      },
+      {
+        "id": "user_research",
+        "expert": "agency_design_design_ux_researcher",
+        "task": "CEO 刚定了方向：{{vision}}\n\n作为用户研究员，请输出用户洞察：\n1. 核心用户画像（2 类典型用户，要具体到年龄、职业、心态）\n2. 他们现在怎么解决这个问题（现有方案及各自的坑）\n3. 最大的 3 个痛点（要有场景感，不要泛泛而谈）\n4. 愿意付费的关键触发点",
+        "output": "user_insight",
+        "depends_on": [
+          "ceo_kickoff"
+        ]
+      },
+      {
+        "id": "tech_feasibility",
+        "expert": "agency_engineering_engineering_backend_architect",
+        "task": "CEO 刚定了方向：{{vision}}\n\n作为技术架构师，请评估技术可行性：\n1. 推荐技术栈（1 人能 hold 住的，说清楚为什么选这个不选那个）\n2. MVP 核心架构（画清楚模块关系，不要过度设计）\n3. 4 周开发计划（按周拆解，每周要有可交付物）\n4. 技术风险和规避方案（说真实会踩的坑，不要教科书式列举）",
+        "output": "tech_plan",
+        "depends_on": [
+          "ceo_kickoff"
+        ]
+      },
+      {
+        "id": "brand_design",
+        "expert": "agency_design_design_brand_guardian",
+        "task": "CEO 刚定了方向：{{vision}}\n\n作为品牌设计师，请输出品牌基础方案：\n1. 品牌名建议（3 个候选 + 理由，要好记、能注册域名）\n2. 品牌调性和关键词\n3. Slogan 候选（3 个，要口语化，能让人记住）\n4. 视觉风格方向（配色 + 字体建议，给出具体色值）",
+        "output": "brand_plan",
+        "depends_on": [
+          "ceo_kickoff"
+        ]
+      },
+      {
+        "id": "product_plan",
+        "expert": "agency_product_product_manager",
+        "task": "调研结果已出：\n\n**市场调研**：{{market_insight}}\n**用户洞察**：{{user_insight}}\n\n作为产品经理，请输出 MVP 规划：\n1. 核心功能 3 个（每个说清楚用户怎么用、解决什么问题）\n2. 用户故事 Top 5\n3. 优先级排序和取舍理由（说清楚为什么砍掉某些功能）\n4. 第一版上线标准（什么算\"能用\"，要有具体可衡量的指标）",
+        "output": "product_spec",
+        "depends_on": [
+          "market_research",
+          "user_research"
+        ]
+      },
+      {
+        "id": "marketing_plan",
+        "expert": "agency_marketing_marketing_content_creator",
+        "task": "调研结果已出：\n\n**市场调研**：{{market_insight}}\n**用户洞察**：{{user_insight}}\n**品牌方案**：{{brand_plan}}\n\n作为营销负责人，请输出冷启动方案：\n1. 发布文案（标题要有钩子感，正文要让人想转发）\n2. 首发渠道 Top 3 及理由（说清楚每个渠道的打法）\n3. 0 预算冷启动策略（要可执行，不要说\"做好内容\"这种废话）\n4. 首月增长目标和关键动作（按周拆解）",
+        "output": "marketing_spec",
+        "depends_on": [
+          "market_research",
+          "user_research",
+          "brand_design"
+        ]
+      },
+      {
+        "id": "finance_plan",
+        "expert": "agency_finance_finance_financial_forecaster",
+        "task": "调研结果已出：\n\n**市场调研**：{{market_insight}}\n**技术方案**：{{tech_plan}}\n\n作为财务顾问，请输出商业模型：\n1. 定价策略（免费版 vs 付费版，说清楚定价逻辑）\n2. 成本结构（月固定开支，列明每一项）\n3. 收入预测（3/6/12 个月，给出关键假设和计算过程）\n4. 盈亏平衡点分析（多少用户、多少收入才能活下来）",
+        "output": "finance_spec",
+        "depends_on": [
+          "market_research",
+          "tech_feasibility"
+        ]
+      },
+      {
+        "id": "ceo_decision",
+        "expert": "agency_strategy_nexus_strategy",
+        "task": "全员大会，所有部门已汇报完毕：\n\n**市场调研**：{{market_insight}}\n**用户洞察**：{{user_insight}}\n**技术方案**：{{tech_plan}}\n**品牌方案**：{{brand_plan}}\n**产品规划**：{{product_spec}}\n**营销方案**：{{marketing_spec}}\n**财务模型**：{{finance_spec}}\n\n作为 CEO，请做最终决策，输出《一人公司启动计划》：\n\n## 决策\nGo 还是 No-Go？一句话理由。\n\n## 产品名称\n从品牌方案中选定一个，说明理由。\n\n## 第一周行动清单\n每天做什么，具体到可执行。\n\n## 资源分配\n时间怎么分（产品/技术/营销各占比）。\n\n## 风险预警\nTop 3 风险 + 应对策略。\n\n## 给自己的话\n作为一人公司创始人，最该坚持什么、最该避免什么。\n\n要求：每个部分都要有明确的决策和理由，不要模棱两可。行动清单要具体到可以直接执行，不要写\"做好XX\"这种空话。",
+        "output": "launch_plan",
+        "depends_on": [
+          "product_plan",
+          "marketing_plan",
+          "finance_plan"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "省钱混用示例",
+    "file": "省钱混用示例.yaml",
+    "name": "省钱混用示例：便宜模型干轻活，强模型干重活",
+    "description": "演示 per-step 模型覆写（step.llm）——把简单步骤放到便宜/快的档位，把需要深度推理的步骤留给强模型，整体更省钱且不掉关键质量。抄这个模板即可。",
+    "category": "",
+    "featured": false,
+    "concurrency": 2,
+    "inputs": [
+      {
+        "name": "topic",
+        "description": "要分析的主题",
+        "required": true
+      }
+    ],
+    "steps": [
+      {
+        "id": "gather",
+        "expert": "agency_product_product_trend_researcher",
+        "task": "针对主题「{{topic}}」，快速列出：\n1. 5 个公众讨论角度\n2. 3 个核心问题\n3. 3 个常见误区\n只做罗列，不做深度论证。",
+        "output": "raw_points",
+        "depends_on": []
+      },
+      {
+        "id": "analyze",
+        "expert": "agency_academic_academic_narratologist",
+        "task": "基于以下要点，做深度分析：给出 3 个大多数人没想到的深层观点，\n并指出其中最反直觉但站得住脚的一个，说明推理链条。\n\n要点：\n{{raw_points}}",
+        "output": "deep_analysis",
+        "depends_on": [
+          "gather"
+        ]
+      },
+      {
+        "id": "format",
+        "expert": "agency_marketing_marketing_content_creator",
+        "task": "把下面的分析整理成一段结构清晰、可直接发布的短文（300-500 字），\n不新增观点，只做组织与润色。\n\n分析：\n{{deep_analysis}}",
+        "output": null,
+        "depends_on": [
+          "analyze"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "软件开发标准流程",
+    "file": "软件开发标准流程.yaml",
+    "name": "软件开发标准流程",
+    "description": "一句话需求 → 澄清 → 架构 → TDD 实现 → 代码审查 → 现实验收。标准化的多智能体软件开发流水线，配合 --materialize 把代码写成真实文件。",
+    "category": "",
+    "featured": false,
+    "concurrency": 1,
+    "inputs": [
+      {
+        "name": "requirement",
+        "description": "想做的东西（一句话即可，如：一个支持标签和全文搜索的命令行待办工具）",
+        "required": true
+      }
+    ],
+    "steps": [
+      {
+        "id": "clarify",
+        "expert": "agency_product_product_manager",
+        "task": "这是自动化流水线，没有人能回答你的提问。请直接基于下面的需求，自行做出合理假设，\n产出一份简洁的需求与设计要点（意图、核心功能、非功能要求、使用场景、约束、技术选型）。\n绝对不要反问、不要等待用户确认、不要让用户选 A/B/C。\n\n需求：{{requirement}}",
+        "output": "spec",
+        "depends_on": []
+      },
+      {
+        "id": "design",
+        "expert": "agency_engineering_engineering_software_architect",
+        "task": "把下面的需求与设计要点，写成一份可执行的分步实现计划：\n模块划分、目录/文件结构、关键接口与数据结构、依赖、运行与测试方式、风险点。\n\n{{spec}}",
+        "output": "plan",
+        "depends_on": [
+          "clarify"
+        ]
+      },
+      {
+        "id": "implement",
+        "expert": "agency_engineering_engineering_senior_developer",
+        "task": "这是自动化流水线，没有人能回答你的提问。直接基于下面的计划实现一个可运行的最小项目，\n对任何不明确之处用合理默认值，绝对不要反问、不要等待确认、不要让用户做选择。\n遵循测试驱动：关键逻辑要有对应测试。\n\n{{plan}}\n\n严格按以下格式输出每个文件（供自动落盘解析），不要输出与文件无关的解说：\n\n### 相对/路径/文件名.ext\n```语言\n<该文件的完整内容>\n```\n\n要求：\n- 包含入口文件、依赖清单（如 package.json / requirements.txt）、README 运行说明、以及基本测试。\n- 一律用相对路径，禁止绝对路径或包含 `..`。\n- 代码要能跑起来（缺省值齐全、无明显语法错误）。\n- 重要：若某文件内容本身包含 ``` 代码围栏（典型是 README.md 等 markdown），请用四个反引号 ```` 作为该文件的外层围栏，避免内层围栏被误判截断。",
+        "output": "code",
+        "depends_on": [
+          "design"
+        ]
+      },
+      {
+        "id": "review",
+        "expert": "agency_engineering_engineering_code_reviewer",
+        "task": "审查下面生成的代码：正确性 bug、安全问题、可维护性、与计划的偏差、缺失的测试。\n用证据说话（指到文件/片段），给出按严重度排序的问题清单和具体修改建议。\n\n实现计划：\n{{plan}}\n\n代码：\n{{code}}",
+        "output": "review",
+        "depends_on": [
+          "implement"
+        ]
+      },
+      {
+        "id": "verify",
+        "expert": "agency_testing_testing_reality_checker",
+        "task": "现实检验下面的项目：到底能不能跑起来、是否真的满足最初需求、还差哪些文件/步骤、\n代码审查发现的问题是否致命。不要轻信\"应该可以\"，用清单给出\"可交付 / 待补\"的结论。\n\n最初需求：{{requirement}}\n\n代码：\n{{code}}\n\n代码审查意见：\n{{review}}",
+        "output": "acceptance",
+        "depends_on": [
+          "implement",
+          "review"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "需求转项目脚手架",
+    "file": "需求转项目脚手架.yaml",
+    "name": "需求转项目脚手架",
+    "description": "一句话需求 → 澄清 → 计划 → 生成可落盘的项目脚手架。配合 ao run ... --materialize <目录> 把代码写成真实文件。",
+    "category": "",
+    "featured": false,
+    "concurrency": 1,
+    "inputs": [
+      {
+        "name": "idea",
+        "description": "想做的东西（一句话即可，如：一个自动记账的命令行小工具）",
+        "required": true
+      }
+    ],
+    "steps": [
+      {
+        "id": "clarify",
+        "expert": "agency_product_product_manager",
+        "task": "这是自动化流水线，没有人能回答你的提问。请直接基于下面的需求，自行做出合理假设，产出一份简洁的需求与设计要点（意图、核心功能、使用场景、约束、技术选型）。绝对不要反问、不要等待用户确认、不要让用户选 A/B/C。\n\n{{idea}}",
+        "output": "spec",
+        "depends_on": []
+      },
+      {
+        "id": "plan",
+        "expert": "agency_engineering_engineering_software_architect",
+        "task": "把下面的需求与设计写成可执行的分步实现计划：模块划分、文件结构、关键接口、依赖与运行方式。\n\n{{spec}}",
+        "output": "plan",
+        "depends_on": [
+          "clarify"
+        ]
+      },
+      {
+        "id": "build",
+        "expert": "agency_engineering_engineering_rapid_prototyper",
+        "task": "这是自动化流水线，没有人能回答你的提问。直接基于下面的计划实现一个可运行的最小项目脚手架，\n对任何不明确之处用合理默认值，绝对不要反问、不要等待确认、不要让用户做选择。\n\n{{plan}}\n\n严格按以下格式输出每个文件（供自动落盘解析），不要输出与文件无关的解说：\n\n### 相对/路径/文件名.ext\n```语言\n<该文件的完整内容>\n```\n\n要求：\n- 包含入口文件、依赖清单（如 package.json / requirements.txt）、README 运行说明、以及基本测试。\n- 一律用相对路径，禁止绝对路径或包含 `..`。\n- 代码要能跑起来（缺省值齐全、无明显语法错误）。\n- 重要：如果某个文件内容本身包含 ``` 代码围栏（典型是 README.md 等 markdown 文件），请用四个反引号 ```` 作为该文件的外层围栏，避免内层围栏被误判截断。",
+        "output": "code",
+        "depends_on": [
+          "plan"
+        ]
+      },
+      {
+        "id": "verify",
+        "expert": "agency_engineering_engineering_code_reviewer",
+        "task": "审查下面生成的项目脚手架：完整性、可运行性、缺失文件、明显 bug，以及跑起来还需补的步骤。用证据说话，给出清单。\n\n{{code}}",
+        "output": "review",
+        "depends_on": [
+          "build"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "sp/brainstorm-to-plan",
+    "file": "sp\\brainstorm-to-plan.yaml",
+    "name": "头脑风暴 → 实施计划（Superpowers）",
+    "description": "superpowers 方法论：先头脑风暴澄清需求产出设计规格，再拆成可执行的分步实施计划，想清楚再动手。",
+    "category": "superpowers",
+    "featured": true,
+    "concurrency": 2,
+    "inputs": [
+      { "name": "requirement", "description": "想做的功能或需求（一句话即可）", "required": true },
+      { "name": "constraint", "description": "已知约束（技术栈/工期/预算，可留空）", "required": false }
+    ],
+    "steps": [
+      { "id": "brainstorm", "expert": "头脑风暴引导师（brainstorming）", "task": "这是自动化流水线，不要反问。针对需求「{{requirement}}」，约束：{{constraint}}，用头脑风暴法输出：\n1. 核心意图与要解决的真正问题\n2. 2-3 个可行方案及各自优劣\n3. 关键决策点与推荐选择\n4. 边界与不做什么\n产出《设计规格》。", "output": "spec", "depends_on": [] },
+      { "id": "risk", "expert": "风险评估师", "task": "基于设计规格找出最大风险与假设：\n{{spec}}\n输出：3 个最可能翻车的点 + 每个的验证手段。", "output": "risks", "depends_on": ["brainstorm"] },
+      { "id": "plan", "expert": "计划编写师（writing-plans）", "task": "把下面的规格拆成可执行的分步实施计划，并吸纳风险建议：\n{{spec}}\n\n风险：{{risks}}\n\n要求：每步含目标/产物/验证方式，标注依赖关系与可并行项，给出里程碑。", "output": null, "depends_on": ["brainstorm", "risk"] }
+    ]
+  },
+  {
+    "key": "sp/tdd-feature-dev",
+    "file": "sp\\tdd-feature-dev.yaml",
+    "name": "TDD 测试驱动开发闭环（Superpowers）",
+    "description": "superpowers 方法论：先写失败测试，再写最小实现使其通过，最后重构。严格 TDD 红-绿-重构。",
+    "category": "superpowers",
+    "featured": false,
+    "concurrency": 1,
+    "inputs": [
+      { "name": "feature", "description": "要实现的功能点", "required": true },
+      { "name": "stack", "description": "技术栈与测试框架（如 Node+Jest / Python+pytest）", "required": true }
+    ],
+    "steps": [
+      { "id": "test_first", "expert": "TDD 测试先行工程师（test-driven-development）", "task": "这是自动化流水线，不要反问。针对功能「{{feature}}」（技术栈 {{stack}}），先设计并写出会失败的测试用例（红）：覆盖正常路径、边界、异常。只输出测试代码与用例说明，不写实现。", "output": "tests", "depends_on": [] },
+      { "id": "implement", "expert": "最小实现工程师", "task": "让下面的测试全部通过（绿），只写满足测试所需的最小实现，不多写：\n{{tests}}", "output": "code", "depends_on": ["test_first"] },
+      { "id": "refactor", "expert": "重构与验证工程师", "task": "在测试保护下重构下面的实现，消除重复、改善命名，并确认所有测试仍通过（重构）：\n{{code}}\n\n测试：{{tests}}\n输出重构后代码 + 验证结论。", "output": null, "depends_on": ["implement"] }
+    ]
+  },
+  {
+    "key": "sp/systematic-debugging",
+    "file": "sp\\systematic-debugging.yaml",
+    "name": "四阶段系统化调试（Superpowers）",
+    "description": "superpowers 方法论：定位 → 分析 → 假设 → 修复，用证据说话的系统化调试，拒绝瞎猜。",
+    "category": "superpowers",
+    "featured": false,
+    "concurrency": 1,
+    "inputs": [
+      { "name": "symptom", "description": "故障现象（报错信息/异常行为/复现步骤）", "required": true },
+      { "name": "context", "description": "环境信息（系统/版本/近期改动，可留空）", "required": false }
+    ],
+    "steps": [
+      { "id": "locate", "expert": "系统化调试指挥官（systematic-debugging）", "task": "这是自动化流水线，不要反问。故障现象：{{symptom}}\n环境：{{context}}\n\n执行调试第一阶段【定位】：缩小故障范围，列出需要收集的证据与排查命令，给出最可能的 3 个故障区间。", "output": "locate", "depends_on": [] },
+      { "id": "hypothesize", "expert": "根因分析师", "task": "基于定位结果【分析 + 假设】：\n{{locate}}\n\n为每个可疑区间提出可证伪的假设，并给出验证每个假设的最小实验。按可能性排序。", "output": "hypothesis", "depends_on": ["locate"] },
+      { "id": "fix", "expert": "修复与回归工程师", "task": "针对最可能的根因假设给出修复方案与代码改动，并设计回归验证步骤确保问题不复现：\n{{hypothesis}}\n输出：修复 diff 思路 + 回归检查清单。", "output": null, "depends_on": ["hypothesize"] }
+    ]
+  },
+  {
+    "key": "sp/code-review-loop",
+    "file": "sp\\code-review-loop.yaml",
+    "name": "代码审查请求与接收闭环（Superpowers）",
+    "description": "superpowers 方法论：派遣审查 → 严谨接收反馈 → 逐条修复 → 再验证，拒绝敷衍式改代码。",
+    "category": "superpowers",
+    "featured": false,
+    "concurrency": 2,
+    "inputs": [
+      { "name": "code", "description": "待审查的代码或改动描述", "required": true },
+      { "name": "focus", "description": "重点关注（性能/安全/可读性，可留空=全面）", "required": false }
+    ],
+    "steps": [
+      { "id": "request_review", "expert": "代码审查请求者（requesting-code-review）", "task": "这是自动化流水线，不要反问。整理下面的改动为一份结构化的审查请求（改了什么/为什么/风险点/请重点看 {{focus}}）：\n{{code}}", "output": "review_request", "depends_on": [] },
+      { "id": "do_review", "expert": "严格代码审查员", "task": "对下面的审查请求执行审查，逐条给出问题（严重级/建议级）与证据：\n{{review_request}}", "output": "findings", "depends_on": ["request_review"] },
+      { "id": "receive_fix", "expert": "审查反馈接收者（receiving-code-review）", "task": "技术严谨地处理审查反馈，不敷衍、不盲从：对每条意见判断是否采纳并说明理由，采纳的给出修复代码：\n{{findings}}\n\n原改动：{{review_request}}", "output": null, "depends_on": ["do_review"] }
+    ]
+  },
+  {
+    "key": "sp/parallel-agent-dev",
+    "file": "sp\\parallel-agent-dev.yaml",
+    "name": "并行子智能体开发（Superpowers）",
+    "description": "superpowers 方法论：把大任务拆给多个并行子智能体，各自产出后经两轮审查再汇总。",
+    "category": "superpowers",
+    "featured": false,
+    "concurrency": 4,
+    "inputs": [
+      { "name": "goal", "description": "总体目标（如：给系统加用户/订单/报表三个模块）", "required": true }
+    ],
+    "steps": [
+      { "id": "decompose", "expert": "任务拆解调度官（dispatching-parallel-agents）", "task": "这是自动化流水线，不要反问。把目标「{{goal}}」拆成 3-4 个相互独立、可并行执行的子任务，明确每个子任务的输入/输出/验收标准。", "output": "subtasks", "depends_on": [] },
+      { "id": "parallel_exec", "expert": "子智能体驱动开发者（subagent-driven-development）", "task": "为每个子任务各写一份可直接派发给子智能体的完整指令（含上下文、产物格式、验收标准），模拟并行执行并汇总各子任务产出：\n{{subtasks}}", "output": "merged", "depends_on": ["decompose"] },
+      { "id": "two_round_review", "expert": "两轮审查官", "task": "对汇总产出做两轮审查：第一轮查各子任务是否达标，第二轮查子任务之间的接口/一致性。给出问题清单与最终整合结论：\n{{merged}}", "output": null, "depends_on": ["parallel_exec"] }
+    ]
+  },
+  {
+    "key": "sp/git-worktree-feature",
+    "file": "sp\\git-worktree-feature.yaml",
+    "name": "Git Worktree 隔离式特性开发（Superpowers）",
+    "description": "superpowers 方法论：用 git worktree 隔离开发特性，完成后按合并/PR/保留/丢弃四选一收尾。",
+    "category": "superpowers",
+    "featured": false,
+    "concurrency": 1,
+    "inputs": [
+      { "name": "feature", "description": "要开发的特性", "required": true },
+      { "name": "base_branch", "description": "基础分支（默认 main）", "required": false }
+    ],
+    "steps": [
+      { "id": "setup_worktree", "expert": "Git Worktree 工程师（using-git-worktrees）", "task": "这是自动化流水线，不要反问。为特性「{{feature}}」设计 git worktree 隔离开发方案：分支命名、worktree 路径、从 {{base_branch}} 拉出的命令序列、环境准备检查清单。", "output": "worktree_plan", "depends_on": [] },
+      { "id": "dev_commit", "expert": "中文提交规范工程师（chinese-commit-conventions）", "task": "在隔离 worktree 中规划特性开发的提交序列，遵循 Conventional Commits 中文适配规范（feat/fix/docs/refactor 等），每个提交小而原子：\n{{worktree_plan}}\n输出：提交计划表（每条含 type + 中文描述 + 范围）。", "output": "commits", "depends_on": ["setup_worktree"] },
+      { "id": "finish_branch", "expert": "分支收尾官（finishing-a-development-branch）", "task": "特性完成后给出收尾决策与操作：合并/PR/保留/丢弃 四选一的判断依据与各自命令，并附中文 PR 描述模板：\n{{commits}}", "output": null, "depends_on": ["dev_commit"] }
+    ]
+  },
+  {
+    "key": "sp/verification-gate",
+    "file": "sp\\verification-gate.yaml",
+    "name": "完成前证据验证关（Superpowers）",
+    "description": "superpowers 方法论：声称完成前必须跑验证、拿证据。证据先行，杜绝“我觉得好了”。",
+    "category": "superpowers",
+    "featured": false,
+    "concurrency": 2,
+    "inputs": [
+      { "name": "deliverable", "description": "已完成的工作成果（代码/功能/改动描述）", "required": true },
+      { "name": "acceptance", "description": "验收标准（可留空=自动推导）", "required": false }
+    ],
+    "steps": [
+      { "id": "criteria", "expert": "验收标准推导师", "task": "这是自动化流水线，不要反问。从成果与验收要求中推导出可机器验证的检查项清单（测试/构建/运行/边界）：\n成果：{{deliverable}}\n验收：{{acceptance}}", "output": "checklist", "depends_on": [] },
+      { "id": "gather_evidence", "expert": "证据采集官（verification-before-completion）", "task": "为每个检查项设计取证方式（命令/截图/日志），并模拟执行给出“证据或反证”：\n{{checklist}}\n\n成果：{{deliverable}}", "output": "evidence", "depends_on": ["criteria"] },
+      { "id": "verdict", "expert": "完成度裁决官", "task": "基于证据给出裁决：通过/有条件通过/不通过。不通过的列出缺口与补齐动作，绝不空口说完成：\n{{evidence}}", "output": null, "depends_on": ["gather_evidence"] }
+    ]
+  },
+  {
+    "key": "sp/skill-authoring",
+    "file": "sp\\skill-authoring.yaml",
+    "name": "编写一个 AI Skill（Superpowers）",
+    "description": "superpowers 方法论：按 writing-skills 方法论设计、编写、验证一个新的 AI 编程 skill。",
+    "category": "superpowers",
+    "featured": false,
+    "concurrency": 1,
+    "inputs": [
+      { "name": "skill_idea", "description": "想让 AI 学会的技能（如：自动生成周报）", "required": true }
+    ],
+    "steps": [
+      { "id": "design_skill", "expert": "Skill 设计师（writing-skills）", "task": "这是自动化流水线，不要反问。为「{{skill_idea}}」设计 skill：触发场景、核心步骤、输入输出、失败边界。输出 skill 设计规格。", "output": "skill_spec", "depends_on": [] },
+      { "id": "write_skillmd", "expert": "SKILL.md 编写者", "task": "按设计规格写出完整的 SKILL.md（含 frontmatter name/description、何时使用、分步指令、示例）：\n{{skill_spec}}", "output": "skill_md", "depends_on": ["design_skill"] },
+      { "id": "meta_check", "expert": "元技能审核官（using-superpowers）", "task": "从“如何被 AI 正确调用”的角度审核下面的 SKILL.md：description 是否能被正确触发、步骤是否可执行、是否与其他 skill 冲突，给出修改建议与最终版：\n{{skill_md}}", "output": null, "depends_on": ["write_skillmd"] }
+    ]
+  },
+  {
+    "key": "sp/mcp-server-build",
+    "file": "sp\\mcp-server-build.yaml",
+    "name": "MCP 服务器构建（Superpowers 中文原创）",
+    "description": "superpowers-zh 原创 skill：设计并构建一个生产级 MCP 工具服务器，扩展 AI 能力边界。",
+    "category": "superpowers",
+    "featured": false,
+    "concurrency": 2,
+    "inputs": [
+      { "name": "capability", "description": "想让 AI 获得的能力（如：查询内部工单系统）", "required": true },
+      { "name": "transport", "description": "传输方式（stdio / SSE，默认 stdio）", "required": false }
+    ],
+    "steps": [
+      { "id": "tool_design", "expert": "MCP 工具设计师（mcp-builder）", "task": "这是自动化流水线，不要反问。为能力「{{capability}}」设计 MCP 服务器：暴露哪些 tools/resources/prompts、每个 tool 的入参出参 schema、错误处理策略。传输方式 {{transport}}。", "output": "mcp_design", "depends_on": [] },
+      { "id": "implement_server", "expert": "MCP 服务器实现工程师", "task": "按设计实现 MCP 服务器核心代码（工具注册、参数校验、调用转发、日志）：\n{{mcp_design}}\n输出可运行代码骨架 + 依赖清单。", "output": "mcp_code", "depends_on": ["tool_design"] },
+      { "id": "test_doc", "expert": "MCP 测试与文档工程师", "task": "为下面的 MCP 服务器写调用测试用例（含异常入参）与接入文档（如何注册到 Claude Code / Cursor / Hermes）：\n{{mcp_code}}", "output": null, "depends_on": ["implement_server"] }
+    ]
+  },
+  {
+    "key": "sp/workflow-yaml-run",
+    "file": "sp\\workflow-yaml-run.yaml",
+    "name": "多角色 YAML 工作流编排（Superpowers 中文原创）",
+    "description": "superpowers-zh 原创 skill：设计一个多角色 YAML 工作流并模拟执行，验证编排合理性。",
+    "category": "superpowers",
+    "featured": false,
+    "concurrency": 2,
+    "inputs": [
+      { "name": "scenario", "description": "要编排的场景（如：竞品调研 → 写分析报告）", "required": true }
+    ],
+    "steps": [
+      { "id": "design_yaml", "expert": "工作流编排师（workflow-runner）", "task": "这是自动化流水线，不要反问。为场景「{{scenario}}」设计多角色 YAML 工作流：角色分工、DAG 依赖、每步输入输出变量、并行度。输出 YAML 全文。", "output": "yaml", "depends_on": [] },
+      { "id": "dry_run", "expert": "工作流执行官", "task": "模拟执行下面的 YAML 工作流，逐步推演每个角色的产出与变量流转，检查死锁/缺依赖/变量未定义问题：\n{{yaml}}", "output": "dry_run", "depends_on": ["design_yaml"] },
+      { "id": "optimize", "expert": "编排优化师", "task": "基于试跑结果优化工作流（修正问题、提高并行度、精简角色），输出最终 YAML + 优化说明：\n{{dry_run}}", "output": null, "depends_on": ["dry_run"] }
+    ]
+  },
+  {
+    "key": "wechat-miniprogram-fullstack",
+    "file": "wechat-miniprogram-fullstack.yaml",
+    "name": "微信小程序全栈交付（agency 中国原创）",
+    "description": "agency-agents-zh 中国原创场景：产品设计 → 小程序开发 → 微信支付/云开发 → 发布验收。",
+    "category": "中国特色",
+    "featured": true,
+    "concurrency": 2,
+    "inputs": [
+      { "name": "app_idea", "description": "小程序要做什么（如：社区团购下单）", "required": true },
+      { "name": "backend", "description": "后端方案（云开发 / 自建服务器，默认云开发）", "required": false }
+    ],
+    "steps": [
+      { "id": "product_design", "expert": "agency_product_product_manager", "task": "这是自动化流水线，不要反问。为小程序「{{app_idea}}」输出产品方案：核心用户场景、页面清单与信息架构、MVP 范围裁剪。", "output": "prd", "depends_on": [] },
+      { "id": "miniprogram_dev", "expert": "微信小程序开发者（WXML/WXSS/云开发）", "task": "按产品方案实现小程序核心代码（页面结构 WXML、样式 WXSS、关键逻辑 JS），后端采用 {{backend}}：\n{{prd}}\n输出核心页面代码 + 云函数/接口设计。", "output": "mp_code", "depends_on": ["product_design"] },
+      { "id": "payment", "expert": "微信支付与交易工程师", "task": "为下面的小程序设计微信支付与订单交易闭环（下单/支付回调/退款/对账），给出关键代码与防坑要点：\n{{mp_code}}", "output": "payment", "depends_on": ["miniprogram_dev"] },
+      { "id": "release", "expert": "小程序发布验收官", "task": "给出发布前检查清单（类目资质、隐私协议、体验版测试、审核常见被拒点）与上线步骤：\n{{payment}}", "output": null, "depends_on": ["payment"] }
+    ]
+  },
+  {
+    "key": "crossborder-ecommerce-launch",
+    "file": "crossborder-ecommerce-launch.yaml",
+    "name": "跨境电商新品出海（agency 中国原创）",
+    "description": "agency-agents-zh 中国原创场景：市场调研 → Listing 优化 → 海外仓/物流 → 广告投放。",
+    "category": "中国特色",
+    "featured": false,
+    "concurrency": 2,
+    "inputs": [
+      { "name": "product", "description": "要出海的产品", "required": true },
+      { "name": "market", "description": "目标市场与平台（如 Amazon 美国站 / Shopee 东南亚）", "required": true }
+    ],
+    "steps": [
+      { "id": "market_research", "expert": "跨境电商运营专家（Amazon/Shopee/Lazada）", "task": "这是自动化流水线，不要反问。调研产品「{{product}}」在 {{market}} 的市场：竞品价格带、差异化卖点、合规与认证要求、预估利润空间。", "output": "research", "depends_on": [] },
+      { "id": "listing", "expert": "Listing 优化师", "task": "基于调研为产品写高转化 Listing（标题/五点/描述/A+ 思路/关键词），符合平台规则：\n{{research}}", "output": "listing", "depends_on": ["market_research"] },
+      { "id": "logistics", "expert": "海外仓与物流规划师", "task": "设计头程 + 海外仓 + 尾程物流方案与备货节奏，控制滞销与断货风险：\n{{research}}", "output": "logistics", "depends_on": ["market_research"] },
+      { "id": "ads", "expert": "广告投放与增长官", "task": "制定上架后 30 天广告与推广节奏（自动/手动广告、Coupon、站外引流），给出预算分配与关键指标：\n{{listing}}\n\n物流：{{logistics}}", "output": null, "depends_on": ["listing", "logistics"] }
+    ]
+  },
+  {
+    "key": "gov-tog-bidding",
+    "file": "gov-tog-bidding.yaml",
+    "name": "政务 ToG 方案与投标（agency 中国原创）",
+    "description": "agency-agents-zh 中国原创场景：政策解读 → 方案设计 → 投标文件 → 合规审查。",
+    "category": "中国特色",
+    "featured": false,
+    "concurrency": 2,
+    "inputs": [
+      { "name": "project", "description": "政务项目（如：智慧园区一网通办）", "required": true },
+      { "name": "region", "description": "地区/预算级别（可留空）", "required": false }
+    ],
+    "steps": [
+      { "id": "policy", "expert": "政务 ToG 解决方案架构师", "task": "这是自动化流水线，不要反问。解读项目「{{project}}」（{{region}}）涉及的政策依据、建设标准与采购方式，指出甲方真实关切。", "output": "policy", "depends_on": [] },
+      { "id": "solution", "expert": "信创与等保方案设计师", "task": "设计满足信创国产化与等保要求的技术方案（架构、选型、安全、运维），并控制成本：\n{{policy}}", "output": "solution", "depends_on": ["policy"] },
+      { "id": "bid_doc", "expert": "投标文件编写师", "task": "按下面的方案编写投标文件核心章节（技术方案、实施计划、服务承诺、评分点应答）：\n{{solution}}", "output": "bid", "depends_on": ["solution"] },
+      { "id": "compliance", "expert": "投标合规审查官", "task": "审查投标文件的废标风险（资质、格式、星号条款、报价），给出整改清单：\n{{bid}}", "output": null, "depends_on": ["bid_doc"] }
+    ]
+  },
+  {
+    "key": "medical-compliance-audit",
+    "file": "medical-compliance-audit.yaml",
+    "name": "医疗产品合规审查（agency 中国原创）",
+    "description": "agency-agents-zh 中国原创场景：法规梳理 → 产品比对 → 风险评估 → 整改方案。",
+    "category": "中国特色",
+    "featured": false,
+    "concurrency": 2,
+    "inputs": [
+      { "name": "product_desc", "description": "医疗产品/服务描述（如：互联网问诊小程序）", "required": true }
+    ],
+    "steps": [
+      { "id": "regulations", "expert": "医疗合规法规专家", "task": "这是自动化流水线，不要反问。梳理「{{product_desc}}」适用的法规与监管要求（医疗器械分类、互联网诊疗、数据与隐私、广告法）。", "output": "regs", "depends_on": [] },
+      { "id": "gap_analysis", "expert": "合规差距分析师", "task": "将产品现状与法规要求逐项比对，找出不合规点与灰色地带：\n{{regs}}\n\n产品：{{product_desc}}", "output": "gaps", "depends_on": ["regulations"] },
+      { "id": "risk_plan", "expert": "风险评估与整改官", "task": "对不合规点做风险分级（高/中/低），给出整改优先级与具体措施、所需资质与时间表：\n{{gaps}}", "output": null, "depends_on": ["gap_analysis"] }
+    ]
+  },
+  {
+    "key": "qt-industrial-hmi",
+    "file": "qt-industrial-hmi.yaml",
+    "name": "Qt 工业上位机 HMI 开发（agency 中国原创）",
+    "description": "agency-agents-zh 中国原创场景：需求分析 → 架构设计 → 界面开发 → Modbus/串口联调。",
+    "category": "中国特色",
+    "featured": false,
+    "concurrency": 2,
+    "inputs": [
+      { "name": "device", "description": "上位机要对接的设备/仪器（如：PLC 温控炉）", "required": true },
+      { "name": "protocol", "description": "通信协议（Modbus RTU/TCP、CAN，默认 Modbus）", "required": false }
+    ],
+    "steps": [
+      { "id": "requirement", "expert": "上位机需求分析师", "task": "这是自动化流水线，不要反问。分析「{{device}}」上位机 HMI 需求：监控画面、参数配置、报警、数据记录、权限。", "output": "req", "depends_on": [] },
+      { "id": "architecture", "expert": "Qt/QML 上位机架构师", "task": "设计 Qt 上位机架构（界面层/业务层/通信层、QSerialPort 或网络、实时数据模型、QChart 可视化）：\n{{req}}", "output": "arch", "depends_on": ["requirement"] },
+      { "id": "comm", "expert": "Modbus/CAN 通信工程师", "task": "实现与下位机的 {{protocol}} 通信（报文解析、轮询、重连、字节序/CRC 防坑），给出核心代码：\n{{arch}}", "output": "comm", "depends_on": ["architecture"] },
+      { "id": "hmi_dev", "expert": "HMI 界面与联调工程师", "task": "完成主界面与实时曲线开发并与通信层联调，给出联调检查清单（抓包、模拟从站、断线重连测试）：\n{{comm}}", "output": null, "depends_on": ["comm"] }
+    ]
+  },
+  {
+    "key": "iot-e2e-solution",
+    "file": "iot-e2e-solution.yaml",
+    "name": "物联网端到端方案（agency 中国原创）",
+    "description": "agency-agents-zh 中国原创场景：设备层 → 边缘层 → 平台层 → 应用层的 IoT 全链路设计。",
+    "category": "中国特色",
+    "featured": false,
+    "concurrency": 2,
+    "inputs": [
+      { "name": "scene", "description": "物联网场景（如：智慧农业大棚监测）", "required": true },
+      { "name": "scale", "description": "设备规模与现场环境（可留空）", "required": false }
+    ],
+    "steps": [
+      { "id": "device_layer", "expert": "IoT 方案架构师（MQTT/CoAP/边缘计算）", "task": "这是自动化流水线，不要反问。为场景「{{scene}}」（{{scale}}）设计设备层：传感器选型、MCU/模组、功耗与供电、接入协议。", "output": "device", "depends_on": [] },
+      { "id": "edge_platform", "expert": "边缘计算与设备管理工程师", "task": "设计边缘网关与设备管理（MQTT 主题规划、断网续传、OTA、设备影子）：\n{{device}}", "output": "edge", "depends_on": ["device_layer"] },
+      { "id": "cloud_app", "expert": "云平台与应用工程师", "task": "设计云平台数据接入、存储、规则引擎与应用层（看板/告警/反控），选型国内云 IoT 服务：\n{{edge}}", "output": "cloud", "depends_on": ["edge_platform"] },
+      { "id": "cost_plan", "expert": "IoT 成本与实施规划师", "task": "汇总全链路方案，核算单设备成本与规模化成本曲线，给出分期实施路线图：\n{{cloud}}", "output": null, "depends_on": ["cloud_app"] }
+    ]
+  },
+  {
+    "key": "feishu-dingtalk-automation",
+    "file": "feishu-dingtalk-automation.yaml",
+    "name": "飞书/钉钉办公自动化集成（agency 中国原创）",
+    "description": "agency-agents-zh 中国原创场景：机器人设计 → 审批流 → 多维表格 → 集成测试。",
+    "category": "中国特色",
+    "featured": false,
+    "concurrency": 2,
+    "inputs": [
+      { "name": "automation_goal", "description": "要自动化的办公流程（如：报销审批自动推送）", "required": true },
+      { "name": "platform", "description": "飞书 / 钉钉（默认飞书）", "required": false }
+    ],
+    "steps": [
+      { "id": "bot_design", "expert": "飞书/钉钉集成开发工程师", "task": "这是自动化流水线，不要反问。为「{{automation_goal}}」设计 {{platform}} 机器人：交互方式、消息卡片、事件订阅、权限范围。", "output": "bot", "depends_on": [] },
+      { "id": "approval_flow", "expert": "审批流与连接器工程师", "task": "设计审批流与数据流转（审批节点、条件分支、回调、与多维表格/数据库同步）：\n{{bot}}", "output": "flow", "depends_on": ["bot_design"] },
+      { "id": "integration_test", "expert": "集成测试与上线官", "task": "给出集成测试用例（正常/驳回/超时/重复提交）与上线检查清单（权限、灰度、监控）：\n{{flow}}", "output": null, "depends_on": ["approval_flow"] }
+    ]
+  },
+  {
+    "key": "livestream-ecommerce-fullcase",
+    "file": "livestream-ecommerce-fullcase.yaml",
+    "name": "直播电商全案运营（agency 中国原创）",
+    "description": "agency-agents-zh 中国原创场景：选品排品 → 直播脚本 → 千川投放 → 复盘优化。",
+    "category": "中国特色",
+    "featured": false,
+    "concurrency": 2,
+    "inputs": [
+      { "name": "category", "description": "直播品类（如：美妆/农产品/服装）", "required": true },
+      { "name": "platform", "description": "直播平台（抖音/快手/视频号，默认抖音）", "required": false }
+    ],
+    "steps": [
+      { "id": "selection", "expert": "直播电商主播教练（选品排品/话术/千川）", "task": "这是自动化流水线，不要反问。为 {{platform}} 直播「{{category}}」设计选品与排品策略（引流款/利润款/福利款比例、过款节奏）。", "output": "selection", "depends_on": [] },
+      { "id": "script", "expert": "直播脚本与话术编剧", "task": "编写单场直播脚本（开场留人、产品讲解、逼单话术、互动福袋、转款节奏）：\n{{selection}}", "output": "script", "depends_on": ["selection"] },
+      { "id": "qianchuan", "expert": "千川投放优化师", "task": "制定千川投放计划（预算、人群包、出价、直播间加热时机）与 ROI 监控指标：\n{{selection}}", "output": "ads", "depends_on": ["selection"] },
+      { "id": "review", "expert": "直播复盘分析师", "task": "给出直播复盘框架（在线人数/停留/转化/UV 价值/GPM）与下一场优化动作清单：\n{{script}}\n\n投放：{{ads}}", "output": null, "depends_on": ["script", "qianchuan"] }
+    ]
+  },
+  {
+    "key": "private-domain-scrm-growth",
+    "file": "private-domain-scrm-growth.yaml",
+    "name": "私域 SCRM 增长体系（agency 中国原创）",
+    "description": "agency-agents-zh 中国原创场景：企微 SCRM 搭建 → 社群运营 → 用户生命周期 → 复购增长。",
+    "category": "中国特色",
+    "featured": false,
+    "concurrency": 2,
+    "inputs": [
+      { "name": "business", "description": "业务类型（如：母婴零售/教培/餐饮连锁）", "required": true }
+    ],
+    "steps": [
+      { "id": "scrm_setup", "expert": "私域流量运营师（企微 SCRM/社群/生命周期）", "task": "这是自动化流水线，不要反问。为「{{business}}」设计私域引流与 SCRM 搭建方案（包裹卡/门店/短信引流路径、企微号矩阵、标签体系）。", "output": "scrm", "depends_on": [] },
+      { "id": "community_ops", "expert": "社群运营官", "task": "设计社群分层与日常运营 SOP（内容日历、活动节奏、KOC 培养、防广告与沉默激活）：\n{{scrm}}", "output": "community", "depends_on": ["scrm_setup"] },
+      { "id": "lifecycle", "expert": "用户生命周期与复购增长官", "task": "设计用户生命周期运营（新客首单、复购召回、会员体系、1v1 私聊触达时机），给出关键指标与自动化触达方案：\n{{community}}", "output": null, "depends_on": ["community_ops"] }
+    ]
+  },
+  {
+    "key": "embedded-fpga-codesign",
+    "file": "embedded-fpga-codesign.yaml",
+    "name": "嵌入式/FPGA 软硬件协同设计（agency 中国原创）",
+    "description": "agency-agents-zh 中国原创场景：固件架构 → 驱动/逻辑开发 → 时序收敛 → 软硬件联调。",
+    "category": "中国特色",
+    "featured": false,
+    "concurrency": 2,
+    "inputs": [
+      { "name": "hw_target", "description": "硬件目标（如：STM32 采集板 / Xilinx FPGA 加速卡）", "required": true },
+      { "name": "function", "description": "核心功能（如：多通道 ADC 采集 + DMA 上传）", "required": true }
+    ],
+    "steps": [
+      { "id": "fw_arch", "expert": "嵌入式固件工程师（RTOS/外设驱动/低功耗）", "task": "这是自动化流水线，不要反问。为「{{hw_target}}」设计固件架构实现「{{function}}」：RTOS 任务划分、外设驱动、中断/DMA、低功耗策略。", "output": "fw", "depends_on": [] },
+      { "id": "logic_dev", "expert": "FPGA/ASIC 数字设计工程师（Verilog/时序收敛/AXI）", "task": "设计关键数字逻辑模块（Verilog 实现、状态机、AXI 接口、时钟域处理）：\n{{fw}}", "output": "logic", "depends_on": ["fw_arch"] },
+      { "id": "timing", "expert": "时序收敛与综合工程师", "task": "分析时序约束与收敛策略（SDC、流水线、跨时钟域），给出综合报告检查要点：\n{{logic}}", "output": "timing", "depends_on": ["logic_dev"] },
+      { "id": "codesign_debug", "expert": "软硬件协同调试工程师", "task": "制定软硬件联调与验证方案（信号发生器/逻辑分析仪、ILA 抓波形、分模块排查清单）：\n{{timing}}", "output": null, "depends_on": ["timing"] }
+    ]
+  }
+];
+
+
+;
+
+/* ===== inlined data.js (V17) ===== */
+// Mock data + localStorage state for V17 preview
+window.PV = window.PV || {};
+
+PV.ICONS = {
+  telegram: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#2AABEE"/><path d="M5.5 11.5L17.5 6.5L15 18.5L11.5 14.5L8.5 16.5L9 13L5.5 11.5Z" fill="#fff"/></svg>',
+  discord: '<svg viewBox="0 0 1280 1024"><path d="M1049.062 139.672a3 3 0 0 0-1.528-1.4A970.13 970.13 0 0 0 808.162 64.06a3.632 3.632 0 0 0-3.846 1.82 674.922 674.922 0 0 0-29.8 61.2 895.696 895.696 0 0 0-268.852 0 619.082 619.082 0 0 0-30.27-61.2 3.78 3.78 0 0 0-3.848-1.82 967.378 967.378 0 0 0-239.376 74.214 3.424 3.424 0 0 0-1.576 1.352C78.136 367.302 36.372 589.38 56.86 808.708a4.032 4.032 0 0 0 1.53 2.75 975.332 975.332 0 0 0 293.65 148.378 3.8 3.8 0 0 0 4.126-1.352A696.4 696.4 0 0 0 416.24 860.8a3.72 3.72 0 0 0-2.038-5.176 642.346 642.346 0 0 1-91.736-43.706 3.77 3.77 0 0 1-0.37-6.252 502.094 502.094 0 0 0 18.218-14.274 3.638 3.638 0 0 1 3.8-0.512c192.458 87.834 400.82 87.834 591 0a3.624 3.624 0 0 1 3.848 0.466 469.066 469.066 0 0 0 18.264 14.32 3.768 3.768 0 0 1-0.324 6.252 602.814 602.814 0 0 1-91.78 43.66 3.75 3.75 0 0 0-2 5.222 782.11 782.11 0 0 0 60.028 97.63 3.728 3.728 0 0 0 4.126 1.4A972.096 972.096 0 0 0 1221.4 811.458a3.764 3.764 0 0 0 1.53-2.704c24.528-253.566-41.064-473.824-173.868-669.082zM444.982 675.16c-57.944 0-105.688-53.174-105.688-118.478s46.818-118.482 105.688-118.482c59.33 0 106.612 53.64 105.686 118.478 0 65.308-46.82 118.482-105.686 118.482z m390.76 0c-57.942 0-105.686-53.174-105.686-118.478s46.818-118.482 105.686-118.482c59.334 0 106.614 53.64 105.688 118.478 0 65.308-46.354 118.482-105.688 118.482z" fill="#307ddb"/></svg>',
+  slack: '<svg viewBox="0 0 24 24"><path fill="#E01E5A" d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zM6.313 15.165a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zM8.834 6.313a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zM18.956 8.834a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zM17.688 8.834a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312zM15.165 18.956a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zM15.165 17.688a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z"/></svg>',
+  matrix: '<svg viewBox="0 0 24 24"><path fill="#0DBD8B" d="M.75.75h1.5v22.5H.75V.75zm22.5 0h1.5v22.5h-1.5V.75zM8.36 7.9h.92v8.2h-.92v-.74c-.45.56-1.12.9-1.96.9-1.44 0-2.64-1.2-2.64-2.85 0-1.65 1.2-2.85 2.64-2.85.84 0 1.51.34 1.96.9V7.9zm4.08 0h.92v8.2h-.92V7.9zm4.92 3.76c1.44 0 2.64 1.2 2.64 2.85 0 1.65-1.2 2.85-2.64 2.85-.84 0-1.51-.34-1.96-.9v.74h-.92V7.9h.92v3.66c.45-.56 1.12-.9 1.96-.9zM7.4 13.41c0 1.06.74 1.93 1.78 1.93s1.78-.87 1.78-1.93-.74-1.93-1.78-1.93-1.78.87-1.78 1.93zm10.56 0c0 1.06.74 1.93 1.78 1.93s1.78-.87 1.78-1.93-.74-1.93-1.78-1.93-1.78.87-1.78 1.93z"/></svg>',
+  feishu: '<svg viewBox="0 0 1024 1024"><path d="M770.91584 373.312c-2.688 0.128-3.392-1.088-3.648-3.648-0.32-2.688-0.128-5.952-1.472-8.064-2.56-4.032-1.856-8.768-4.032-12.928a23.04 23.04 0 0 1-2.56-7.04c-0.128-1.536 0.256-3.584-0.832-4.352-2.304-1.664-1.408-4.416-2.88-6.592-1.6-2.368-1.728-5.76-2.944-8.64-1.28-3.008-2.752-6.208-3.072-9.536-0.128-1.6-1.92-1.664-1.92-3.264 0.192-2.688-1.792-4.928-2.432-7.488-0.896-3.392-2.816-6.72-4.096-10.048a78.528 78.528 0 0 0-3.392-7.936c-1.856-3.648-3.392-7.36-5.504-10.944-2.048-3.2-2.56-7.232-4.8-10.688a59.2 59.2 0 0 1-4.672-8.96c-2.112-4.992-5.248-9.344-7.68-14.08a196.48 196.48 0 0 0-7.488-13.824c-2.56-4.288-4.8-8.832-7.808-12.992-1.216-1.728-3.072-3.392-3.392-5.312-0.448-2.752-2.56-4.736-3.84-6.4-1.856-2.112-1.92-6.016-5.504-6.848 0 0-0.128-0.32-0.064-0.512 0.256-2.88-3.84-3.712-3.456-6.72-3.2-1.088-2.24-5.696-5.824-6.592 0 0-0.192-0.256-0.128-0.384 0.32-2.944-2.56-4.544-3.776-6.464a48.96 48.96 0 0 0-5.504-6.848c-0.96-1.024-2.56-1.92-2.88-3.2-1.28-4.352-5.44-6.528-7.552-10.368-1.984-3.52-5.44-5.824-8.128-8.768a28.16 28.16 0 0 0-9.536-7.296c-3.392-1.28-6.144-4.096-10.24-4.352-4.224-0.192-8.256-2.688-12.672-2.56C617.18784 128.704 616.86784 128 615.71584 128H172.38784c-1.216 0-1.472 0.704-1.472 1.664-2.944-0.192-4.544 2.24-5.504 3.968-2.176 3.84 0.96 10.944 5.184 12.672 1.792 0.64 2.752 1.92 3.968 3.072 0.64 0.64 1.28 1.664 2.176 1.536 1.792-0.192 2.56 1.088 3.072 2.112 0.64 1.408 1.92 1.92 2.944 2.432a37.12 37.12 0 0 1 8.512 6.016c3.776 3.52 8 6.4 12.16 9.408 3.392 2.496 6.144 5.76 9.92 7.808 2.816 1.472 4.352 4.736 7.04 6.08 3.84 1.92 5.952 5.568 9.6 7.424a19.328 19.328 0 0 1 5.632 4.992c1.472 1.664 4.096 1.792 5.312 3.456 3.392 5.12 9.28 7.424 13.312 12.032 3.904 4.48 9.472 7.168 13.568 11.904 4.864 5.632 11.392 9.6 16.64 14.912 3.712 3.648 7.424 7.04 11.136 10.56 2.944 2.752 5.888 5.44 8.64 8.32 2.048 2.048 4.672 3.648 6.592 5.44 4.736 4.608 10.24 8.704 13.568 14.656l0.704 0.896c3.648 3.392 7.296 6.848 10.88 10.368 4.352 4.352 8.576 9.088 13.312 13.248a17.92 17.92 0 0 1 4.864 5.376c0.96 2.24 2.56 3.648 4.096 5.12 4.032 3.84 8.384 7.552 11.264 12.544 1.152 2.048 3.584 2.752 4.8 4.736 1.6 2.496 4.032 4.224 5.632 6.912 2.368 3.84 6.4 6.528 9.088 10.56 2.624 3.968 6.144 7.744 9.536 11.136 3.776 3.84 6.4 8.448 10.432 11.904 2.112 1.792 2.304 5.12 5.056 6.208 1.344 0.64 1.792 1.792 2.176 2.752 1.472 3.136 4.16 5.312 5.888 8.256 1.664 2.88 4.48 4.736 6.4 7.616 3.52 5.376 7.552 10.56 11.904 15.36 1.408 1.6 1.28 4.096 3.328 4.864 3.072 1.28 3.584 4.544 5.12 6.72 2.112 2.88 4.864 5.312 6.4 8.448 1.664 3.328 4.416 5.824 6.144 8.96 1.664 2.752 3.712 5.248 5.376 8 1.28 2.112 2.432 4.48 4.224 6.4 1.92 1.92 2.56 4.928 4.864 6.784 2.048 1.664 2.432 4.352 4.352 6.272 1.984 2.176 2.816 5.44 4.992 7.552 1.92 1.792 2.816 4.288 4.16 6.4 0.96 1.472 2.944 2.368 3.2 4.352 0.192 2.176 1.856 3.52 2.944 5.12 1.664 2.496 3.84 4.928 4.8 7.296 1.792 4.416 4.8 7.744 6.912 11.712 2.496 4.352 5.568 8.768 8.064 13.312 1.92 3.264 3.776 6.592 5.824 9.6 0.896 1.6 0.704 3.648 2.432 4.8 2.048 1.472 2.496 3.968 3.648 6.016 1.024 1.792 1.728 4.032 3.2 5.248 1.152 1.024 1.152 1.92 1.408 3.2 1.728 0.64 2.624-0.704 3.648-1.664l8.192-8.128 16.896-16.64c4.8-4.8 9.28-9.856 14.272-14.464 8.768-8 16.832-16.64 25.6-24.768 5.696-5.312 10.816-11.2 17.088-16 5.504-4.16 10.112-9.472 15.104-14.336l11.008-11.008c3.84-3.84 8.768-6.272 12.288-10.368a3.072 3.072 0 0 1 1.088-0.96c3.712-1.472 6.272-4.48 9.344-6.72 3.584-2.56 7.168-5.12 10.624-7.808 1.792-1.408 4.032-2.048 5.568-3.584 4.416-4.416 10.24-6.4 15.36-9.472 5.44-3.2 11.008-6.4 16.64-9.088 4.096-1.92 7.68-4.928 12.032-5.76 5.12-1.088 8.768-4.48 13.568-6.016 1.472-0.384 3.264-0.576 4.608-1.6 2.752-2.176 6.528-2.176 9.6-3.648 1.472-0.704 3.136-1.664 4.8-1.92 3.84-0.448 7.168-2.24 10.88-3.2 0.96-0.192 1.792-0.768 0.896-2.048" fill="#00D6B9"/><path d="M876.19584 641.28c-1.024-0.64-1.728 0.256-2.368 0.896-1.92 1.792-3.392 4.096-5.056 6.144l-8.384 9.856c-5.76 6.336-12.032 12.416-18.304 18.112-4.928 4.48-10.368 8.32-15.68 12.288-1.92 1.472-3.904 3.072-5.952 4.416-2.24 1.536-4.16 3.584-6.592 4.608-4.608 1.92-8.704 4.8-12.992 7.296-7.424 4.096-15.168 7.68-23.04 10.752-4.48 1.856-8.896 3.84-13.44 5.248-3.712 1.152-7.296 2.752-11.008 3.648-1.28 0.32-2.56 0.192-3.776 0.64-3.648 1.344-7.488 2.176-11.328 3.136-3.264 0.832-6.848 0.128-9.728 1.472-4.352 2.048-9.344 0.128-13.44 2.88-6.4 0-12.736 0.64-19.072 1.216-11.264 0.832-22.528-0.768-33.792-1.088-5.12-0.128-9.984-2.688-15.168-1.92a1.088 1.088 0 0 1-0.832-0.32c-1.664-1.28-3.648-1.28-5.504-1.28-3.968 0-7.808-0.832-11.52-1.536-3.648-0.768-7.36-2.176-10.944-3.392-2.112-0.704-4.416-0.32-6.336-1.28a32.576 32.576 0 0 0-8.768-2.752c-7.04-1.472-13.504-4.416-20.608-5.568-4.672-0.768-8.768-3.392-13.44-4.352-3.328-0.768-6.528-1.92-9.664-2.944-4.032-1.28-8.064-2.688-12.16-3.712-6.528-1.792-12.48-4.544-18.88-6.592-7.616-2.56-14.976-5.504-22.592-8.064-4.48-1.472-8.448-4.16-13.312-4.928a16.768 16.768 0 0 1-5.824-2.176c-3.584-2.048-7.68-2.752-11.264-4.48-3.072-1.536-6.528-2.24-9.536-3.712-4.992-2.56-10.752-3.328-15.296-6.912a1.92 1.92 0 0 0-1.088-0.32c-3.648-0.384-6.912-2.048-10.112-3.648-6.912-3.392-14.4-5.632-21.184-9.344-5.44-3.008-11.392-4.736-16.832-7.68-1.28-0.256-2.368 0-3.648-0.64-2.24-1.152-4.416-2.944-6.72-3.584-4.48-1.216-7.808-4.48-12.224-5.76-2.496-0.704-4.416-2.944-6.72-3.52-2.944-0.704-5.376-2.176-7.68-3.52-3.84-2.176-8.064-3.648-11.968-6.016-2.112-1.344-4.864-1.792-6.72-3.328-2.752-2.304-7.04-2.176-8.96-5.696-4.672-0.384-7.808-3.968-11.84-5.632-4.8-1.92-9.088-4.992-13.632-7.552-1.92-1.088-3.648-3.072-5.504-3.392-4.928-1.024-8.32-4.544-12.416-6.784a142.72 142.72 0 0 1-13.888-8.32c-0.768-0.448-1.856-0.384-2.368-0.96-2.88-3.264-7.04-4.928-10.688-7.168a484.608 484.608 0 0 1-10.56-6.4c-4.352-2.752-8.768-5.44-12.864-8.32-2.752-1.984-6.144-3.2-8.512-5.44-1.728-1.6-3.84-2.176-5.632-3.648-3.2-2.624-6.976-4.8-10.432-7.168-1.6-1.088-3.776-2.112-4.864-3.328-2.112-2.304-4.992-3.52-7.232-5.376-3.392-2.88-7.616-4.864-10.944-7.872-1.984-1.728-4.928-2.048-6.4-4.48-0.512-0.96-1.472-1.664-2.752-1.984-2.24-0.64-3.776-2.432-5.568-3.648-2.688-1.856-5.12-4.352-7.936-6.272-3.328-2.24-6.272-5.248-9.728-7.296-3.712-2.24-6.336-5.76-10.048-7.872-2.304-1.408-3.648-3.968-5.888-4.992-3.904-1.728-6.272-5.184-9.856-7.296-2.752-1.792-4.672-5.12-7.616-6.592-3.456-1.856-5.504-5.056-8.576-7.168-0.832-0.64-1.92-0.768-2.688-1.792-1.92-2.368-4.672-4.16-6.912-6.272-2.432-2.176-5.44-3.648-7.68-6.272-1.728-1.92-3.584-4.48-5.76-5.376-3.392-1.28-4.864-4.224-7.488-6.144-3.328-2.304-5.76-5.696-8.96-8.256-2.048-1.6-4.352-2.88-5.952-4.928-2.432-3.072-5.504-5.696-8.32-8.32C63.58784 417.92 60.06784 414.208 56.35584 410.752c-2.944-2.56-5.632-5.504-8.64-8.192-2.752-2.432-5.248-5.248-8.064-7.68C35.93984 391.424 32.54784 387.584 29.09184 384 25.63584 380.416 21.92384 377.024 18.53184 373.312 15.65184 370.048 12.70784 366.08 7.07584 367.232c-2.816 0.64-4.096 2.368-5.12 4.608-2.88 0.32-1.728 2.56-1.728 3.776v414.208c0 1.664 0.192 3.264 0.128 4.864 0 1.28 0.384 1.856 1.6 1.92-0.768 3.84 1.792 6.848 2.368 10.368 0.384 2.56 1.984 4.608 2.944 6.976 1.408 3.2 4.096 5.888 6.016 8.96a24.96 24.96 0 0 0 6.4 6.72c2.688 1.92 5.376 3.904 8.192 5.632 3.392 1.92 6.592 4.288 9.728 6.464 0.96 0.64 2.048 0.768 3.072 1.728a47.36 47.36 0 0 0 10.24 6.4c2.432 1.28 4.736 2.944 7.36 4.032 5.824 2.432 10.816 6.784 16.832 9.152 3.328 1.28 5.888 3.648 9.344 4.672 0.768 0.32 1.728 0.384 2.432 0.832 4.8 3.328 10.24 5.248 15.488 7.872 1.088 0.64 2.496 0.64 3.328 1.28a21.504 21.504 0 0 0 9.536 4.288c0.64 0.128 1.152 0.192 1.856 0.704 1.408 1.088 3.2 1.92 4.928 2.88 1.92 1.088 4.416 0.448 6.144 2.304 0.64 0.768 2.24 1.728 3.456 1.92 5.12 0.96 9.856 3.392 14.656 5.248 1.408 0.64 3.328 0 4.352 1.152 1.92 1.92 4.608 1.92 6.784 2.88 3.2 1.408 6.592 2.56 10.24 3.392 1.472 0.384 3.584 0 4.544 1.088 1.856 2.048 4.608 2.176 6.592 2.688 5.248 1.28 10.368 2.944 15.488 4.672 4.096 1.472 8.704 1.792 13.056 3.072 3.648 1.024 7.296 2.24 10.944 2.88 1.728 0.32 4.16-0.384 5.12 0.512 2.816 2.752 6.592 1.152 9.728 2.688a23.552 23.552 0 0 0 11.264 1.792c0.768-0.064 1.856-0.256 2.24 0.128 2.88 2.944 7.424 0 10.24 3.008 6.528 0.576 13.12 0.896 19.584 2.752 4.16 1.28 8.768 0.64 13.184 1.6 5.312 1.28 11.072 0.896 16.64 1.472 3.648 0.32 7.232 0.192 10.88 0.256 0 1.152 0.64 1.6 1.792 1.536h78.976c1.152 0 1.856-0.384 1.856-1.536 8.768 0.448 17.408-1.6 26.112-1.28h4.8c1.216 0 1.856-0.448 1.792-1.664 3.904-0.256 7.808-0.704 11.712-1.472 6.144-1.28 12.544-0.96 18.688-2.944 3.072-1.024 6.592-0.832 9.856-1.664 3.84-0.896 7.872-1.92 12.032-1.6 0.448 0 1.152 0 1.408-0.192 2.048-2.752 5.44-1.472 8.192-2.752a21.184 21.184 0 0 1 9.472-1.664c0.448 0 1.024 0 1.472-0.192a23.488 23.488 0 0 1 9.344-3.008 62.08 62.08 0 0 0 12.992-3.392 56.96 56.96 0 0 1 9.6-2.56c0.64-0.128 1.472-0.128 1.856-0.576 1.856-1.92 4.48-1.92 6.592-2.56 4.224-1.088 8.256-2.688 12.416-3.968 1.408-0.32 3.008 0.064 4.16-0.704a25.792 25.792 0 0 1 10.88-4.416 3.392 3.392 0 0 0 1.792-0.576c1.92-1.152 3.648-2.56 6.08-2.816 3.328-0.384 6.592-2.048 9.472-3.52 2.56-1.28 5.312-2.24 7.872-3.52 1.92-1.024 4.096-2.304 6.464-2.752 3.456-0.576 5.76-3.52 9.216-4.288a25.984 25.984 0 0 0 7.488-3.2c3.712-2.048 7.616-3.84 11.392-5.632 2.432-1.28 5.184-2.304 7.168-3.712a54.336 54.336 0 0 1 9.536-5.312c4.224-1.92 8-4.608 12.16-6.4 3.712-1.728 7.04-4.416 10.624-6.4 1.856-1.088 3.52-2.688 5.312-3.584 1.984-1.024 3.968-2.176 5.824-3.392 2.496-1.728 5.44-2.752 7.552-4.864 1.92-1.92 4.48-2.56 6.4-4.288 2.368-1.984 5.504-2.944 7.68-5.12 0.768-0.768 1.216-1.472 2.24-1.472a3.52 3.52 0 0 0 2.688-1.856 6.272 6.272 0 0 1 2.944-2.496c3.456-1.216 5.248-4.48 8.448-6.144 1.984-0.896 3.648-2.752 5.504-4.096 3.2-2.176 6.144-4.48 9.152-6.848 1.664-1.28 3.136-3.584 4.8-4.096 3.712-1.152 4.8-5.12 8.192-6.592a11.328 11.328 0 0 0 3.2-2.368c2.56-2.88 5.76-5.248 8.768-8.064 1.792-1.92 4.288-2.816 6.08-4.864a52.608 52.608 0 0 1 6.848-6.912 57.984 57.984 0 0 0 6.144-5.888l10.944-10.88c3.648-3.52 7.104-7.104 10.752-10.56a45.824 45.824 0 0 0 5.888-6.848 37.056 37.056 0 0 1 6.592-6.976c1.92-1.536 2.496-3.84 4.224-5.44a31.104 31.104 0 0 0 6.656-7.552c1.92-3.392 5.312-5.504 7.168-8.96 1.28-2.432 3.84-4.096 5.376-6.528 1.6-2.624 3.712-4.992 5.696-7.36 2.176-2.56 4.672-5.376 6.144-8.32 1.536-3.2 4.288-5.12 5.76-8.32a49.536 49.536 0 0 1 5.696-8.064c1.472-1.856 2.368-3.84 3.584-5.76 1.92-2.944 3.968-5.76 6.016-8.64 0.768-1.28 0.96-2.56 2.048-3.84 1.92-2.048 4.16-4.48 3.648-7.872" fill="#3370FF"/><path d="M1022.49984 392.32c-0.384-0.576-0.832-0.576-1.408-0.704-1.664-0.512-3.456-0.896-4.928-1.728a30.08 30.08 0 0 0-5.12-2.944c-2.688-1.088-5.824-1.472-8.128-3.072-3.136-2.432-7.04-2.368-10.432-4.096a26.24 26.24 0 0 0-7.68-2.752c-1.984-0.32-4.096-1.28-6.08-1.92-2.688-0.832-5.568-1.792-8.32-2.56a163.84 163.84 0 0 1-12.992-3.712 22.848 22.848 0 0 0-9.216-1.536c-0.704-2.944-3.136-1.216-4.8-1.6-2.176 0-4.224-1.088-6.272-1.408-6.656-1.216-13.44-1.408-20.224-2.944-5.312-1.152-11.136-0.512-16.64-1.28-3.328-0.512-6.592-0.192-9.984-0.256 0-1.28-0.64-1.6-1.792-1.6h-32.128c-1.152 0-1.856 0.32-1.856 1.6-8.192-0.448-16.192 1.344-24.384 1.28h-4.864c-1.152 0-1.664 0.448-1.728 1.536-4.672-0.384-9.088 1.664-13.76 1.28a1.472 1.472 0 0 0-0.832 0.256c-3.584 2.56-7.936 1.664-11.84 2.944-3.072 1.024-6.784 0.896-9.728 1.984-2.368 0.832-4.992 1.472-7.296 2.432a21.312 21.312 0 0 1-9.152 1.792c0.064 0.64 0.192 1.28-0.64 1.408-1.792 0.128-3.456 1.088-5.12 1.472-4.8 1.28-9.344 3.072-14.016 4.672-4.096 1.472-7.872 3.648-11.904 4.608-4.608 1.088-7.808 4.736-12.672 5.312a8.064 8.064 0 0 0-4.16 1.472 15.04 15.04 0 0 1-4.48 2.752 30.08 30.08 0 0 0-7.296 3.584c-3.328 2.176-7.04 3.648-10.24 5.76-1.28 0.96-3.264 0.576-3.84 1.536-2.368 4.096-7.168 4.16-10.496 6.72-3.52 2.688-7.68 4.736-11.2 7.36-2.88 2.24-5.952 4.288-8.768 6.592-3.648 3.2-7.616 6.016-11.52 8.768-1.984 1.472-3.2 4.224-5.376 4.864-3.328 1.152-5.12 3.968-7.296 6.016-2.176 2.176-4.672 4.48-6.912 6.784-3.328 3.456-6.912 6.656-10.432 9.984-2.624 2.56-4.928 5.632-7.808 7.552-4.416 2.944-7.68 6.784-11.264 10.24-3.648 3.456-7.36 7.04-10.88 10.624-4.032 4.16-8.576 7.872-12.48 12.16-3.328 3.84-7.232 7.168-10.816 10.624-3.648 3.584-7.04 7.424-10.944 10.88-3.84 3.456-7.424 7.04-10.88 10.816-2.752 2.88-5.696 5.76-8.576 8.512-2.944 2.816-5.44 6.08-9.088 8.064-0.384 1.792-1.856 2.496-3.2 3.392-3.776 2.368-6.784 5.696-10.048 8.768-2.176 1.92-3.968 4.608-6.4 6.016-4.16 2.176-7.04 5.824-10.688 8.448-4.416 3.2-8.96 6.528-12.8 10.368-1.92 1.856-4.864 2.176-6.08 4.544-1.024 2.048-3.648 1.6-4.928 3.2-2.56 3.456-6.72 4.864-9.792 7.68-1.856 1.664-4.416 3.008-6.592 4.352-1.408 0.704-2.944 1.28-4.096 2.368a47.36 47.36 0 0 1-9.408 6.528c-1.472 0.896-3.456 1.472-4.544 2.752-2.048 2.176-4.928 3.2-7.232 5.12a29.568 29.568 0 0 1-7.744 4.672c-3.712 1.408-6.464 3.968-9.856 5.632-4.48 2.176-8.768 4.864-13.248 7.04-1.152 0.64-3.136 1.024-3.776 2.56 0 1.088 0.448 1.344 1.28 1.92 2.048 1.152 4.224 1.408 6.208 2.24 3.2 1.472 6.272 3.264 9.472 4.608 3.072 1.28 5.632 3.328 9.28 3.648 1.664 0.32 3.2 1.088 4.48 2.176 2.176 1.92 4.992 2.624 7.296 3.52 2.048 0.704 4.032 2.048 6.4 2.496 1.472 0.256 3.456 0.192 4.608 1.088 2.048 1.6 4.352 2.496 6.592 3.84 1.472 0.833 3.392-0.32 4.288 0.96 1.28 1.856 3.52 2.176 4.928 2.688 4.16 1.408 8 3.136 12.16 4.8 3.456 1.472 7.04 2.496 10.496 4.416 2.88 1.536 6.656 1.6 9.92 2.944 1.28 0.64 1.92 1.792 3.328 1.92 3.2 0.192 6.208 1.152 8.96 2.688 0.896 0.64 1.856 1.664 2.944 1.92 3.2 0.64 6.4 1.408 9.536 2.688 2.88 1.216 5.952 2.56 9.024 2.944 1.728 0.256 2.048 1.92 3.712 1.92 2.816 0 5.12 1.856 7.808 2.432 3.648 0.832 7.232 2.176 10.816 3.264 0.832 0.256 2.176-0.128 2.56 0.32 2.176 2.88 5.824 1.408 8.768 2.88 3.2 1.6 7.296 2.368 11.008 3.584 3.264 1.216 6.528 2.432 10.048 2.56a2.56 2.56 0 0 1 1.6 0.512 26.24 26.24 0 0 0 7.808 2.944c1.28 0.256 2.56 0.512 3.84 0.64 2.368 0.384 4.224 1.984 6.528 2.112 3.328 0.192 6.208 2.24 9.728 2.368 1.28 0.064 3.52-0.128 4.608 0.96 2.24 2.24 5.504 2.112 8.064 2.752 5.504 1.472 11.456 1.152 17.152 3.008 3.328 1.152 7.04 0.768 10.688 1.6 5.824 1.28 12.16 0.896 18.432 1.28 11.52 0.704 23.04 0.448 34.432-0.896 2.944-0.384 5.632-0.512 8.512-1.28 4.096-1.024 8.256-1.664 12.416-1.984 3.584-0.32 6.912-1.856 10.56-1.472a1.344 1.344 0 0 0 0.704-0.256c3.2-1.92 6.848-1.92 10.112-3.072 2.368-0.704 5.12-0.64 7.04-1.792a20.096 20.096 0 0 1 6.72-2.56c3.648-0.64 6.208-3.648 9.92-3.392l0.448-0.256c2.496-1.92 5.568-2.944 8.32-3.84 3.072-1.088 6.016-2.304 8.896-3.712 3.84-1.92 7.424-4.416 11.136-6.592 1.152-0.64 2.752 0.32 3.52-1.472 0.64-1.472 1.984-2.176 3.712-2.56 1.92-0.512 4.096-1.28 4.864-3.456 0.384-0.896 1.088-1.024 1.856-0.896 1.024 0 1.92-0.512 2.432-1.408 2.368-3.52 6.4-5.12 9.6-7.488 3.392-2.304 6.016-5.44 9.536-7.552 4.16-2.432 7.168-6.336 10.496-9.664 2.88-2.944 5.568-5.952 8.576-8.576 2.368-2.048 3.456-4.864 5.76-6.912 1.664-1.408 4.224-2.88 4.864-5.12 1.024-3.392 3.84-4.8 6.144-6.912a13.312 13.312 0 0 1 3.584-4.608l0.896-1.408c1.216-0.704 0.576-2.56 1.92-3.328 2.304-1.536 3.2-4.416 4.224-6.592 1.6-3.392 3.52-6.656 5.44-9.792 2.048-3.456 3.328-7.296 5.888-10.496 1.92-2.496 3.136-5.76 4.48-8.704a369.92 369.92 0 0 1 7.808-15.104 130.56 130.56 0 0 0 4.48-9.088c1.408-3.2 3.2-6.208 4.736-9.28 1.472-3.2 3.52-6.144 4.672-9.28 1.472-3.904 3.648-7.168 5.312-10.88 0.512-1.344 0.384-2.944 1.28-3.904a18.688 18.688 0 0 0 4.16-7.168c1.472-3.84 4.736-6.912 5.12-11.2l0.256-0.128c1.472-1.152 1.984-2.944 2.816-4.48 1.28-2.432 1.92-5.248 3.52-7.488 2.496-3.52 3.904-7.424 5.824-11.2 1.28-2.304 2.176-4.928 3.52-7.04 2.176-3.456 3.648-7.36 5.76-10.752a43.776 43.776 0 0 0 3.584-7.68c0.64-1.792 1.92-3.52 3.008-5.12 1.984-3.072 3.392-6.592 5.952-9.344 1.088-1.152 1.024-2.752 2.304-4.096 2.24-2.176 3.392-5.12 5.12-7.68 1.28-1.92 2.24-4.224 3.776-5.696a47.232 47.232 0 0 0 7.04-9.344c1.984-3.2 4.544-6.016 6.848-8.704 3.712-4.48 7.68-8.96 11.84-13.44l11.136-11.776c2.176-2.304 1.6-2.816 0-4.416" fill="#133C9A"/></svg>',
+  dingtalk: '<svg viewBox="0 0 1024 1024"><path d="M512.003 79C272.855 79 79 272.855 79 512.003 79 751.145 272.855 945 512.003 945 751.145 945 945 751.145 945 512.003 945 272.855 751.145 79 512.003 79z m200.075 375.014c-0.867 3.764-3.117 9.347-6.234 16.012h0.087l-0.347 0.648c-18.183 38.86-65.631 115.108-65.631 115.108l-0.215-0.52-13.856 24.147h66.8L565.063 779l29.002-115.368h-52.598l18.27-76.29c-14.76 3.55-32.253 8.436-52.945 15.1 0 0-27.967 16.36-80.607-31.5 0 0-35.501-31.29-14.891-39.078 8.744-3.33 42.466-7.573 69.004-11.122 35.93-4.845 57.965-7.441 57.965-7.441s-110.607 1.643-136.841-2.468c-26.237-4.11-59.525-47.905-66.626-86.377 0 0-10.953-21.117 23.595-11.122 34.547 10 177.535 38.95 177.535 38.95s-185.933-56.992-198.36-70.929c-12.381-13.846-36.406-75.902-33.289-113.981 0 0 1.343-9.521 11.127-6.926 0 0 137.49 62.75 231.475 97.152 94.028 34.403 175.76 51.885 165.2 96.414z" fill="#3AA2EB"/></svg>',
+  qq: '<svg viewBox="0 0 1024 1024"><path d="M511.09761 957.257c-80.159 0-153.737-25.019-201.11-62.386-24.057 6.702-54.831 17.489-74.252 30.864-16.617 11.439-14.546 23.106-11.55 27.816 13.15 20.689 225.583 13.211 286.912 6.767v-3.061z" fill="#FAAD08"/><path d="M496.65061 957.257c80.157 0 153.737-25.019 201.11-62.386 24.057 6.702 54.83 17.489 74.253 30.864 16.616 11.439 14.543 23.106 11.55 27.816-13.15 20.689-225.584 13.211-286.914 6.767v-3.061z" fill="#FAAD08"/><path d="M497.12861 474.524c131.934-0.876 237.669-25.783 273.497-35.34 8.541-2.28 13.11-6.364 13.11-6.364 0.03-1.172 0.542-20.952 0.542-31.155C784.27761 229.833 701.12561 57.173 496.64061 57.162 292.15661 57.173 209.00061 229.832 209.00061 401.665c0 10.203 0.516 29.983 0.547 31.155 0 0 3.717 3.821 10.529 5.67 33.078 8.98 140.803 35.139 276.08 36.034h0.972z" fill="#000000"/><path d="M860.28261 619.782c-8.12-26.086-19.204-56.506-30.427-85.72 0 0-6.456-0.795-9.718 0.148-100.71 29.205-222.773 47.818-315.792 46.695h-0.962C410.88561 582.017 289.65061 563.617 189.27961 534.698 185.44461 533.595 177.87261 534.063 177.87261 534.063 166.64961 563.276 155.56661 593.696 147.44761 619.782 108.72961 744.168 121.27261 795.644 130.82461 796.798c20.496 2.474 79.78-93.637 79.78-93.637 0 97.66 88.324 247.617 290.576 248.996a718.01 718.01 0 0 1 5.367 0C708.80161 950.778 797.12261 800.822 797.12261 703.162c0 0 59.284 96.111 79.783 93.637 9.55-1.154 22.093-52.63-16.623-177.017" fill="#000000"/><path d="M434.38261 316.917c-27.9 1.24-51.745-30.106-53.24-69.956-1.518-39.877 19.858-73.207 47.764-74.454 27.875-1.224 51.703 30.109 53.218 69.974 1.527 39.877-19.853 73.2-47.742 74.436m206.67-69.956c-1.494 39.85-25.34 71.194-53.24 69.956-27.888-1.238-49.269-34.559-47.742-74.435 1.513-39.868 25.341-71.201 53.216-69.974 27.909 1.247 49.285 34.576 47.767 74.453" fill="#FFFFFF"/><path d="M683.94261 368.627c-7.323-17.609-81.062-37.227-172.353-37.227h-0.98c-91.29 0-165.031 19.618-172.352 37.227a6.244 6.244 0 0 0-0.535 2.505c0 1.269 0.393 2.414 1.006 3.386 6.168 9.765 88.054 58.018 171.882 58.018h0.98c83.827 0 165.71-48.25 171.881-58.016a6.352 6.352 0 0 0 1.002-3.395c0-0.897-0.2-1.736-0.531-2.498" fill="#FAAD08"/><path d="M467.63161 256.377c1.26 15.886-7.377 30-19.266 31.542-11.907 1.544-22.569-10.083-23.836-25.978-1.243-15.895 7.381-30.008 19.25-31.538 11.927-1.549 22.607 10.088 23.852 25.974m73.097 7.935c2.533-4.118 19.827-25.77 55.62-17.886 9.401 2.07 13.75 5.116 14.668 6.316 1.355 1.77 1.726 4.29 0.352 7.684-2.722 6.725-8.338 6.542-11.454 5.226-2.01-0.85-26.94-15.889-49.905 6.553-1.579 1.545-4.405 2.074-7.085 0.242-2.678-1.834-3.786-5.553-2.196-8.135" fill="#000000"/><path d="M504.33261 584.495h-0.967c-63.568 0.752-140.646-7.504-215.286-21.92-6.391 36.262-10.25 81.838-6.936 136.196 8.37 137.384 91.62 223.736 220.118 224.996H506.48461c128.498-1.26 211.748-87.612 220.12-224.996 3.314-54.362-0.547-99.938-6.94-136.203-74.654 14.423-151.745 22.684-215.332 21.927" fill="#FFFFFF"/><path d="M323.27461 577.016v137.468s64.957 12.705 130.031 3.91V591.59c-41.225-2.262-85.688-7.304-130.031-14.574" fill="#EB1C26"/><path d="M788.09761 432.536s-121.98 40.387-283.743 41.539h-0.962c-161.497-1.147-283.328-41.401-283.744-41.539l-40.854 106.952c102.186 32.31 228.837 53.135 324.598 51.926l0.96-0.002c95.768 1.216 222.4-19.61 324.6-51.924l-40.855-106.952z" fill="#EB1C26"/></svg>',
+  wecom: '<svg viewBox="0 0 1024 1024"><path d="M798.8 362.3c-2.6-19.5-5.1-37.7-10.5-57.3-19.5-66.3-59.8-123.5-115.9-162.4-69-50.7-152.4-78-238-77.9-19.5 0-39 1.3-57.3 3.9-36.4 3.9-71.5 13-105.4 27.3-57.2 23.4-106.6 59.8-144.4 107.9-79.3 98.8-84.6 237.9-13 341.7 16.9 24.6 36.4 46.8 58.6 65 2.6 2.6 3.9 5.1 3.9 7.8-1.3 10.5-3.9 20.8-6.5 31.2-4.2 13.5-6.4 27.5-6.6 41.6 0 9 2.6 18.2 7.8 27.3 14.4 26 48.1 33.9 72.9 19.5 24.6-14.4 49.5-30 74.1-44.1 3.9-2.3 8.7-2.8 13-1.3 28.6 6.5 58.5 11.7 88.5 11.7 31.8 1.3 63.7-1.3 94.9-7.8 15.6-3.9 31.2-7.8 48.1-11.7L530.6 638h-2.4c-22.1 3.9-44.2 10.4-67.6 11.7-46.9 3.9-94.9-1.3-140.5-15.6-3.9-1.5-8.3-1-11.7 1.3-22.1 13-44.2 26-66.4 40.3-9 5.1-16.9 10.4-27.3 15.6 1.3-5.1 1.3-9 1.3-11.6 5.1-27.3 10.4-53.4 16.9-80.6 1.3-3.9 0-7.8-3.9-9-21.2-14.9-40.4-32.3-57.3-52-45.6-52-66.4-120.9-54.7-189.8 7.9-48 30-93.5 65.1-128.7 29.8-31.2 65.6-56 105.4-72.8 35.1-13 72.9-22.1 109.3-24.6 24.6-1.3 50.7-1.3 75.4 1.3 26.1 1.3 52 7.8 76.8 16.9 53.4 18.2 101.5 49.5 137.9 92.3 26.1 28.5 43 63.7 52 101.4 3.9 15.6 5.1 32.4 7.8 48l53.4 7.8c-0.2-9.4-0.2-18.5-1.3-27.6z" fill="#007AFB"/><path d="M624.5 669.1c-27.3 0-49.5-22.1-49.5-49.4 0-22.1 15.6-41.6 36.4-48 10.5-2.6 22.1-3.9 33.9-7.9 21.2-9.1 41-21.4 58.5-36.4 1.3-1.3 3.9-2.6 6.5-3.9 3.9-1.3 7.8-1.3 11.7-2.6 0 3.9 0 7.8-1.3 11.6-2.6 5.1-6.5 10.4-10.5 15.6-14.4 18.2-26 39-32.5 62.4-2.6 6.5-2.6 14.3-3.9 22.1-7.8 20.9-27.3 36.5-49.3 36.5z" fill="#F8D115"/><path d="M766.3 810.7c-26 0-49.5-20.8-49.5-46.8-2.6-20.8-11.7-40.3-23.4-57.3-6.5-9-14.4-18.2-20.8-28.5-2.6-3.9-3.9-9.1-2.6-13 3.9-5.1 10.5-1.3 14.4 2.6 14.4 9.1 28.6 19.5 44.2 28.5 14.4 9.1 30 14.4 46.9 16.9 23.4 2.6 41.7 23.4 41.7 46.8s-14.4 44.1-37.7 49.4c-5.5 1.4-9.3 1.4-13.2 1.4z" fill="#FB6702"/><path d="M960 617.1c-1.3 27.3-22.1 48-48.1 50.8-18.4 2.5-35.9 9.6-50.8 20.8-13 7.8-24.6 16.9-36.4 26-1.3 1.3-2.6 2.6-3.9 2.6-2.6 1.3-5.1 0-7.8 0-1.3-2.6-2.6-5.1-1.3-7.8 2.6-6.5 6.5-11.7 10.5-16.9 15.6-19.5 27.4-41.6 35.1-66.3 2.6-7.8 2.6-16.9 5.1-24.6 7.9-23.4 30-37.7 54.6-33.9 22.1 3.9 39 20.8 41.6 42.9 0.2 2.5 1.4 5 1.4 6.4z" fill="#0183F6"/><path d="M715.5 475.4c0-26 19.5-46.8 45.6-49.4s49.5 14.4 53.4 40.3c5.2 31.7 19.7 61.1 41.6 84.5 3.9 5.1 6.5 9 9 14.4 1.3 2.6 1.3 5.1-1.3 7.8-1.3 1.3-3.9 1.3-5.1 0-4.3-1.4-8.3-3.6-11.7-6.5-18.2-15.6-39-27.3-61.1-36.4-9-2.6-19.5-5.1-30-7.8-24.8-2.6-40.4-23.5-40.4-46.9z" fill="#2AC003"/></svg>',
+  weixin: '<svg viewBox="0 0 1024 1024"><path d="M683.058 364.695c11 0 22 1.016 32.943 1.976C686.564 230.064 538.896 128 370.681 128c-188.104 0.66-342.237 127.793-342.237 289.226 0 93.068 51.379 169.827 136.725 229.256L130.72 748.43l119.796-59.368c42.918 8.395 77.37 16.79 119.742 16.79 11 0 21.46-0.48 31.914-1.442a259.168 259.168 0 0 1-10.455-71.358c0.485-148.002 128.744-268.297 291.403-268.297l-0.06-0.06z m-184.113-91.992c25.99 0 42.913 16.79 42.913 42.575 0 25.188-16.923 42.579-42.913 42.579-25.45 0-51.38-16.85-51.38-42.58 0-25.784 25.93-42.574 51.38-42.574z m-239.544 85.154c-25.384 0-51.374-16.85-51.374-42.58 0-25.784 25.99-42.574 51.374-42.574 25.45 0 42.918 16.79 42.918 42.575 0 25.188-16.924 42.579-42.918 42.579z m736.155 271.655c0-135.647-136.725-246.527-290.983-246.527-162.655 0-290.918 110.88-290.918 246.527 0 136.128 128.263 246.587 290.918 246.587 33.972 0 68.423-8.395 102.818-16.85l93.809 50.973-25.93-84.677c68.907-51.93 120.286-119.815 120.286-196.033z m-385.275-42.58c-16.923 0-34.452-16.79-34.452-34.179 0-16.79 17.529-34.18 34.452-34.18 25.99 0 42.918 16.85 42.918 34.18 0 17.39-16.928 34.18-42.918 34.18z m188.165 0c-16.984 0-33.972-16.79-33.972-34.179 0-16.79 16.927-34.18 33.972-34.18 25.93 0 42.913 16.85 42.913 34.18 0 17.39-16.983 34.18-42.913 34.18z" fill="#09BB07"/></svg>',
+  whatsapp: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="#25D366"/><path fill="#fff" d="M12.04 2C6.51 2 2 6.26 2 11.52c0 1.82.56 3.52 1.52 4.95L2 22l5.73-1.42A9.53 9.53 0 0 0 12.04 21c5.53 0 10.04-4.26 10.04-9.48S17.57 2 12.04 2zm5.39 13.5c-.24.67-1.17 1.23-1.68 1.31-.45.07-.97.1-1.57-.1a8.6 8.6 0 0 1-3.1-1.58 10.6 10.6 0 0 1-2.42-2.7c-.64-1.1-.72-1.99-.47-2.56.17-.38.56-.58 1.03-.58.12 0 .23.01.33.02.31.02.47.04.66.49.21.5.72 1.73.78 1.86.06.13.1.28.02.45-.08.17-.12.28-.24.43-.12.15-.25.32-.36.43-.12.12-.24.25-.11.49.13.24.6 1.02 1.29 1.65.89.8 1.64 1.05 1.88 1.16.24.12.38.1.52-.06.14-.15.6-.7.76-.94.16-.24.32-.2.54-.12.22.08 1.4.67 1.64.79.24.12.4.18.46.28.06.1.04.58-.2 1.25z"/></svg>',
+  tencentNews: '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3" fill="#E02020"/><path fill="#fff" d="M7 8h4v8H9v-3H7.5v-2H9V8H7zm5 0h4c1.1 0 2 .9 2 2v4c0 1.1-.9 2-2 2h-4V8zm2 2v4h2v-4h-2z"/></svg>',
+  baiduMap: '<svg viewBox="0 0 24 24"><path fill="#3385FF" d="M12 2C8.1 2 5 5.1 5 9c0 4.5 5.3 11.7 6.2 12.9.4.5 1.2.5 1.6 0C13.7 20.7 19 13.5 19 9c0-3.9-3.1-7-7-7zm0 9.5c-1.4 0-2.5-1.1-2.5-2.5s1.1-2.5 2.5-2.5 2.5 1.1 2.5 2.5-1.1 2.5-2.5 2.5z"/></svg>',
+  qqMusic: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="#31C27C"/><path fill="#fff" d="M16.5 8.5c-.8-.5-1.8-.7-2.8-.6v6.2c0 .3-.1.6-.3.8-.5.5-1.4.6-2 .3-.6-.3-.8-1-.4-1.6.3-.5 1-.7 1.6-.5.2.1.4.2.5.3V6.4c0-.5-.3-.9-.8-1-1.5-.3-3.1.1-4.2 1.2-.9.9-1.3 2.1-1.1 3.3.1.5.5.8 1 .8h.2c.5-.1.9-.6.8-1.1-.1-.7.1-1.4.6-1.9.5-.5 1.2-.7 1.9-.5v7.4c0 1.1.7 2.1 1.8 2.4 1.6.5 3.3-.4 3.7-2 .2-.8 0-1.6-.5-2.2-.5-.7-1.3-1-2.1-1z"/></svg>',
+  yuandian: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="#1A56DB"/><path fill="#fff" d="M12 4c.6 0 1 .4 1 1v5.6l3.3-3.3c.4-.4 1-.4 1.4 0s.4 1 0 1.4l-3.3 3.3H19c.6 0 1 .4 1 1s-.4 1-1 1h-4.6l3.3 3.3c.4.4.4 1 0 1.4s-1 .4-1.4 0L13 13v4.6c0 .6-.4 1-1 1s-1-.4-1-1V13l-3.3 3.3c-.4.4-1 .4-1.4 0s-.4-1 0-1.4l3.3-3.3H5c-.6 0-1-.4-1-1s.4-1 1-1h4.6L6.3 7.7c-.4-.4-.4-1 0-1.4s1-.4 1.4 0L11 9.6V5c0-.6.4-1 1-1z"/></svg>',
+  tencentIma: '<svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5" fill="#3370FF"/><path fill="#00D6B9" d="M6 6h5v2H8v3H6V6z"/><path fill="#fff" d="M13 6h5v2h-3v2h3v2h-3v2h3v2h-5V6z"/></svg>',
+  tencentDocs: '<svg viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="3" fill="#0052D9"/><path fill="#fff" d="M8 6h8v2H8zm0 4h8v2H8zm0 4h5v2H8z"/><path fill="#fff" d="M16 2v4h4l-4-4z"/></svg>',
+  notion: '<svg viewBox="0 0 24 24"><path fill="#000" d="M4.46 4.32l12.7-1.02c.6-.05 1.02.12 1.36.38l2.8 1.97c.25.18.33.45.3.72l-.9 12.15c-.05.65-.28 1.1-.9 1.16l-14.85 1.3c-.52.05-.97-.1-1.3-.42l-2.25-2.2c-.3-.3-.42-.65-.38-1.08L3.2 5.55c.05-.58.38-.98 1.26-1.23zm12.4 1.9c.1.37 0 .73-.37.78l-.78.15v8.98c-.67.37-1.3.57-1.82.57-.83 0-1.04-.27-1.67-1.04l-3.54-5.56v5.38l1.62.37s0 .73-1.02.73l-2.85.16c-.08-.17 0-.6.3-.68l.8-.22V7.8l-1.12-.08c-.1-.37.15-.9.53-.95l3.05-.2 3.7 5.65V7.2l-1.37-.15c-.1-.45.25-.78.53-.83l2.86-.2z"/></svg>',
+  tencentMeeting: '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="4" fill="#006EFF"/><path fill="#fff" d="M9 8.5c-.3 0-.5.2-.5.5v6c0 .3.2.5.5.5h4.5c.3 0 .5-.2.5-.5V9c0-.3-.2-.5-.5-.5H9zm6.5 1.5l2.5-1.5v6l-2.5-1.5v-3z"/></svg>',
+  tencentLexiang: '<svg viewBox="0 0 24 24"><rect x="3" y="2" width="18" height="20" rx="3" fill="#00C1DE"/><path fill="#fff" d="M7 6h10v2H7zm0 4h10v2H7zm0 4h6v2H7z"/><circle cx="17" cy="16" r="2" fill="#fff"/></svg>',
+};
+
+// 技能图标回退表：当后端未返回 icon/emoji 时，按技能名匹配 emoji（还原旧版图标表现）
+PV.skillIcons = {
+  'web':'🌐','browser':'🌐','web-search':'🔍','search':'🔍','file':'📁','files':'📁','terminal':'⌨️','shell':'⌨️',
+  'code':'💻','coding':'💻','code-execution':'💻','vision':'👁️','image':'🖼️','images':'🖼️','ocr':'👁️',
+  'memory':'🧠','remember':'🧠','todo':'✅','tasks':'✅','calendar':'📅','email':'✉️','mail':'✉️',
+  'pdf':'📄','docs':'📚','documents':'📚','youtube':'▶️','video':'🎬','audio':'🔊','music':'🎵',
+  'data-analysis':'📊','data':'📊','excel':'📊','csv':'📊','github':'🐙','git':'🔧','gitlab':'🦊',
+  'translator':'🌍','translate':'🌍','weather':'🌤️','maps':'🗺️','finance':'💰','stock':'📈',
+  'cron':'⏰','scheduler':'⏰','timer':'⏰','notification':'🔔','notification':'🔔','slack':'💬',
+  'telegram':'✈️','discord':'💬','whatsapp':'💬','database':'🗄️','sql':'🗄️','api':'🔌',
+  'scraper':'🕷️','crawler':'🕷️','agent':'🤖','subagent':'🤖','orchestrator':'🎯','planner':'📝',
+  'research':'🔬','summarizer':'📝','summary':'📝','rag':'📚','embeddings':'🔗','speech':'🎙️',
+  'math':'➗','calculator':'🧮','draw':'🎨','design':'🎨',  'ppt':'📊','presentation':'📊',
+};
+
+// 工具集图标兜底（先于 skillIcons 匹配，按工具 id 精确映射；最终兜底 🔧）
+PV.TOOL_ICON_MAP = {
+  'hermes-cli':'⌨️','hermes_cli':'⌨️',
+  'delegation':'🎯',
+  'code_execution':'💻','code-execution':'💻',
+  'home_assistant':'🏠','home-assistant':'🏠',
+  'web_search':'🌐','web-search':'🌐','browser':'🧭',
+  'spotify':'🎵','discord':'💬','telegram':'✈️','whatsapp':'💬'
+};
+
+PV.agents = [
+  {id:'default',name:'默认主力助手',desc:'通用、不限领域',icon:'🤖',sessions:[
+    {id:'s1',title:'项目规划讨论'},{id:'s2',title:'重构方案梳理'},{id:'s3',title:'本周排期'}
+  ]},
+  {id:'code',name:'代码重构专家',desc:'DDD、Clean Architecture',icon:'💻',sessions:[
+    {id:'s4',title:'重构 hermes-agent'}
+  ]},
+  {id:'ops',name:'运维工程师 Ops',desc:'Linux、K8s、Docker',icon:'🛠️',sessions:[
+    {id:'s5',title:'端口 3333 排查'},{id:'s6',title:'帮我下载这个文件...'}
+  ]}
+];
+
+// 常见 LLM Provider 预设（base_url 为 OpenAI 兼容接口；留空 models 时可用「获取模型」从接口拉取）
+PV.providerPresets = {
+  openai:{name:'OpenAI',base_url:'https://api.openai.com/v1',models:['gpt-4o','gpt-4o-mini','gpt-4.1','gpt-4.1-mini','gpt-4.1-nano','gpt-4-turbo','o1','o1-mini','o3','o3-mini']},
+  anthropic:{name:'Anthropic',base_url:'https://api.anthropic.com/v1',models:['claude-3-5-sonnet-20241022','claude-3-5-haiku-20241022','claude-3-opus-20240229','claude-3-7-sonnet-20250219','claude-sonnet-4-20250514','claude-opus-4-20250514']},
+  deepseek:{name:'DeepSeek',base_url:'https://api.deepseek.com/v1',models:['deepseek-chat','deepseek-reasoner']},
+  qwen:{name:'通义千问 Qwen',base_url:'https://dashscope.aliyuncs.com/compatible-mode/v1',models:['qwen-max','qwen-plus','qwen-turbo','qwen2.5-72b-instruct','qwen2.5-32b-instruct','qwen2.5-14b-instruct','qwen3-235b-a22b','qwen3-32b']},
+  moonshot:{name:'Moonshot Kimi',base_url:'https://api.moonshot.cn/v1',models:['moonshot-v1-8k','moonshot-v1-32k','moonshot-v1-128k','kimi-k2']},
+  zhipu:{name:'智谱 GLM',base_url:'https://open.bigmodel.cn/api/paas/v4',models:['glm-4-plus','glm-4-air','glm-4-airx','glm-4-flash','glm-4-long','glm-4v-plus']},
+  google:{name:'Google Gemini',base_url:'https://generativelanguage.googleapis.com/v1beta/openai',models:['gemini-2.0-flash','gemini-2.0-flash-lite','gemini-2.5-pro','gemini-2.5-flash','gemini-1.5-pro']},
+  ollama:{name:'Ollama (本机)',base_url:'http://localhost:11434/v1',models:['llama3.1','llama3.1:70b','qwen2.5','mistral','phi3','gemma2']},
+  groq:{name:'Groq',base_url:'https://api.groq.com/openai/v1',models:['llama-3.3-70b-versatile','llama-3.1-8b-instant','mixtral-8x7b-32768','gemma2-9b-it','llama-3.2-90b-vision-preview']},
+  mistral:{name:'Mistral',base_url:'https://api.mistral.ai/v1',models:['mistral-large-latest','mistral-small-latest','ministral-8b-latest','open-mistral-7b']},
+  siliconflow:{name:'硅基流动 SiliconFlow',base_url:'https://api.siliconflow.cn/v1',models:['Qwen/Qwen2.5-72B-Instruct','Qwen/Qwen2.5-32B-Instruct','deepseek-ai/DeepSeek-V3','deepseek-ai/DeepSeek-R1','meta-llama/Llama-3.3-70B-Instruct']},
+  volcengine:{name:'火山方舟 Volcengine',base_url:'https://ark.cn-beijing.volces.com/api/v3',models:['doubao-pro-32k','doubao-pro-256k','doubao-lite-32k','ep-xxx（你的 Endpoint ID）']},
+  minimax:{name:'MiniMax',base_url:'https://api.minimax.chat/v1',models:['abab6.5-chat','abab6.5s-chat','abab7-chat-preview']},
+  stepfun:{name:'阶跃星辰 StepFun',base_url:'https://api.stepfun.com/v1',models:['step-1v-8k','step-1v-32k','step-2-16k']},
+  baichuan:{name:'百川 Baichuan',base_url:'https://api.baichuan-ai.com/v1',models:['baichuan4','baichuan3-turbo','baichuan2-53b']},
+  together:{name:'Together AI',base_url:'https://api.together.xyz/v1',models:['meta-llama/Llama-3.3-70B-Instruct-Turbo','meta-llama/Llama-3.1-405B-Instruct-Turbo','Qwen/Qwen2.5-72B-Instruct-Turbo']},
+  openrouter:{name:'OpenRouter',base_url:'https://openrouter.ai/api/v1',models:['openai/gpt-4o','anthropic/claude-3.5-sonnet','google/gemini-pro-1.5','meta-llama/llama-3.1-405b-instruct']},
+  fireworks:{name:'Fireworks AI',base_url:'https://api.fireworks.ai/inference/v1',models:['accounts/fireworks/models/llama-v3p3-70b-instruct','accounts/fireworks/models/mixtral-8x22b-instruct']},
+  perplexity:{name:'Perplexity',base_url:'https://api.perplexity.ai',models:['sonar','sonar-pro','sonar-reasoning']},
+  azure:{name:'Azure OpenAI',base_url:'https://YOUR-RESOURCE.openai.azure.com/openai',models:['gpt-4o','gpt-4','gpt-35-turbo']}
+};
+
+PV.connectors = [
+  {id:'telegram',name:'Telegram Bot',icon:PV.ICONS.telegram,mode:'gateway',configured:false},
+  {id:'discord',name:'Discord Bot',icon:PV.ICONS.discord,mode:'gateway',configured:false},
+  {id:'slack',name:'Slack Bot',icon:PV.ICONS.slack,mode:'gateway',configured:false},
+  {id:'matrix',name:'Matrix Bot',icon:PV.ICONS.matrix,mode:'gateway',configured:false},
+  {id:'feishu',name:'飞书 Bot',icon:PV.ICONS.feishu,mode:'gateway',configured:false},
+  {id:'dingtalk',name:'钉钉 Bot',icon:PV.ICONS.dingtalk,mode:'gateway',configured:false},
+  {id:'qqbot',name:'QQ Bot',icon:PV.ICONS.qq,mode:'gateway',configured:false},
+  {id:'wecom',name:'企业微信',icon:PV.ICONS.wecom,mode:'gateway',configured:false},
+  {id:'weixin',name:'微信 iLink',icon:PV.ICONS.weixin,mode:'gateway',configured:false},
+  {id:'whatsapp',name:'WhatsApp',icon:PV.ICONS.whatsapp,mode:'gateway',configured:false}
+];
+
+// OCTOP 连接器目录（5 gateway + 4 remote MCP）
+PV.octopConnectors = [
+  {kind:'tencent-news',name:'腾讯新闻',icon:PV.ICONS.tencentNews,color:'#1485ee',description:'新闻搜索与热点订阅（腾讯新闻 Skills OpenAPI）',auth_kind:'api_key',mcp_mode:'gateway',phase:'available',doc_url:'https://news.qq.com/exchange?scene=appkey',auth_hint:'登录腾讯新闻 Skills 页生成 API Key 并粘贴到下方（每个账号仅一个 Key）',fields:[{key:'api_key',label:'API Key',placeholder:'腾讯新闻 API Key',secret:true}],tools:[{name:'search_news',description:'按关键词搜索腾讯新闻资讯',args:[{key:'query',label:'关键词',required:true},{key:'limit',label:'返回条数',placeholder:'10'}]}]},
+  {kind:'baidu-map',name:'百度地图',icon:PV.ICONS.baiduMap,color:'#3385ff',description:'地点检索、路线规划与天气查询（Agent Plan）',auth_kind:'api_key',mcp_mode:'gateway',phase:'available',doc_url:'https://lbs.baidu.com/apiconsole/agentplan',auth_hint:'在百度地图 Agent Plan 控制台获取 Token（sk-ap- 开头）并粘贴到下方',fields:[{key:'api_key',label:'Agent Plan Token',placeholder:'sk-ap-...',secret:true}],tools:[{name:'search_place',description:'地点检索：自然语言搜 POI（需提供城市 region）',args:[{key:'query',label:'地点',required:true},{key:'region',label:'城市',placeholder:'北京',required:true}]},{name:'plan_direction',description:'路线规划：自然语言描述起终点',args:[{key:'query',label:'路线描述',required:true,placeholder:'从天安门到故宫怎么走'}]},{name:'get_weather',description:'查询城市天气',args:[{key:'region',label:'城市',required:true,placeholder:'北京'}]}]},
+  {kind:'qq-music',name:'QQ 音乐',icon:PV.ICONS.qqMusic,color:'#31c27c',description:'搜歌、排行榜、歌单与听歌报告',auth_kind:'api_key',mcp_mode:'gateway',phase:'available',doc_url:'https://y.qq.com/n/ryqq_v2/qqmusic_skills',auth_hint:'登录 QQ 音乐 Skills 页生成 qmk- 开头的 API Key 并粘贴到下方',fields:[{key:'api_key',label:'API Key',placeholder:'qmk-...',secret:true}],tools:[{name:'search_music',description:'搜索 QQ 音乐歌曲/专辑/歌单/歌手',args:[{key:'keyword',label:'关键词',required:true},{key:'type',label:'类型',placeholder:'0'}]},{name:'list_charts',description:'获取 QQ 音乐排行榜列表',args:[]},{name:'get_chart_detail',description:'按 topId 获取榜单歌曲',args:[{key:'top_id',label:'榜单 ID',required:true}]},{name:'get_playlist_detail',description:'按 dissId 获取歌单歌曲',args:[{key:'diss_id',label:'歌单 ID',required:true}]},{name:'listening_report',description:'获取听歌报告（day/week/month）',args:[{key:'type',label:'类型',placeholder:'week'}]}]},
+  {kind:'yuandian',name:'元典法律',icon:PV.ICONS.yuandian,color:'#1a56db',description:'法律法规、案例文书、企业信息与法律幻觉检测',auth_kind:'api_key',mcp_mode:'gateway',phase:'available',doc_url:'https://open.chineselaw.com/profile',auth_hint:'登录元典开放平台获取 sk_ 开头的 API Key 并粘贴到下方',fields:[{key:'api_key',label:'API Key',placeholder:'sk_...',secret:true}],tools:[{name:'search_laws',description:'语义检索法律法规与法条',args:[{key:'query',label:'关键词',required:true},{key:'return_num',label:'返回条数',placeholder:'10'}]},{name:'search_cases',description:'语义检索裁判案例',args:[{key:'query',label:'关键词',required:true}]},{name:'search_enterprises',description:'按企业名称检索候选',args:[{key:'name',label:'企业名称',required:true},{key:'top_k',label:'候选数',placeholder:'10'}]},{name:'get_enterprise',description:'按企业名称查询详情',args:[{key:'name',label:'企业名称',required:true},{key:'num',label:'返回数量',placeholder:'2'}]},{name:'detect_hallucination',description:'校验文本中的法律引用是否准确（约 15s）',args:[{key:'text',label:'待校验文本',required:true,textarea:true}]}]},
+  {kind:'tencent-ima',name:'腾讯 IMA',icon:PV.ICONS.tencentIma,color:'#07c160',description:'笔记与知识库读写、检索与管理',auth_kind:'api_key',mcp_mode:'gateway',phase:'available',doc_url:'https://qclaw.qq.com/docs/206424375046045696',auth_hint:'在 IMA 获取 API Key 与 Client ID（API Key 仅展示一次）',fields:[{key:'client_id',label:'Client ID',placeholder:'IMA Client ID'},{key:'api_key',label:'API Key',placeholder:'IMA API Key',secret:true}],tools:[{name:'list_notes',description:'列出最近笔记',args:[{key:'folder_id',label:'笔记本 ID',placeholder:'可选'},{key:'cursor',label:'游标',placeholder:'可选'},{key:'limit',label:'条数',placeholder:'20'}]},{name:'search_notes',description:'按标题/内容搜索笔记',args:[{key:'query',label:'关键词',required:true}]},{name:'list_knowledge_bases',description:'列出知识库',args:[{key:'limit',label:'条数',placeholder:'50'}]},{name:'search_knowledge',description:'在知识库内搜索',args:[{key:'query',label:'关键词',required:true},{key:'knowledge_base_id',label:'知识库 ID',placeholder:'可选'},{key:'limit',label:'条数',placeholder:'10'}]}]},
+  {kind:'tencent-docs',name:'腾讯文档',icon:PV.ICONS.tencentDocs,color:'#0052d9',description:'读写腾讯文档、智能表格与空间文件（远程 MCP）',auth_kind:'personal_token',mcp_mode:'remote',phase:'available',doc_url:'https://developer.cloud.tencent.com/mcp/server/11803',auth_hint:'打开 MCP 授权页登录，复制页面上的 Token 并粘贴到下方',fields:[{key:'token',label:'MCP Token',placeholder:'腾讯文档 MCP Token',secret:true}],tools:[{name:'(远程 MCP)',description:'保存后注册为 MCP 服务器，由对话中的智能体调用',args:[]}]},
+  {kind:'notion',name:'Notion',icon:PV.ICONS.notion,color:'#000000',description:'官方 MCP：搜索、读写页面与数据库（远程 OAuth MCP）',auth_kind:'oauth2',mcp_mode:'remote',phase:'available',doc_url:'https://developers.notion.com/docs/mcp',auth_hint:'按官方文档手动获取 Integration Token',fields:[{key:'token',label:'Integration Token',placeholder:'secret_...',secret:true}],tools:[{name:'(远程 MCP)',description:'保存后注册为 MCP 服务器，由对话中的智能体调用',args:[]}]},
+  {kind:'tencent-meeting',name:'腾讯会议',icon:PV.ICONS.tencentMeeting,color:'#006eff',description:'会议管理、查询、录制与智能纪要（远程 MCP）',auth_kind:'personal_token',mcp_mode:'remote',phase:'available',doc_url:'https://meeting.tencent.com/ai-skill.html',auth_hint:'打开授权页登录腾讯会议，复制页面上的 Token 并粘贴到下方',fields:[{key:'token',label:'MCP Token',placeholder:'腾讯会议 Token',secret:true}],tools:[{name:'(远程 MCP)',description:'保存后注册为 MCP 服务器，由对话中的智能体调用',args:[]}]},
+  {kind:'tencent-lexiang',name:'腾讯乐享',icon:PV.ICONS.tencentLexiang,color:'#00c1de',description:'知识库检索、阅读、创建与文档管理（远程 MCP）',auth_kind:'api_key',mcp_mode:'remote',phase:'available',doc_url:'https://qclaw.qq.com/docs/211858629271314432',auth_hint:'打开乐享凭证页登录，复制企业标识与访问令牌分别填入下方',fields:[{key:'company_from',label:'企业标识',placeholder:'company_from'},{key:'token',label:'访问令牌',placeholder:'乐享访问令牌',secret:true}],tools:[{name:'(远程 MCP)',description:'保存后注册为 MCP 服务器，由对话中的智能体调用',args:[]}]}
+];
+
+PV.toolsets = [
+  {id:'hermes-cli',name:'hermes-cli',desc:'核心 CLI 工具集',enabled:true,icon:'⌨️'},
+  {id:'delegation',name:'delegation',desc:'专家团子智能体',enabled:true,icon:'🎯'},
+  {id:'code_execution',name:'code_execution',desc:'代码执行开关',enabled:false,icon:'💻'}
+];
+
+PV.skillsLocal = [
+  {id:'web_search',name:'联网搜索',desc:'Web Search & Scraping',icon:'🌐',enabled:false},
+  {id:'browser',name:'浏览器自动化',desc:'Browser Automation',icon:'🧭',enabled:false},
+  {id:'terminal',name:'终端 / 进程',desc:'Terminal & Processes',icon:'⌨️',enabled:true},
+  {id:'vision',name:'视觉 / 图像分析',desc:'Vision & Image Analysis',icon:'👁️',enabled:false}
+];
+
+PV.skillsNative = [
+  {id:'memory',name:'长期记忆',desc:'跨会话记忆压缩',icon:'🧠',enabled:true},
+  {id:'agency',name:'工作流编排',desc:'DAG 多智能体编排',icon:'🎭',enabled:false},
+  {id:'trim',name:'trim-cli',desc:'内置 MCP 工具',icon:'🛠️',enabled:true},
+  {id:'personas',name:'角色库',desc:'Persona 管理',icon:'🎨',enabled:true}
+];
+
+PV.personas = [
+  {id:'default',name:'默认主力助手',desc:'通用、不限领域',icon:'🤖',active:true},
+  {id:'code',name:'代码重构专家',desc:'DDD、Clean Architecture',icon:'💻',active:false},
+  {id:'ops',name:'运维工程师 Ops',desc:'Linux、K8s、Docker',icon:'🛠️',active:false}
+];
+
+PV.experts = [
+  {id:'e1',name:'代码重构专家',dept:'研发',icon:'💻'},
+  {id:'e2',name:'运维工程师 Ops',dept:'运维',icon:'🛠️'},
+  {id:'e3',name:'安全审计员',dept:'安全',icon:'🔒'},
+  {id:'e4',name:'产品经理 PM',dept:'产品',icon:'📋'},
+  {id:'e5',name:'UI 设计师',dept:'设计',icon:'🎨'},
+  {id:'e6',name:'测试工程师 QA',dept:'测试',icon:'🐞'},
+  {id:'e7',name:'技术写作者',dept:'文档',icon:'📝'},
+  {id:'e8',name:'数据分析师',dept:'数据',icon:'📊'}
+];
+
+// 仅保留 Hermes 消息网关官方支持的斜杠命令（来源：hermesagent.org.cn/docs/reference/slash-commands）
+// 移除所有不存在的伪命令（/token /continue /compact /list /switch /rename /delete /pin /clear /tools /skills /agents /personas /memory /config /debug /channels /broadcast /mcp /version /history）
+PV.quickGroups = [
+  {title:'会话控制',commands:[
+    {ico:'💬',title:'新对话',cmd:'/new [title]',sub:'开始新对话'},
+    {ico:'🔄',title:'重置会话',cmd:'/reset',sub:'重置对话历史'},
+    {ico:'🛑',title:'停止生成',cmd:'/stop',sub:'终止当前输出'},
+    {ico:'🔁',title:'重新生成',cmd:'/retry',sub:'重试上一条消息'},
+    {ico:'↩️',title:'撤销',cmd:'/undo',sub:'删除最后一条交互'},
+    {ico:'🗜️',title:'压缩上下文',cmd:'/compress',sub:'手动压缩对话上下文'},
+    {ico:'🏷️',title:'设置标题',cmd:'/title [名称]',sub:'设置或显示会话标题'}
+  ]},
+  {title:'模型与个性化',commands:[
+    {ico:'📊',title:'会话状态',cmd:'/status',sub:'显示会话信息'},
+    {ico:'🎛️',title:'切换模型',cmd:'/model [provider:model]',sub:'显示或更改模型'},
+    {ico:'🏭',title:'提供方状态',cmd:'/provider',sub:'显示提供者可用性'},
+    {ico:'🎭',title:'设置人格',cmd:'/personality [名称]',sub:'为会话设置个性叠加层'},
+    {ico:'🧠',title:'推理强度',cmd:'/reasoning [level|show|hide]',sub:'更改推理强度或显示'}
+  ]},
+  {title:'工具与信息',commands:[
+    {ico:'🪙',title:'Token 用量',cmd:'/usage',sub:'显示令牌使用情况'},
+    {ico:'📈',title:'使用洞察',cmd:'/insights [天数]',sub:'显示使用情况分析'},
+    {ico:'📝',title:'编写计划',cmd:'/plan [请求]',sub:'加载 plan 技能编写计划'},
+    {ico:'🔌',title:'重载 MCP',cmd:'/reload-mcp',sub:'从配置重新加载 MCP 服务器'},
+    {ico:'⚡',title:'YOLO 模式',cmd:'/yolo',sub:'跳过危险命令确认'},
+    {ico:'❓',title:'帮助',cmd:'/help',sub:'显示命令帮助'}
+  ]}
+];
+
+PV.Store = {
+  key:'hermes_v17_preview_state_v3',
+  load:function(){
+    var raw=localStorage.getItem(this.key);
+    var s=raw?JSON.parse(raw):{};
+    s.providers=s.providers||{
+      hermes:{id:'hermes',name:'Hermes 本地',base_url:'http://127.0.0.1:8080/v1',api_key:'',model:'hermes-3-llama-3.1-8b',temperature:0.7,max_tokens:4096,active:true},
+      openai:{id:'openai',name:'OpenAI',base_url:'https://api.openai.com/v1',api_key:'',model:'gpt-4o',temperature:0.7,max_tokens:4096,active:false}
+    };
+    s.connectors=s.connectors||{};
+    s.channels=s.channels||{};
+    var toolsetInit={}; PV.toolsets.forEach(function(t){toolsetInit[t.id]=t.enabled;});
+    s.toolsets=s.toolsets||toolsetInit;
+    var skillInit={}; PV.skillsLocal.concat(PV.skillsNative).forEach(function(t){skillInit[t.id]=t.enabled;});
+    s.skills=s.skills||skillInit;
+    s.memory=s.memory||{enabled:true,char_limit:2200};
+    s.workflow=s.workflow||false;
+    s.team=s.team||[];
+    s.teamName=s.teamName||'我的团队';
+    s.sessions=s.sessions||[];
+    return s;
+  },
+  save:function(s){ localStorage.setItem(this.key,JSON.stringify(s)); }
+};
+
+/* ===================== V17 P0 新增元数据 ===================== */
+// 模型能力 badge 标签映射（§7.7 共享知识）
+PV.modelCapabilityLabels = {
+  reasoning:'推理', text:'文本', image:'图像', audio:'音频', long_context:'上下文1M'
+};
+
+// 工具配置字段兜底（仪表盘未返回 config_fields 或返回空时使用，T2）
+PV.toolConfigFields = {
+  home_assistant:[
+    {key:'HASS_URL', label:'Home Assistant 地址', placeholder:'http://192.168.1.10:8123', type:'text'},
+    {key:'HASS_TOKEN', label:'长期访问令牌 (Long-Lived Token)', placeholder:'eyJ...', type:'password'}
+  ],
+  spotify:[
+    {key:'SPOTIFY_CLIENT_ID', label:'Client ID', placeholder:'', type:'text'},
+    {key:'SPOTIFY_CLIENT_SECRET', label:'Client Secret', placeholder:'', type:'password'},
+    {key:'SPOTIFY_REDIRECT_URI', label:'Redirect URI', placeholder:'http://localhost:8080/callback', type:'text'}
+  ],
+  discord:[
+    {key:'DISCORD_TOKEN', label:'Bot Token', placeholder:'', type:'password'},
+    {key:'DISCORD_GUILD_ID', label:'服务器 ID (Guild)', placeholder:'', type:'text'}
+  ],
+  browser:[
+    {key:'headless', label:'无头模式（true/false）', placeholder:'true', default:'true'},
+    {key:'BROWSER_BIN', label:'浏览器可执行路径（可选）', placeholder:'/usr/bin/chromium', type:'text'}
+  ],
+  web_search:[
+    {key:'engine', label:'搜索引擎', placeholder:'duckduckgo', default:'duckduckgo'},
+    {key:'timeout', label:'超时（秒）', placeholder:'30', default:'30', type:'number'}
+  ],
+  code_execution:[
+    {key:'runtime', label:'运行环境', placeholder:'docker', default:'docker'},
+    {key:'allow_network', label:'允许联网（true/false）', placeholder:'false', default:'false'}
+  ]
+};
+
+// 工作流步骤默认模板（T4）
+PV.wfStepDefaults = { id:'new_step', expert:'', task:'', output:'step_output', depends_on:[] };
+
+
+;
+
+/* ===== inlined app.js (V17, real backend API) ===== */
+/* ============================================================================
+ * fnos-hermes-agent · V17 Web UI
+ * 真实后端 API 对接版（覆盖原 mock 逻辑）
+ *
+ * 所有函数位于全局作用域（无 IIFE），供 DOM 内联 onclick 调用。
+ * API 前缀 BASE 由 <base href> / document.baseURI 推导；
+ * 鉴权通过 GET /api/health 返回的 X-Monitor-Token 头传递。
+ * ========================================================================== */
+
+window.currentAgent = 'default';
+window.currentSession = '';
+window.currentTheme = 'auto';
+window.activeBtn = null;
+window.activePanel = null;
+window.popup = null;
+
+/* 本地兜底状态（设置项等少量 UI 状态，真实保存走 /api/config） */
+window._state = PV.Store.load();
+
+/* ── 运行时状态 ── */
+var BASE = '';
+var monitorToken = '';
+var _cfg = { providers: [], active_provider: '', extensions: { toolsets:{}, mcp_servers:[], skills_dirs:[], persona:'default', memory:{enabled:true,char_limit:2200}, team:[], team_name:'' } };
+var _sessions = [];
+var _services = { gateway:false, dashboard:false };
+var _chState = { defs:{}, channels:{}, current:null, filter:'all' };
+// QR 扫码流程会话令牌：每次打开/关闭渠道弹窗或启动新的扫码流程时递增，
+// 各渠道 chPoll* 轮询链捕获启动时的 seq，回调发现 seq 变化立即终止——
+// 修复「点过 TG/企微扫码后，进微信仍在调企微/TG 接口」的轮询串扰 bug。
+var _chQrSeq = 0;
+var _connState = { list:[] };
+var _msgState = { streaming:false, abortCtrl:null, ws:null };
+var _persona = 'default';
+var _personaPrompt = '';
+var _pendingAttachments = [];
+var _toolNative = null;          // /proxy/dashboard 原生工具集
+var _skillLocal = [];            // /api/extensions/skills/local
+var _skillNative = [];           // /proxy/dashboard/api/skills
+var _selectedExpert = null;       // 当前选用的单专家（注入用，{id,name,prompt}）
+var _settingsLoaded = false;
+var _logStream = null;
+var _logInited = false;
+
+/* ============================ 多 Agent（专家）分组 ============================ */
+/* _agents：每个 agent 对应左侧会话树的一个可折叠分组；默认分组 id='default'。
+   专家被选中时，为其创建独立 agent（id='exp-<expertId>），会话归入该分组。 */
+var _agents = [];
+try { _agents = JSON.parse(localStorage.getItem('hermes_agents') || '[]'); } catch (e) { _agents = []; }
+if (!_agents.some(function (a) { return a.id === 'default'; })) {
+  _agents.unshift({ id: 'default', name: '默认主力助手', icon: '🤖', expertId: null });
+}
+function saveAgents() {
+  try { localStorage.setItem('hermes_agents', JSON.stringify(_agents.map(function (a) { return { id: a.id, name: a.name, icon: a.icon, expertId: a.expertId }; }))); } catch (e) {}
+  // 服务端持久化（Issue #7）：跨浏览器/清缓存不丢失角色分组
+  if (_cfg && _cfg.extensions) { _cfg.extensions.agents = _agents.map(function (a) { return { id: a.id, name: a.name, icon: a.icon, expertId: a.expertId }; }); _saveConfigDebounced(); }
+}
+/* 防抖保存配置，避免每次会话/分组变动都打 POST */
+var _saveTimer = null;
+function _saveConfigDebounced() {
+  if (_saveTimer) clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(function () { saveConfig(); }, 500);
+}
+function getAgent(id) { return _agents.find(function (a) { return a.id === id; }); }
+function ensureAgent(id, props) {
+  var a = getAgent(id);
+  if (!a) { a = { id: id, name: (props && props.name) || id, icon: (props && props.icon) || '🤖', expertId: (props && props.expertId) || null }; _agents.push(a); saveAgents(); }
+  return a;
+}
+/* 会话 → 所属 agent 的映射（持久化，专家会话刷新后仍归对应分组） */
+var _sessionAgent = {};
+/* 工具栏专家选择器当前 tab：'single' 单专家 | 'team' 专家团 */
+var _expertPickerTab = 'single';
+try { _sessionAgent = JSON.parse(localStorage.getItem('hermes_session_agent') || '{}'); } catch (e) { _sessionAgent = {}; }
+function persistSessionAgent() {
+  try { localStorage.setItem('hermes_session_agent', JSON.stringify(_sessionAgent)); } catch (e) {}
+  // 服务端持久化（Issue #7）：会话→角色分组映射跨浏览器/清缓存不丢失
+  if (_cfg && _cfg.extensions) { _cfg.extensions.session_agent = _sessionAgent; _saveConfigDebounced(); }
+}
+function setSessionAgent(sid, aid) { if (sid) { _sessionAgent[sid] = aid; persistSessionAgent(); } }
+
+/* ============================ 基础工具 ============================ */
+function $(s){ return document.querySelector(s); }
+function $$(s){ return document.querySelectorAll(s); }
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function uid(){ return 'u'+Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+function escapeHtml(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+
+/* 轻量 toast（不再用 alert 阻塞） */
+function toast(msg){
+  var t = document.getElementById('__toast');
+  if(!t){
+    t = document.createElement('div');
+    t.id = '__toast';
+    t.style.cssText = 'position:fixed;left:50%;bottom:32px;transform:translateX(-50%);max-width:80%;padding:10px 16px;border-radius:10px;background:rgba(20,24,32,.95);color:#e8eaed;font-size:13px;line-height:1.5;border:1px solid #2a2f3a;box-shadow:0 8px 24px rgba(0,0,0,.35);z-index:99999;opacity:0;transition:opacity .2s;pointer-events:none;word-break:break-all';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.opacity = '1';
+  clearTimeout(window.__toastTimer);
+  window.__toastTimer = setTimeout(function(){ t.style.opacity = '0'; }, 2800);
+}
+
+/* ============================ API 基础 ============================ */
+function _resolveBase(){
+  try {
+    var b = document.querySelector('base');
+    var href = (b && b.getAttribute('href')) || document.baseURI || window.location.pathname;
+    var path = String(href).split('?')[0].split('#')[0];
+    if (/\/[^\/]+\.[a-zA-Z0-9]+$/.test(path)) path = path.replace(/\/[^\/]+\.[a-zA-Z0-9]+$/, '');
+    return path.replace(/\/$/, '') || '';
+  } catch(e){ return (window.location.pathname||'').replace(/\/$/,'') || ''; }
+}
+function apiUrl(p){ return BASE + p; }
+
+function fetchToken(){
+  return fetch(apiUrl('/api/health')).then(function(r){
+    if(!r.ok) return null;
+    return r.json();
+  }).then(function(d){
+    if(d && d.token) monitorToken = d.token;
+    return d;
+  }).catch(function(){ return null; });
+}
+
+/* 抛 HTTP 错误（网络 / 状态码） */
+function api(path, method, body){
+  method = method || 'GET';
+  var headers = { 'Content-Type':'application/json' };
+  if(monitorToken) headers['X-Monitor-Token'] = monitorToken;
+  var opts = { method:method, headers:headers, cache:'no-store' };
+  if(body) opts.body = JSON.stringify(body);
+  return fetch(apiUrl(path), opts).then(function(r){
+    if(!r.ok){
+      return r.json().catch(function(){ return null; }).then(function(j){
+        throw new Error((j && j.error) ? (j.error+' (HTTP '+r.status+')') : ('HTTP '+r.status));
+      });
+    }
+    return r.json();
+  });
+}
+/* 不抛逻辑错误，返回原始 JSON（便于读取 {ok:false,error}） */
+function apiGet(path){ return api(path,'GET').catch(function(e){ return { ok:false, error:e.message }; }); }
+function apiPost(path, body){ return api(path,'POST',body).catch(function(e){ return { ok:false, error:e.message }; }); }
+
+/* ============================ Markdown 渲染 ============================ */
+if(window.marked && window.marked.use){
+  try {
+    window.marked.use({
+      renderer:{
+        link: function(href, title, text){
+          if(typeof href === 'object' && href !== null){ var tok=href; href=tok.href; title=tok.title; text=tok.text; }
+          var safeHref = (href||'').replace(/"/g,'&quot;');
+          var titleAttr = title ? ' title="'+String(title).replace(/"/g,'&quot;')+'"' : '';
+          return '<a href="'+safeHref+'" target="_blank" rel="noopener noreferrer"'+titleAttr+'>'+text+'</a>';
+        }
+      }
+    });
+  } catch(e){}
+}
+if(window.DOMPurify){
+  try {
+    window.DOMPurify.addHook('afterSanitizeAttributes', function(node){
+      if(node.tagName === 'A'){ node.setAttribute('target','_blank'); node.setAttribute('rel','noopener noreferrer'); }
+    });
+  } catch(e){}
+}
+function balanceMarkdown(text){
+  var out = text;
+  var fence = out.match(/```/g);
+  if(fence && fence.length % 2 === 1) out += '\n```';
+  var without = out.replace(/```[\s\S]*?```/g, '');
+  var tick = (without.match(/`/g)||[]).length;
+  if(tick % 2 === 1) out += '`';
+  if((out.match(/\*\*/g)||[]).length % 2 === 1) out += '**';
+  return out;
+}
+function preprocessMarkdown(text){
+  if(!text) return text;
+  // 网关/模型有时会返回「一行式 Markdown」：大段文字没有换行，列表也 inline。
+  // 这里做保守预处理：在中文句末标点后插入段落换行，并把 "label：- item" 切为列表。
+  // 1) 中文句末标点后接空格+中文，视为新段落开头
+  text = text.replace(/([。！？；])\s+(?=[\u4e00-\u9fa5])/g, '$1\n');
+  // 2) 冒号/全角冒号后立即跟 -，视为列表开始
+  text = text.replace(/([:：])\s*-\s+/g, '$1\n- ');
+  // 3) 对已开始的列表行，继续把后续 inline " - item" 拆成独立列表项
+  text = text.split('\n').map(function(line){
+    if(line.indexOf(' - ') === -1) return line;
+    if(!/^\s*-\s/.test(line)) return line;
+    var parts = line.split(' - ');
+    if(parts.length < 3) return line;
+    return parts.slice(0,2).join(' - ') + '\n- ' + parts.slice(2).join('\n- ');
+  }).join('\n');
+  return text;
+}
+function linkifyBareUrls(text){
+  var placeholders = [], phIdx = 0;
+  function protect(re){ return function(m){ var ph='\x00PH'+(phIdx++)+'\x00'; placeholders.push({ph:ph,val:m}); return ph; }; }
+  var out = text.replace(/```[\s\S]*?```/g, protect());
+  out = out.replace(/`[^`\n]+`/g, protect());
+  var urlRe = /(?<!\]\()(?<!href=["'])(https?:\/\/[^\s<>"'`\x00-\x1f]+?)(?=[)）\]}。、，；！？\s]|$)/g;
+  out = out.replace(urlRe, function(raw){
+    var url=raw, trail='';
+    var m=raw.match(/^(.+?)([)）\]}。、，；！？]+)$/);
+    if(m){ url=m[1]; trail=m[2]; }
+    url=url.replace(/[.,;:!\])}>]+$/,'');
+    return '['+url+']('+url+')'+trail;
+  });
+  for(var i=placeholders.length-1;i>=0;i--){ out = out.split(placeholders[i].ph).join(placeholders[i].val); }
+  return out;
+}
+function renderMarkdown(text, streaming){
+  if(!window.marked) return escapeHtml(text||'');
+  var src = streaming ? balanceMarkdown(text||'') : (text||'');
+  src = src.replace(/\r/g,'');
+  src = preprocessMarkdown(src);
+  src = linkifyBareUrls(src);
+  var html;
+  try {
+    // marked v13+ 默认返回 Promise，强制同步解析
+    if(window.marked.parseSync){
+      html = window.marked.parseSync(src, { breaks:true, gfm:true });
+    } else {
+      html = window.marked.parse(src, { breaks:true, gfm:true, async:false });
+    }
+  }
+  catch(e){ html = escapeHtml(src); }
+  html = window.DOMPurify ? window.DOMPurify.sanitize(html, { ADD_ATTR:['target'] }) : html;
+  html = html.replace(/<a[^>]*href="mailto:[^"]*"[^>]*>(.*?)<\/a>/gi, '$1');
+  if(BASE){
+    html = html.replace(/(<img[^>]+src=")(\/(?:tmp|uploads|workspace|data)\/[^"]+)(")/gi, function(m,p,path,q){ return p+BASE+path+q; });
+  }
+  html = html.replace(/<table>/g,'<div class="table-wrap"><table>').replace(/<\/table>/g,'</table></div>');
+  return html;
+}
+/* 旧版 mdToHtml 保留为简单兜底（非流式渲染时使用） */
+function mdToHtml(s){
+  return renderMarkdown(s, false);
+}
+
+/* ============================ 顶部按钮 ============================ */
+function openNewWindow(){ window.open(window.location.href, '_blank'); }
+function openGitHub(){ window.open('https://github.com/hermes-agent/fnos-hermes-agent','_blank'); }
+
+/* ============================ 会话树（Rail） ============================ */
+/* ============================ 多会话标签（浏览器式多开） ============================ */
+/* _openTabs：已打开的会话标签 id 数组（有序）；_tabDrafts：各标签输入框草稿；_tabStreaming：流式状态 */
+var _openTabs = [];
+var _tabDrafts = {};
+var _tabStreaming = {};
+var _chatHTML = {};  // sid → chatBody.innerHTML 快照（流式后台继续时保留最新内容，切回时从缓存恢复）
+try { _openTabs = JSON.parse(localStorage.getItem('hermes_open_tabs') || '[]'); } catch (e) { _openTabs = []; }
+function persistTabs() { try { localStorage.setItem('hermes_open_tabs', JSON.stringify(_openTabs)); } catch (e) {} }
+
+/* 渲染顶部标签栏 */
+function renderSessionTabs() {
+  var scroll = document.getElementById('tabsScroll');
+  if (!scroll) return;
+  var html = '';
+  _openTabs.forEach(function (sid) {
+    var s = _sessions.find(function (x) { return x.id === sid; });
+    if (!s) return;
+    var active = (sid === currentSession);
+    var rawTitle = (s.title && s.title !== 'New Chat' && s.title !== '未命名会话') ? s.title : '新会话';
+    var streaming = !!_tabStreaming[sid];
+    html += '<div class="session-tab' + (active ? ' active' : '') + (streaming ? ' streaming' : '') + '" title="' + esc(rawTitle) + '" onclick="switchTab(\'' + esc(sid) + '\')">' +
+      '<span class="tab-dot"></span>' +
+      '<span class="tab-title">' + esc(rawTitle) + '</span>' +
+      '<span class="tab-close" onclick="event.stopPropagation();closeTab(\'' + esc(sid) + '\')" title="关闭标签">×</span>' +
+      '</div>';
+  });
+  scroll.innerHTML = html;
+  var activeEl = scroll.querySelector('.session-tab.active');
+  if (activeEl && activeEl.scrollIntoView) { try { activeEl.scrollIntoView({ block: 'nearest', inline: 'nearest' }); } catch (e) {} }
+  var btn = document.getElementById('tabNewBtn');
+  if (btn) btn.style.display = 'inline-flex';
+}
+
+/* 保存/恢复指定标签的输入框草稿 */
+function saveDraft(sid) {
+  var ta = document.getElementById('chatInput');
+  if (ta && sid) _tabDrafts[sid] = ta.value;
+}
+function restoreDraft(sid) {
+  var ta = document.getElementById('chatInput');
+  if (!ta) return;
+  ta.value = _tabDrafts[sid] || '';
+  try { autoResize(ta); } catch (e) {}
+  var send = document.getElementById('sendBtn');
+  if (send) send.disabled = !ta.value.trim();
+}
+
+/* 打开（或激活）一个会话标签 */
+function openTab(sid) {
+  if (!sid) return;
+  if (_openTabs.indexOf(sid) === -1) { _openTabs.push(sid); persistTabs(); }
+  switchTab(sid);
+}
+
+/* 切换激活标签：流式后台继续（并行多会话）。切换前保存当前 chatBody → _chatHTML[currentSession]，切回时仍优先用缓存（流式最新） */
+function switchTab(sid) {
+  if (!sid || sid === currentSession) return;
+  var body = document.getElementById('chatBody');
+  if (body && currentSession) _chatHTML[currentSession] = body.innerHTML;
+  currentSession = sid;
+  renderSessionTabs();
+  renderRail(); updateHeader();
+  restoreDraft(sid);
+  _syncModelBtn();
+  if (body) {
+    var cached = _chatHTML[sid];
+    if (cached) {
+      // 命中内存快照：立即恢复渲染（0 延迟），后台静默拉取最新消息覆盖，避免显示过期内容
+      body.innerHTML = cached;
+      body.scrollTop = body.scrollHeight;
+      hideScrollBtn();
+      loadSessionMessages(sid, true);
+    } else {
+      body.innerHTML = '<div class="system-tip">加载中…</div>';
+      loadSessionMessages(sid);
+    }
+  }
+}
+// 从 _cfg 中查找当前 active provider 的默认模型名（/status 与模型按钮兜底共用）
+function _getActiveModelName(){
+  var ap = _cfg.active_provider;
+  if(!ap) return '自动';
+  var p = (_cfg.providers||[]).find(function(p){ return (p.name||p.id)===ap; });
+  if(!p) return '自动';
+  var model = p.model || '';
+  if(model) return model;
+  var models = p.models || [];
+  var def = models.find(function(m){ return m.default===true; });
+  if(def) return def.id || def.name || '';
+  var en = models.find(function(m){ return m.enabled!==false; });
+  return en ? (en.id || en.name || '') : '自动';
+}
+function _syncModelBtn(){
+  var bm=document.getElementById('btnModel'); if(!bm) return;
+  // 移除旧徽章
+  var oldBadge = bm.querySelector('.model-badge'); if(oldBadge) oldBadge.remove();
+  var sm=_getSessionModel();
+  if(sm){
+    var mName=(typeof sm==='object'&&sm.model)?sm.model:sm;
+    bm.setAttribute('data-tip','模型: '+mName); bm.classList.add('active');
+    // 添加小徽章显示模型名
+    var badge=document.createElement('span');
+    badge.className='model-badge';
+    badge.textContent=mName.length>8?mName.slice(0,8)+'…':mName;
+    bm.appendChild(badge);
+  } else {
+    // 无会话级选择时，兜底显示全局默认模型（修复：切换 Provider/模型后首页与按钮无反映）
+    var globalModel = _getActiveModelName();
+    var globalProv = _cfg.active_provider || '';
+    if(globalModel && globalModel !== '自动'){
+      bm.setAttribute('data-tip', (globalProv?globalProv+' · ':'')+globalModel);
+      bm.classList.add('active');
+      var label = globalProv ? globalProv.slice(0,4)+'…' : globalModel;
+      var badge2 = document.createElement('span');
+      badge2.className='model-badge';
+      badge2.textContent = label.length>8 ? label.slice(0,8)+'…' : label;
+      bm.appendChild(badge2);
+    } else {
+      bm.setAttribute('data-tip','选择模型'); bm.classList.remove('active');
+    }
+  }
+}
+
+/* 关闭一个会话标签（会话本身保留在左侧树）；流式中允许关闭（后台流式继续，不影响其他会话） */
+function closeTab(sid) {
+  var i = _openTabs.indexOf(sid);
+  if (i === -1) return;
+  // 流式允许后台继续：仅清理 UI 状态（如果当前 tab 被关闭，需要 abort 它的流式，因为没有可见 DOM 了）
+  if (_tabStreaming[sid]) {
+    if (currentSession === sid) {
+      try { fetch(apiUrl('/api/chat/stop'), { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Monitor-Token': monitorToken || '' }, body: JSON.stringify({ session_id: sid }) }).catch(function () {}); } catch (e) {}
+      if (_msgState.ws) { try { _msgState.ws.close(1000, 'tab closed'); } catch (e) {} _msgState.ws = null; }
+      if (_msgState.abortCtrl) try { _msgState.abortCtrl.abort(); } catch (e) {}
+      _msgState.streaming = false; _msgState.abortCtrl = null;
+    }
+    _tabStreaming[sid] = false;
+  }
+  _openTabs.splice(i, 1); persistTabs();
+  delete _tabDrafts[sid];
+  if (currentSession === sid) {
+    currentSession = _openTabs.length ? _openTabs[Math.min(i, _openTabs.length - 1)] : '';
+    if (currentSession) {
+      renderRail(); updateHeader();
+      restoreDraft(currentSession);
+      loadSessionMessages(currentSession);
+      _syncModelBtn();
+    } else {
+      var body = document.getElementById('chatBody');
+      if (body) body.innerHTML = '<div class="system-tip">没有打开的会话，点击右上角 + 新建</div>';
+      updateHeader();
+      _syncModelBtn();
+    }
+  }
+  renderSessionTabs(); renderRail();
+}
+
+/* 新建会话并打开为标签 */
+function newTab() {
+  // 团队模式或工作流启用时，新会话强制归入 team 分组
+  var ext = _cfg.extensions || {};
+  var teamActive = ext.team_enabled && ext.team && ext.team.length;
+  var wfActive = ext.workflow && ext.workflow.enabled && ext.workflow.steps && ext.workflow.steps.length;
+  var aid = (teamActive || wfActive) ? 'team' : (currentAgent || 'default');
+  if (teamActive || wfActive) { ensureAgent('team', { name: ext.team_name || ext.workflow.name || '我的团队', icon: wfActive ? '⚙️' : '👥' }); currentAgent = 'team'; }
+  fetch(apiUrl('/api/sessions'), { method: 'POST', headers: monitorToken ? { 'X-Monitor-Token': monitorToken } : {} })
+    .then(function (r) { return r.json(); })
+    .then(function (s) {
+      _sessions.unshift(s);
+      currentSession = s.id;
+      setSessionAgent(s.id, aid);
+      _applyPendingModel(s.id);
+      _openTabs.push(s.id); persistTabs();
+      var ta = document.getElementById('chatInput'); if (ta) ta.value = '';
+      renderSessionTabs(); renderRail(); updateHeader();
+      if (window.innerWidth <= 768) closeRailDrawer();
+      var body = document.getElementById('chatBody');
+      if (body) body.innerHTML = '<div class="system-tip">新会话已创建</div>';
+    })
+    .catch(function () { toast('创建会话失败'); });
+}
+
+/* 与后端会话列表同步标签（删除会话后清理、首次加载默认打开一个） */
+function syncTabs() {
+  var valid = _sessions.map(function (s) { return s.id; });
+  _openTabs = _openTabs.filter(function (sid) { return valid.indexOf(sid) !== -1; });
+  if (!_openTabs.length && _sessions.length) { _openTabs.push(_sessions[0].id); }
+  persistTabs();
+  if (currentSession && valid.indexOf(currentSession) === -1) {
+    currentSession = _openTabs.length ? _openTabs[0] : '';
+  }
+  renderSessionTabs();
+}
+
+/* 同步标签栏可见性：多会话按钮强制开启 > 移动端始终显示 > 桌面端仅 rail 折叠时显示 */
+var _multiTabsForced = false;
+function toggleSessionTabsBar(){
+  _multiTabsForced = !_multiTabsForced;
+  var btn=document.getElementById('multiTabsBtn');
+  if(btn) btn.classList.toggle('active', _multiTabsForced);
+  syncSessionTabsVisibility();
+}
+function syncSessionTabsVisibility() {
+  var tabs = document.querySelector('.page-container .session-tabs');
+  if (!tabs) return;
+  var rail = document.getElementById('chatRail');
+  if (!rail) return;
+  if (_multiTabsForced) {
+    tabs.classList.add('visible');  // 多会话按钮强制开启
+  } else if (window.innerWidth <= 768) {
+    tabs.classList.add('visible');  // 移动端：始终显示
+  } else if (rail.classList.contains('hidden')) {
+    tabs.classList.add('visible');  // 桌面端：仅 rail 折叠时显示
+  } else {
+    tabs.classList.remove('visible');
+  }
+}
+
+function loadSessions(){
+  return fetch(apiUrl('/api/sessions'), { cache:'no-store', headers: monitorToken?{'X-Monitor-Token':monitorToken}:{} })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      _sessions = (d && d.sessions) || [];
+      if(!currentSession && _sessions.length){ currentSession = _sessions[0].id; }
+      else if(currentSession && !_sessions.some(function(s){ return s.id===currentSession; })){ currentSession = _sessions.length?_sessions[0].id:''; }
+      syncTabs();
+      renderRail(); updateHeader();
+      _syncModelBtn();
+      if(currentSession) loadSessionMessages(currentSession);
+    })
+    .catch(function(){ toast('加载会话失败，无法连接后端'); renderRail(); });
+}
+function fmtDateTime(ts){
+  if(!ts) return '';
+  var d = new Date(ts);
+  if(isNaN(d.getTime())) return '';
+  var pad = function(n){ return (n<10?'0':'')+n; };
+  var now = new Date();
+  var hm = pad(d.getHours())+':'+pad(d.getMinutes());
+  var sameDay = d.getFullYear()===now.getFullYear() && d.getMonth()===now.getMonth() && d.getDate()===now.getDate();
+  if(sameDay) return '今天 '+hm;
+  var y = new Date(now); y.setDate(now.getDate()-1);
+  var isYest = d.getFullYear()===y.getFullYear() && d.getMonth()===y.getMonth() && d.getDate()===y.getDate();
+  if(isYest) return '昨天 '+hm;
+  return (d.getMonth()+1)+'月'+d.getDate()+'日 '+hm;
+}
+function renderRail(){
+  var el = document.getElementById('railScroll');
+  if(!el) return;
+  // 一次性清理 v0.20.66 期间 localStorage 存的旧 'true' 值（让默认折叠生效）
+  if (!_state._railOpenCleaned) {
+    try {
+      var keys = Object.keys(localStorage);
+      for (var i = 0; i < keys.length; i++) {
+        if (keys[i].indexOf('hermes_rail_open_') === 0) localStorage.removeItem(keys[i]);
+      }
+      _state._railOpenCleaned = true;
+      try { localStorage.setItem('hermes_ui_flags', JSON.stringify({ railOpenCleaned: true })); } catch(e){}
+    } catch(e){ _state._railOpenCleaned = true; }
+  }
+  if(!_sessions.length){
+    el.innerHTML = '<div class="empty-state">暂无会话，点击右上角 + 新建。</div>';
+    return;
+  }
+  var html = '';
+  _agents.forEach(function(agent){
+    var isActiveAgent = (currentAgent === agent.id);
+    // 默认所有 agent 分组都【折叠】，用户点击才展开。
+    // 仅当 localStorage 显式记录为 'true' 才展开（v0.20.66 期间的旧值已被上面清理）
+    var open = (localStorage.getItem('hermes_rail_open_'+agent.id) === 'true');
+    // 归属映射若指向不存在的 agent（如本地存储被部分清理），回退到 default，避免会话丢失
+    var sessIds = _sessions.filter(function(s){
+      var aid = _sessionAgent[s.id] || 'default';
+      if(aid !== 'default' && !getAgent(aid)) aid = 'default';
+      return aid === agent.id;
+    }).map(function(s){ return s.id; });
+    html += '<div class="agent-group"><div class="agent-row'+(open?' expanded':'')+(isActiveAgent?' active':'')+'" onclick="toggleAgent(\''+esc(agent.id)+'\')">'+
+      '<span class="chevron">▶</span><span class="avatar">'+esc(agent.icon||'🤖')+'</span>'+
+      '<span class="info"><div class="name">'+esc(agent.name)+'</div><div class="desc">'+(isActiveAgent&&agent.id==='default'?'默认主力助手':'')+'</div></span>'+
+      (agent.id!=='default' ? '<span class="agent-del" title="删除该分组" onclick="deleteAgentGroup(\''+esc(agent.id)+'\',event)">×</span>' : '')+
+      '</div>'+
+      '<div class="session-list'+(open?' open':'')+'" id="sess-'+esc(agent.id)+'">';
+    if(sessIds.length){
+      html += sessIds.map(function(sid){
+        var s = _sessions.find(function(x){ return x.id===sid; });
+        if(!s) return '';
+        var sa = (sid===currentSession) ? 'active' : '';
+        var streaming = !!_tabStreaming[sid];
+        var rawTitle = (s.title && s.title!=='New Chat' && s.title!=='未命名会话') ? s.title : '';
+        var title = rawTitle || '新会话';
+        var meta = fmtDateTime(s.updated_at) + (s.message_count ? ' · '+s.message_count+' 条' : '');
+        return '<div class="session-item '+sa+(streaming?' streaming':'')+'" onclick="switchSession(\''+esc(agent.id)+'\',\''+esc(s.id)+'\',event)">'+
+          '<span class="dot'+(streaming?' streaming':'')+'"></span>'+
+          '<span class="si-body"><span class="title">'+esc(title)+'</span>'+(meta?'<span class="meta">'+esc(meta)+'</span>':'')+'</span>'+
+          '<span class="del" onclick="delSession(\''+esc(agent.id)+'\',\''+esc(s.id)+'\',event)">×</span></div>';
+      }).join('');
+    } else {
+      html += '<div class="empty-sess">暂无会话</div>';
+    }
+    html += '</div></div>';
+  });
+  // ── 通道会话分组（微信/Telegram 等）──
+  var chGroups = _channelSessions || {};
+  var chIds = Object.keys(chGroups).filter(function(k){ return k !== 'api_server'; });
+  if(chIds.length){
+    html += '<div class="rail-divider" style="margin:12px 0 8px;border-top:1px solid var(--border);padding-top:8px;font-size:11px;color:var(--muted);letter-spacing:1px">通道会话</div>';
+    chIds.forEach(function(chId){
+      var sessions = chGroups[chId];
+      var def = (_chState.defs && _chState.defs[chId]) || {};
+      var chName = def.name || chId;
+      var chIcon = def.icon || '📨';
+      var open = (localStorage.getItem('hermes_rail_open_ch_'+chId) === 'true');
+      html += '<div class="agent-group"><div class="agent-row'+(open?' expanded':'')+'" onclick="toggleChannelGroup(\''+esc(chId)+'\')">' +
+        '<span class="chevron">▶</span><span class="avatar">'+esc(chIcon)+'</span>'+
+        '<span class="info"><div class="name">'+esc(chName)+'</div><div class="desc">'+sessions.length+' 个会话</div></span></div>'+
+        '<div class="session-list'+(open?' open':'')+'" id="sess-ch-'+esc(chId)+'">';
+      if(sessions.length){
+        html += sessions.slice(0,20).map(function(s){
+          var title = (s.title && s.title!=='未命名会话') ? s.title : '新会话';
+          var meta = s.model ? esc(s.model) : '';
+          return '<div class="session-item" onclick="openChannelSession(\''+esc(chId)+'\',\''+esc(s.id)+'\')">' +
+            '<span class="dot"></span>'+
+            '<span class="si-body"><span class="title">'+esc(title)+'</span>'+(meta?'<span class="meta">'+meta+'</span>':'')+'</span>'+
+            '</div>';
+        }).join('');
+      } else {
+        html += '<div class="empty-sess">暂无会话</div>';
+      }
+      html += '</div></div>';
+    });
+  }
+  el.innerHTML = html;
+}
+var _channelSessions = null;
+function fetchChannelSessions(){
+  apiGet('/api/channel-sessions').then(function(res){
+    if(res && res.ok && res.groups){ _channelSessions = res.groups; renderRail(); }
+  }).catch(function(){});
+}
+function toggleChannelGroup(chId){
+  var list = document.getElementById('sess-ch-'+chId);
+  if(list){ var open = list.classList.toggle('open'); localStorage.setItem('hermes_rail_open_ch_'+chId, open ? 'true' : 'false'); }
+}
+function openChannelSession(chId, sessionId){
+  // 通道会话：直接在 WEBUI 聊天窗口加载消息（从 Dashboard API 拉取）
+  var def = (_chState.defs && _chState.defs[chId]) || {};
+  var chName = def.name || chId;
+  // 切换到聊天页
+  switchPage('chat');
+  // 更新标题
+  var titleEl = document.getElementById('chatTitle');
+  var subEl = document.getElementById('chatSubtitle');
+  if(titleEl) titleEl.textContent = chName + ' 通道会话';
+  if(subEl) subEl.textContent = '加载中…';
+  // 显示 loading
+  var body = document.getElementById('chatBody');
+  if(body) body.innerHTML = '<div class="system-tip">正在加载 '+esc(chName)+' 通道会话消息…</div>';
+  // 拉取消息
+  apiGet('/api/channel-sessions/'+encodeURIComponent(sessionId)+'/messages').then(function(res){
+    if(!res || !res.ok || !res.messages || !res.messages.length){
+      if(body) body.innerHTML = '<div class="system-tip">该通道会话暂无消息记录'+(res&&res.error?' ('+esc(res.error)+')':'')+'</div>';
+      if(subEl) subEl.textContent = chName + ' · 0 条消息';
+      return;
+    }
+    var msgs = res.messages;
+    if(subEl) subEl.textContent = chName + ' · ' + msgs.length + ' 条消息' + (res.title ? ' · ' + res.title : '');
+    // 渲染消息到聊天区域
+    var html = '<div class="system-tip" style="background:var(--accent);color:#fff;opacity:.9">📨 '+esc(chName)+' 通道会话（只读） · '+msgs.length+' 条消息</div>';
+    msgs.forEach(function(m){
+      var isUser = (m.role === 'user' || m.role === 'human');
+      var cls = isUser ? 'user' : 'assistant';
+      var label = isUser ? '你' : ('Hermes' + (m.model ? ' · '+m.model : ''));
+      var time = m.timestamp ? fmtDateTime(m.timestamp) : '';
+      var content = m.content || '';
+      // 简单 Markdown 渲染（代码块 + 换行）
+      var rendered = esc(content).replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>').replace(/\n/g, '<br>');
+      html += '<div class="msg '+cls+'"><div class="msg-bubble"><div class="md-text">'+rendered+'</div></div><div class="msg-meta">'+esc(label)+' · '+esc(time)+'</div></div>';
+    });
+    if(body){ body.innerHTML = html; body.scrollTop = body.scrollHeight; }
+  }).catch(function(e){
+    if(body) body.innerHTML = '<div class="system-tip">加载失败：'+esc(e.message||'网络错误')+'</div>';
+  });
+}
+function toggleAgent(id){
+  currentAgent = id;
+  var list = document.getElementById('sess-'+id);
+  if(list){ var open = list.classList.toggle('open'); localStorage.setItem('hermes_rail_open_'+id, open ? 'true' : 'false'); }
+}
+function switchSession(aid, sid, e){
+  if(e) e.stopPropagation();
+  currentAgent = aid; 
+  if(aid) setSessionAgent(sid, aid);
+  openTab(sid);
+  if(window.innerWidth<=768) closeRailDrawer();
+}
+/* 删除 Agent 分组（非 default）：分组下的会话移回「默认主力助手」，不删除会话本身 */
+function deleteAgentGroup(aid, e){
+  if(e) e.stopPropagation();
+  if(!aid || aid === 'default') return;
+  var a = getAgent(aid);
+  var sessIds = _sessions.filter(function(s){
+    var x = _sessionAgent[s.id] || 'default';
+    if(x !== 'default' && !getAgent(x)) x = 'default';
+    return x === aid;
+  }).map(function(s){ return s.id; });
+  var msg = '确定删除分组「' + (a ? a.name : aid) + '」？';
+  if(sessIds.length) msg += '\n该分组下的 ' + sessIds.length + ' 个会话将移动到「默认主力助手」。';
+  if(!confirm(msg)) return;
+  // 会话移回默认分组
+  sessIds.forEach(function(sid){ _sessionAgent[sid] = 'default'; });
+  persistSessionAgent();
+  _agents = _agents.filter(function(x){ return x.id !== aid; });
+  saveAgents();
+  try{ localStorage.removeItem('hermes_rail_open_' + aid); }catch(err){}
+  if(currentAgent === aid) currentAgent = 'default';
+  renderRail(); renderSessionTabs(); updateHeader();
+  toast('已删除分组');
+}
+function delSession(aid, sid, e){
+  if(e) e.stopPropagation();
+  if(!confirm('确定删除该会话？')) return;
+  fetch(apiUrl('/api/sessions/'+encodeURIComponent(sid)), { method:'DELETE', headers: monitorToken?{'X-Monitor-Token':monitorToken}:{} })
+    .then(function(){
+      _sessions = _sessions.filter(function(s){ return s.id!==sid; });
+      delete _sessionAgent[sid]; persistSessionAgent();
+      var ti = _openTabs.indexOf(sid);
+      if(ti!==-1){ _openTabs.splice(ti,1); persistTabs(); }
+      delete _tabDrafts[sid]; delete _tabStreaming[sid]; delete _chatHTML[sid];
+      if(currentSession===sid) currentSession = _openTabs.length?_openTabs[0]:(_sessions.length?_sessions[0].id:'');
+      renderSessionTabs(); renderRail(); updateHeader();
+      if(currentSession) loadSessionMessages(currentSession);
+      else { var b = document.getElementById('chatBody'); if(b) b.innerHTML = '<div class="system-tip">没有打开的会话，点击右上角 + 新建</div>'; }
+    })
+    .catch(function(){ toast('删除会话失败'); });
+}
+function newSession(){
+  newTab();
+}
+function loadSessionMessages(sid, silent){
+  var body = document.getElementById('chatBody');
+  if(!body) return;
+  if(silent){ var h = _chatHTML[sid]; if(h) body.innerHTML = h; }  // 静默刷新前确保已有内容（幂等兜底）
+  fetch(apiUrl('/api/sessions/'+encodeURIComponent(sid)), { cache:'no-store', headers: monitorToken?{'X-Monitor-Token':monitorToken}:{} })
+    .then(function(r){ if(!r.ok) throw new Error('load'); return r.json(); })
+    .then(function(s){
+      var msgs = s.messages || [];
+      if(!msgs.length){ body.innerHTML = welcomeHTML(); return; }
+      body.innerHTML = msgs.map(function(m){ return msgHTML(m); }).join('');
+      _chatHTML[sid] = body.innerHTML;  // 回写快照缓存，下次切换 0 延迟
+      body.scrollTop = body.scrollHeight;
+      hideScrollBtn();
+    })
+    .catch(function(){ body.innerHTML = '<div class="system-tip">加载消息失败，请确认后端已连接。</div>'; });
+}
+function splitContent(content){
+  if(typeof content === 'string') return { text: content, images: [] };
+  if(Array.isArray(content)){
+    var text = '', images = [];
+    content.forEach(function(p){
+      if(!p) return;
+      if(p.type === 'text' && p.text) text += (text ? '\n' : '') + p.text;
+      else if(p.type === 'image_url' && p.image_url && p.image_url.url) images.push(p.image_url.url);
+    });
+    return { text: text, images: images };
+  }
+  if(content && typeof content === 'object'){
+    return { text: content.text || '', images: Array.isArray(content.images) ? content.images : [] };
+  }
+  return { text: '', images: [] };
+}
+function msgHTML(m){
+  var parts = splitContent(m.content);
+  var text = parts.text, imgs = parts.images;
+  var imgHtml = imgStackHTML(imgs);
+  if(m.role === 'user'){
+    return '<div class="msg user"><div class="msg-bubble">'+escapeHtml(text).replace(/\n/g,'<br>')+imgHtml+'</div><div class="msg-meta">你 · '+fmtDateTime(m.ts||m.created_at||Date.now())+'</div></div>';
+  }
+  var toolsHtml = toolCallsHTML(m.tools);
+  var msgText = esc(text).replace(/'/g,"\\'").replace(/\n/g,' ');
+  var actionsHtml = '<div class="msg-actions">' +
+    '<button class="msg-act-btn" onclick="speakMsg(this)" title="语音播放"><svg viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>播放</button>' +
+    '<button class="msg-act-btn" onclick="quoteMsg(this)" title="引用回复"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>引用</button>' +
+    '<button class="msg-act-btn" onclick="forkMsg(this)" title="Fork 新话题"><svg viewBox="0 0 24 24"><circle cx="12" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><circle cx="18" cy="6" r="3"/><path d="M18 9v1a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V9"/><path d="M12 12v3"/></svg>Fork</button>' +
+    '</div>';
+  return '<div class="msg assistant" data-content="'+esc(text).replace(/"/g,'&quot;').replace(/\n/g,'&#10;')+'"><div class="msg-bubble">'+renderMarkdown(text)+imgHtml+toolsHtml+'</div>'+actionsHtml+'<div class="msg-meta">Hermes · '+fmtDateTime(m.ts||m.created_at||Date.now())+'</div></div>';
+}
+
+/* ── 聊天图片：卡片式堆叠 + 灯箱大图（点击任意卡片查看，←/→ 上下页切换，Esc 关闭）── */
+var _lbImgs = [], _lbIdx = 0;
+function chatImgSrc(u){
+  if(!u) return '';
+  if(/^(https?:|data:|blob:)/i.test(u)) return u;
+  return BASE + u; // 相对路径（/tmp /uploads /workspace /data）补 BASE 前缀
+}
+function imgStackHTML(imgs){
+  if(!imgs || !imgs.length) return '';
+  var list = imgs.map(chatImgSrc);
+  var arg = esc(JSON.stringify(list));
+  if(list.length === 1){
+    return '<img src="'+esc(list[0])+'" alt="图片" loading="lazy" style="max-width:220px;max-height:220px;border-radius:var(--radius-md);display:block;margin-top:6px;cursor:zoom-in;object-fit:cover" onclick="openImgLightbox(\''+arg+'\',0)">';
+  }
+  var n = Math.min(list.length, 5);
+  var off = 9;
+  var html = '<div class="img-stack" style="width:'+(150+(n-1)*off)+'px;height:'+(150+(n-1)*off)+'px" onclick="openImgLightbox(\''+arg+'\',0)" title="点击查看 '+list.length+' 张图片">';
+  for(var i=0;i<n;i++){
+    html += '<img class="img-stack-item" src="'+esc(list[i])+'" alt="图片'+(i+1)+'" loading="lazy" style="left:'+(i*off)+'px;top:'+(i*off)+'px;z-index:'+(i+1)+'">';
+  }
+  html += '<span style="position:absolute;left:'+((n-1)*off+156)+'px;top:'+((n-1)*off+60)+'px;font-size:11px;color:var(--text);background:var(--accent);border-radius:12px;padding:3px 10px;font-weight:600;z-index:'+(n+1)+'">'+list.length+' 张 ▸</span></div>';
+  return html;
+}
+function openImgLightbox(jsonList, idx){
+  var arr = [];
+  try { arr = JSON.parse(jsonList); } catch(e){ return; }
+  if(!arr.length) return;
+  _lbImgs = arr;
+  _lbIdx = Math.max(0, Math.min(idx||0, arr.length-1));
+  renderImgLightbox();
+}
+function renderImgLightbox(){
+  var o = document.getElementById('imgLightbox');
+  if(!o){
+    o = document.createElement('div');
+    o.id = 'imgLightbox';
+    o.innerHTML = '<div class="lb-bg" onclick="closeImgLightbox()"></div>' +
+      '<button class="lb-btn lb-close" onclick="closeImgLightbox()" title="关闭 (Esc)">✕</button>' +
+      '<button class="lb-btn lb-prev" onclick="imgLbNav(-1)" title="上一张 (←)">‹</button>' +
+      '<button class="lb-btn lb-next" onclick="imgLbNav(1)" title="下一张 (→)">›</button>' +
+      '<div class="lb-count"></div>' +
+      '<img class="lb-img" alt="大图预览">';
+    document.body.appendChild(o);
+  }
+  o.querySelector('.lb-img').src = _lbImgs[_lbIdx];
+  o.querySelector('.lb-count').textContent = (_lbIdx+1) + ' / ' + _lbImgs.length;
+  o.style.display = 'flex';
+  // 预载相邻图片，翻页不闪烁
+  [1,-1].forEach(function(d){
+    var i = _lbIdx + d;
+    if(i>=0 && i<_lbImgs.length){ var im = new Image(); im.src = _lbImgs[i]; }
+  });
+}
+function imgLbNav(d){
+  if(!_lbImgs.length) return;
+  _lbIdx = (_lbIdx + d + _lbImgs.length) % _lbImgs.length;
+  renderImgLightbox();
+}
+function closeImgLightbox(){
+  var o = document.getElementById('imgLightbox');
+  if(o) o.style.display = 'none';
+}
+document.addEventListener('keydown', function(e){
+  var o = document.getElementById('imgLightbox');
+  if(!o || o.style.display==='none') return;
+  if(e.key==='Escape') closeImgLightbox();
+  else if(e.key==='ArrowLeft'||e.key==='ArrowUp') imgLbNav(-1);
+  else if(e.key==='ArrowRight'||e.key==='ArrowDown') imgLbNav(1);
+});
+
+/* 工具调用映射（对齐 Hermes 消息网关规范：terminal=💻 / web=🔍 / execute_code=🐍 等） */
+var TOOL_EMOJI = {
+  terminal: '💻', execute_code: '🐍', run_code: '🐍',
+  read_file: '📄', write_file: '📝', edit_file: '✏️',
+  search_files: '🔎', web: '🔍', web_search: '🔍', web_extract: '📄',
+  delegate_task: '🤖', delegation: '🤖', session_search: '💬',
+  browser: '🌐', image_gen: '🎨', file_ops: '📂', memory: '🧠',
+  shell: '💻', bash: '💻', cmd: '💻',
+};
+var TOOL_NAME_ZH = {
+  terminal: '终端命令', execute_code: '执行代码', run_code: '执行代码',
+  read_file: '读取文件', write_file: '写入文件', edit_file: '编辑文件',
+  search_files: '搜索文件', web: '网页搜索', web_search: '网页搜索', web_extract: '网页提取',
+  delegate_task: '委派任务', delegation: '委派任务', session_search: '会话搜索',
+  browser: '浏览器', image_gen: '图像生成', file_ops: '文件操作', memory: '记忆',
+  shell: '终端命令', bash: '终端命令', cmd: '终端命令',
+};
+function toolCardHTML(tp){
+  if(!tp) return '';
+  // 技能调用：渲染为紧凑 chip，而不是展开的工具卡片（Issue #9）
+  if(tp.skill || (tp.tool && /skill/i.test(tp.tool))){
+    var sName = tp.toolZh || tp.name || tp.tool || '技能';
+    return '<span class="skill-invoke-chip">🧩 '+esc(sName)+'</span>';
+  }
+  var emoji = tp.emoji || TOOL_EMOJI[tp.tool] || '🔧';
+  var name = tp.toolZh || TOOL_NAME_ZH[tp.tool] || tp.tool || '工具';
+  var status = tp.status || 'done';
+  var running = !(status==='done'||status==='completed'||status==='finish'||status==='finished');
+  var label = tp.label || tp.command || tp.summary || '';
+  var result = tp.result || '';
+  var idAttr = tp.toolCallId ? (' data-tid="'+esc(tp.toolCallId)+'"') : '';
+  // 已完成的历史工具卡片默认折叠，节省聊天空间（Issue #8）
+  var collapsed = !running;
+  var html = '<div class="tool-call'+(running?' running':'')+(collapsed?' collapsed':'')+'"'+idAttr+'>'+
+    '<div class="tool-head" onclick="this.parentNode.classList.toggle(\'collapsed\')">'+
+      '<span class="tool-icon">'+emoji+'</span>'+
+      '<span class="tool-name">'+esc(name)+'</span>'+
+      '<span class="tool-status '+(running?'running':'done')+'">'+(running?'执行中…':'已完成')+'</span>'+
+    '</div>';
+  if(label){
+    html += '<div class="tool-cmd"><span class="tool-cmd-label">命令</span>'+escapeHtml(label)+'</div>';
+  }
+  if(result){
+    html += '<div class="tool-out"><span class="tool-cmd-label">结果</span>'+escapeHtml(result)+'</div>';
+  }
+  return html+'</div>';
+}
+/* 历史/流式的工具集合统一包成「紧凑摘要条 + 可展开列表」（Issue #8） */
+function toolCallsHTML(tools){
+  if(!tools || !tools.length) return '';
+  return '<div class="tool-calls" data-collapsed="true"><div class="tool-summary" onclick="toggleToolCalls(this.parentNode)">'+
+    '<span class="tc-ico">🛠</span><span class="tc-text">已调用 '+tools.length+' 个工具</span><span class="tc-toggle">展开 ▾</span></div>'+
+    '<div class="tool-list">'+tools.map(toolCardHTML).join('')+'</div></div>';
+}
+function toggleToolCalls(box){
+  if(!box) return;
+  var collapsed = box.getAttribute('data-collapsed')==='true';
+  box.setAttribute('data-collapsed', collapsed ? 'false' : 'true');
+  var tog = box.querySelector('.tc-toggle');
+  if(tog) tog.textContent = collapsed ? '收起 ▴' : '展开 ▾';
+}
+/* 回到底部按钮（Issue #10） */
+function scrollChatToBottom(){
+  var b=document.getElementById('chatBody');
+  if(b){ b.scrollTop=b.scrollHeight; var btn=document.getElementById('scrollBottomBtn'); if(btn) btn.style.display='none'; }
+}
+function hideScrollBtn(){
+  var btn=document.getElementById('scrollBottomBtn'); if(btn) btn.style.display='none';
+}
+
+/* ============================ 工作区面板 ============================ */
+function toggleWorkspace(){
+  var panel=document.getElementById('workspacePanel');
+  if(!panel) return;
+  panel.classList.toggle('open');
+  var btn=document.getElementById('wsPanelToggle');
+  if(btn) btn.classList.toggle('active', panel.classList.contains('open'));
+  if(panel.classList.contains('open')){
+    var activeTab=panel.querySelector('.ws-tab.active');
+    if(activeTab && activeTab.textContent.includes('文件')) fmRefresh();
+  }
+}
+function wsSwitchTab(btn, key){
+  document.querySelectorAll('.ws-tab').forEach(function(t){ t.classList.remove('active'); });
+  btn.classList.add('active');
+  document.querySelectorAll('.ws-pane').forEach(function(p){ p.classList.remove('active'); });
+  var pane=document.getElementById('ws-'+key); if(pane) pane.classList.add('active');
+  if(key==='files') fmRefresh();
+}
+
+/* ============================ 文件管理器 ============================ */
+var _fmCwd = '';
+var _fmEditPath = '';
+function fmRefresh(){
+  var path = _fmCwd || '';
+  apiGet('/api/files?path='+encodeURIComponent(path)).then(function(res){
+    if(!res || !res.ok){ document.getElementById('fmList').innerHTML='<div class="empty-state">'+(res?res.error:'加载失败')+'</div>'; return; }
+    _fmCwd = res.path;
+    document.getElementById('fmPath').textContent = res.path;
+    var el=document.getElementById('fmList');
+    if(!res.items.length){ el.innerHTML='<div class="empty-state">空目录</div>'; return; }
+    el.innerHTML = res.items.map(function(item){
+      var icon = item.type==='dir' ? '📁' : (item.name.match(/\.(js|ts|py|sh|json|yaml|yml|md|txt|csv|html|htm)$/i) ? '📄' : '📃');
+      var size = item.type==='file' ? (item.size>1024 ? (item.size/1024).toFixed(1)+'KB' : item.size+'B') : '';
+      var act = item.type==='dir' ? '' :
+        '<span class="ws-file-act" title="下载" onclick="event.stopPropagation();fmDownload(\''+esc(item.path).replace(/'/g,"\\'")+'\')">⬇</span>'+
+        '<span class="ws-file-act" title="附加到对话" onclick="event.stopPropagation();fmAttachPath(\''+esc(item.path).replace(/'/g,"\\'")+'\')">📎</span>'+
+        '<span class="ws-file-del" title="删除" onclick="event.stopPropagation();fmDelete(\''+esc(item.path).replace(/'/g,"\\'")+'\')">\ud83d\uddd1</span>';
+      return '<div class="ws-file-item" onclick="'+(item.type==='dir'?'fmOpenDir':'fmOpenFile')+'(\''+esc(item.path).replace(/'/g,"\\'")+'\')">' +
+        '<span class="ws-file-icon">'+icon+'</span>' +
+        '<span class="ws-file-name">'+esc(item.name)+'</span>' +
+        '<span class="ws-file-size">'+size+'</span>' +
+        act +
+        '</div>';
+    }).join('');
+  }).catch(function(e){ document.getElementById('fmList').innerHTML='<div class="empty-state">网络错误</div>'; });
+}
+function fmOpenDir(path){ _fmCwd=path; fmRefresh(); }
+function fmUp(){
+  if(!_fmCwd || _fmCwd==='/') return;
+  var parent=_fmCwd.substring(0,_fmCwd.lastIndexOf('/'))||'/';
+  _fmCwd=parent; fmRefresh();
+}
+function fmOpenFile(path){
+  _fmEditPath=path;
+  document.getElementById('fmPreviewName').textContent=path.split('/').pop();
+  document.getElementById('fmPreview').style.display='flex';
+  var ext=(path.split('.').pop()||'').toLowerCase();
+  var body=document.getElementById('fmPreviewBody');
+  var editor=document.getElementById('fmEditor');
+  var saveBtn=document.getElementById('fmSaveBtn');
+  var enc=encodeURIComponent(path);
+  // 图片：直接内联预览
+  if(['jpg','jpeg','png','gif','webp','svg','bmp','ico'].indexOf(ext)>=0){
+    editor.style.display='none'; body.style.display='block';
+    body.innerHTML='<img src="'+apiUrl('/api/preview?path=')+enc+'" alt="" style="max-width:100%;max-height:calc(100% - 8px);object-fit:contain;border-radius:6px">';
+    saveBtn.style.display='none';
+    return;
+  }
+  // PDF / HTML：浏览器原生内联预览
+  if(ext==='pdf'||ext==='html'||ext==='htm'){
+    editor.style.display='none'; body.style.display='block';
+    body.innerHTML='<iframe src="'+apiUrl('/api/preview?path=')+enc+'"></iframe>';
+    saveBtn.style.display='none';
+    return;
+  }
+  // Office：服务端转 HTML 预览（docx/xlsx/pptx）
+  if(ext==='docx'||ext==='xlsx'||ext==='pptx'){
+    editor.style.display='none'; body.style.display='block';
+    body.innerHTML='<iframe src="'+apiUrl('/api/preview/office?path=')+enc+'"></iframe>';
+    saveBtn.style.display='none';
+    return;
+  }
+  // 文本类：优先走 /api/preview（8MB 上限，含 md/csv 富渲染）
+  var isText = ['txt','md','markdown','csv','json','yaml','yml','xml','log','ini','conf',
+    'js','mjs','cjs','ts','tsx','jsx','py','sh','bash','c','h','cpp','cc','hpp','java','go','rs','rb','php','css','sql'].indexOf(ext)>=0;
+  if(isText){
+    apiGet('/api/preview?path='+enc).then(function(res){
+      if(!res || !res.ok){ toast(res?res.error:'读取失败','error'); return; }
+      if(ext==='md'||ext==='markdown'){
+        editor.style.display='none'; body.style.display='block';
+        body.innerHTML='<div class="md-text">'+renderMarkdown(res.content||'')+'</div>';
+        saveBtn.style.display='none';
+        return;
+      }
+      if(ext==='csv'){
+        editor.style.display='none'; body.style.display='block';
+        body.innerHTML=csvToTable(res.content||'');
+        saveBtn.style.display='none';
+        return;
+      }
+      editor.style.display='block'; body.style.display='none';
+      saveBtn.style.display='';
+      editor.value=res.content||'';
+    }).catch(function(){ toast('预览失败','error'); });
+    return;
+  }
+  // 未知类型：回退旧接口（textarea + 保存）
+  editor.style.display='block'; body.style.display='none'; saveBtn.style.display='';
+  apiGet('/api/files/read?path='+enc).then(function(res){
+    if(!res || !res.ok){ toast(res?res.error:'读取失败','error'); return; }
+    editor.value=res.content;
+  });
+}
+function csvToTable(csv){
+  var rows=String(csv||'').split(/\r?\n/).filter(function(l,i,arr){ return !(i===arr.length-1 && !l.trim()); });
+  if(!rows.length) return '<div class="empty-state">空 CSV</div>';
+  var cells=rows.map(function(r){ return r.split(','); });
+  var w=Math.max.apply(null,cells.map(function(c){ return c.length; }));
+  var html='<div class="table-wrap"><table><thead><tr>';
+  for(var i=0;i<w;i++) html+='<th>'+esc(cells[0][i]||'')+'</th>';
+  html+='</tr></thead><tbody>';
+  for(var r=1;r<cells.length;r++){
+    html+='<tr>';
+    for(var j=0;j<w;j++) html+='<td>'+esc(cells[r][j]||'')+'</td>';
+    html+='</tr>';
+  }
+  return html+'</tbody></table></div>';
+}
+function fmDownload(path){
+  var p=path||_fmEditPath;
+  if(!p) return;
+  var name=p.split('/').pop()||'file';
+  var hdrs={}; if(monitorToken) hdrs['X-Monitor-Token']=monitorToken;
+  fetch(apiUrl('/api/download?path='+encodeURIComponent(p)),{headers:hdrs})
+    .then(function(r){ if(!r.ok) throw new Error(String(r.status)); return r.blob(); })
+    .then(function(blob){
+      var a=document.createElement('a');
+      a.href=URL.createObjectURL(blob);
+      a.download=name;
+      document.body.appendChild(a); a.click();
+      setTimeout(function(){ URL.revokeObjectURL(a.href); try{ document.body.removeChild(a); }catch(e){} }, 2000);
+    })
+    .catch(function(){ toast('下载失败','error'); });
+}
+function fmAttachPath(path){
+  var name=path.split('/').pop()||'file';
+  // 以 /api/download?path= 形式引用，后端 normalizeMessage 时解析回真实路径，Agent 可直接读取分析
+  _pendingAttachments.push({ url:'/api/download?path='+encodeURIComponent(path)+'&name='+encodeURIComponent(name), type:'application/octet-stream', name:name });
+  toast('📎 已附加到对话：'+name);
+  renderAttachChips();
+  autoResize(document.getElementById('chatInput'));
+}
+function fmAttach(){ fmAttachPath(_fmEditPath); }
+function fmSaveFile(){
+  if(!_fmEditPath) return;
+  var content=document.getElementById('fmEditor').value;
+  fetch(apiUrl('/api/files/write'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:_fmEditPath,content:content})})
+    .then(function(r){return r.json();}).then(function(res){ if(res.ok) toast('✅ 已保存'); else toast(res.error||'保存失败','error'); });
+}
+function fmClosePreview(){ document.getElementById('fmPreview').style.display='none'; _fmEditPath=''; }
+function fmNewFile(){
+  var name=prompt('新建文件名：');
+  if(!name) return;
+  var path=_fmCwd+'/'+name;
+  fetch(apiUrl('/api/files/write'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:path,content:''})})
+    .then(function(r){return r.json();}).then(function(res){ if(res.ok){ toast('✅ 已创建'); fmRefresh(); } else toast(res.error||'创建失败','error'); });
+}
+function fmNewDir(){
+  var name=prompt('新建目录名：');
+  if(!name) return;
+  var path=_fmCwd+'/'+name;
+  fetch(apiUrl('/api/files/mkdir'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:path})})
+    .then(function(r){return r.json();}).then(function(res){ if(res.ok){ toast('✅ 目录已创建'); fmRefresh(); } else toast(res.error||'创建失败','error'); });
+}
+function fmDelete(path){
+  if(!confirm('确定删除？\n'+path)) return;
+  fetch(apiUrl('/api/files?path='+encodeURIComponent(path)),{method:'DELETE'})
+    .then(function(r){return r.json();}).then(function(res){ if(res.ok){ toast('🗑 已删除'); fmRefresh(); } else toast(res.error||'删除失败','error'); });
+}
+
+/* ============================ 终端管理（PTY：二进制帧 + ANSI 流式渲染） ============================ */
+var _termWs = null;
+var _termDecoder = new TextDecoder('utf-8');
+var _termRuns = [];           // [{t:文本, b:粗体, f:前景, bg:背景}] 已渲染片段
+var _termStyle = { b:0, f:'', bg:'' }; // 当前 SGR 状态（跨 chunk 保持）
+var _termEsc = '';            // 未完成的转义序列
+var _termCols = 0, _termRows = 0;
+var _termHist = []; var _termHistIdx = -1;
+var _ANSI_COLORS={0:'#000',1:'#cd0000',2:'#00cd00',3:'#cdcd00',4:'#0000ee',5:'#cd00cd',6:'#00cdcd',7:'#e5e5e5',8:'#7f7f7f',9:'#ff0000',10:'#00ff00',11:'#ffff00',12:'#5c5cff',13:'#ff00ff',14:'#00ffff',15:'#ffffff'};
+function ansi256Color(n){
+  n=parseInt(n,10)||0;
+  if(n<16) return _ANSI_COLORS[n]||'#fff';
+  if(n<232){
+    n-=16;
+    var r=Math.floor(n/36),g=Math.floor((n%36)/6),b=n%6;
+    function cv(v){ v=Math.round(v*255/5); var h=v.toString(16); return h.length<2?'0'+h:h; }
+    return '#'+cv(r)+cv(g)+cv(b);
+  }
+  var v=8+(n-232)*10; var h=v.toString(16); if(h.length<2)h='0'+h;
+  return '#'+h+h+h;
+}
+function applySGR(st, params){
+  if(!params || !params.length) params=['0'];
+  var i=0;
+  while(i<params.length){
+    var p=params[i];
+    if(!p){ i++; continue; }
+    var num=parseInt(p,10);
+    if(isNaN(num)){ i++; continue; }
+    if(num===0){ st.b=0; st.f=''; st.bg=''; }
+    else if(num===1){ st.b=1; }
+    else if(num===2){ st.b=0; }
+    else if(num===22){ st.b=0; }
+    else if(num>=30&&num<=37){ st.f=_ANSI_COLORS[num-30]; }
+    else if(num===39){ st.f=''; }
+    else if(num>=90&&num<=97){ st.f=_ANSI_COLORS[num-90]; }
+    else if(num>=40&&num<=47){ st.bg=_ANSI_COLORS[num-40]; }
+    else if(num===49){ st.bg=''; }
+    else if(num>=100&&num<=107){ st.bg=_ANSI_COLORS[num-100]; }
+    else if(num===38||num===48){
+      var mode=params[i+1], key=num===38?'f':'bg';
+      if(mode==='5'){ st[key]=ansi256Color(params[i+2]); i+=3; }
+      else if(mode==='2'){ st[key]='rgb('+params[i+2]+','+params[i+3]+','+params[i+4]+')'; i+=5; }
+      else { i++; }
+    }
+    i++;
+  }
+}
+function termAppend(raw){
+  var el=document.getElementById('termOutput');
+  if(!el) return;
+  var s=_termEsc+String(raw||''); _termEsc='';
+  var buf=''; var i=0, L=s.length;
+  function commit(){
+    if(!buf) return;
+    _termRuns.push({ t:buf, b:_termStyle.b, f:_termStyle.f, bg:_termStyle.bg });
+    if(_termRuns.length>20000) _termRuns.splice(0,_termRuns.length-20000); // 防内存膨胀
+    buf='';
+  }
+  while(i<L){
+    var c=s.charAt(i);
+    if(c==='\x1b'){
+      if(i+1>=L){ _termEsc=s.slice(i); break; }
+      var nxt=s.charAt(i+1);
+      if(nxt==='['){
+        var mm=s.slice(i+2).match(/^([0-9;?]*)([@-~])/);
+        if(mm){
+          if(mm[2]==='m'){ commit(); applySGR(_termStyle, mm[1]?mm[1].split(';'):[]); }
+          else if(mm[2]==='J'){ commit(); _termRuns.length=0; el.innerHTML=''; } // 清屏
+          else if(mm[2]==='K'){ commit(); } // 清行：忽略（轻量终端）
+          i+=2+mm[0].length;
+          continue;
+        }
+        _termEsc=s.slice(i); break; // 不完整 CSI，等下个 chunk
+      }
+      if(nxt===']'){
+        var oe=s.indexOf('\x07', i+2);
+        if(oe<0){ _termEsc=s.slice(i); break; } // OSC 未结束
+        i=oe+1; continue;
+      }
+      if(nxt==='('||nxt===')'||nxt==='>'||nxt==='='){
+        if(i+2>=L){ _termEsc=s.slice(i); break; }
+        i+=3; continue;
+      }
+      if(s.length-i<2){ _termEsc=s.slice(i); break; }
+      i+=2; continue;
+    }
+    if(c==='\r'||c==='\n'){
+      if(c==='\r' && s.charAt(i+1)==='\n') i++;
+      buf+='\n'; i++; continue;
+    }
+    var j=i;
+    while(j<L){ var ch=s.charAt(j); if(ch==='\x1b'||ch==='\r'||ch==='\n') break; j++; }
+    buf+=s.slice(i,j); i=j;
+  }
+  commit();
+  // 增量渲染：只补新片段
+  var html='';
+  var last=_termRuns.length;
+  if(_termAppendMark===undefined || _termAppendMark>last){ _termAppendMark=0; el.innerHTML=''; }
+  for(var k=_termAppendMark;k<last;k++){
+    var r=_termRuns[k];
+    var css='';
+    if(r.b) css+='font-weight:bold;';
+    if(r.f) css+='color:'+r.f+';';
+    if(r.bg) css+='background-color:'+r.bg+';';
+    html+=(css?'<span style="'+css+'">':'')+esc(r.t)+(css?'</span>':'');
+  }
+  _termAppendMark=last;
+  if(html) el.insertAdjacentHTML('beforeend', html);
+  // 未上滚时跟随底部
+  if(el.scrollTop+el.clientHeight>=el.scrollHeight-60) el.scrollTop=el.scrollHeight;
+}
+var _termAppendMark=0;
+function termConnect(){
+  if(_termWs && _termWs.readyState<=1) return;
+  var proto = location.protocol==='https:'?'wss:':'ws:';
+  var url = proto+'//'+location.host+(window._basePath||'')+'/api/terminal/ws?token='+(monitorToken||'')+'&cwd='+encodeURIComponent(_fmCwd||'');
+  document.getElementById('termStatus').textContent='连接中…';
+  _termWs = new WebSocket(url);
+  _termWs.binaryType='arraybuffer';
+  _termWs.onopen=function(){
+    document.getElementById('termStatus').textContent='✅ 已连接';
+    termResize(true);
+  };
+  _termWs.onmessage=function(e){
+    if(typeof e.data==='string'){
+      try{
+        var data=JSON.parse(e.data);
+        if(data.type==='output'){ termAppend(data.data); }
+        else if(data.type==='exit'){ document.getElementById('termStatus').textContent='已退出 (code:'+data.code+')'; _termWs=null; }
+      }catch(err){ termAppend(e.data); }
+      return;
+    }
+    // PTY 原始二进制帧：流式 UTF-8 解码（跨 chunk 多字节字符不丢）
+    termAppend(_termDecoder.decode(new Uint8Array(e.data), {stream:true}));
+  };
+  _termWs.onclose=function(){ document.getElementById('termStatus').textContent='已断开'; _termWs=null; };
+  _termWs.onerror=function(){ document.getElementById('termStatus').textContent='连接失败'; };
+}
+function termDisconnect(){
+  if(_termWs){ _termWs.close(); _termWs=null; }
+  document.getElementById('termStatus').textContent='未连接';
+}
+function termResize(force){
+  var el=document.getElementById('termOutput');
+  if(!el) return;
+  var cols=Math.max(20, Math.floor(el.clientWidth/7.5));
+  var rows=Math.max(5, Math.floor(el.clientHeight/16));
+  if(!force && cols===_termCols && rows===_termRows) return;
+  _termCols=cols; _termRows=rows;
+  if(_termWs && _termWs.readyState===1) _termWs.send(JSON.stringify({type:'resize', cols:cols, rows:rows}));
+}
+window.addEventListener('resize', function(){ termResize(false); });
+function termClear(){
+  _termRuns.length=0; _termAppendMark=0; _termStyle={b:0,f:'',bg:''};
+  var el=document.getElementById('termOutput'); if(el) el.innerHTML='';
+}
+function termKeydown(e){
+  var input=document.getElementById('termInput');
+  if(e.key==='Enter'){ termSend(); e.preventDefault(); return; }
+  if(e.key==='ArrowUp'){
+    e.preventDefault();
+    if(!_termHist.length) return;
+    if(_termHistIdx<0) _termHistIdx=_termHist.length-1;
+    else if(_termHistIdx>0) _termHistIdx--;
+    input.value=_termHist[_termHistIdx];
+    return;
+  }
+  if(e.key==='ArrowDown'){
+    e.preventDefault();
+    if(_termHistIdx>=0){
+      _termHistIdx++;
+      if(_termHistIdx>=_termHist.length){ _termHistIdx=-1; input.value=''; }
+      else input.value=_termHist[_termHistIdx];
+    }
+    return;
+  }
+}
+function termSend(){
+  var input=document.getElementById('termInput');
+  var cmd=input.value;
+  input.value='';
+  if(!_termWs||_termWs.readyState!==1){ toast('终端未连接','error'); return; }
+  _termWs.send(JSON.stringify({type:'input',data:cmd+'\n'}));
+  // PTY 下 bash 自行回显，无需本地回显（否则会重复显示）
+  if(cmd.trim()){ _termHist.push(cmd); if(_termHist.length>100) _termHist.shift(); _termHistIdx=-1; }
+}
+
+/* ============================ 消息操作：语音播放 / 引用 / Fork ============================ */
+var _currentQuote = null;
+/* ═══════════════ 语音对话模块（v0.22 Studio：服务端 TTS/STT） ═══════════════
+ * 能力：
+ *  - speakMsg：服务端流式 TTS（WS /proxy/dashboard/api/audio/speak-stream，int16 PCM 播放，
+ *    再次点击即 barge-in 打断）；流式 provider 不可用时降级整段 TTS（POST /api/audio/speak）；
+ *    两者都失败回退浏览器 speechSynthesis。
+ *  - 麦克风输入：getUserMedia → MediaRecorder(webm/opus) → base64 dataURL → POST
+ *    /api/audio/transcribe → 文本自动填入并发送（可在语音设置关闭自动发送）。
+ *  - 自动朗读：设置开启后助手回复完成自动播放（localStorage: fnos-voice-autoplay）。
+ * 协议依据本地 hermes_cli/web_server.py：transcribe {data_url,mime_type}→{ok,transcript}；
+ *  speak {text}→{ok,data_url}；speak-stream: client {"text"|"done"|"stop"} →
+ *  server {"type":"start",sample_rate,channels} → 二进制 PCM 帧 → {"type":"end"} | {"type":"fallback"} */
+var _voice = { recording:false, recorder:null, chunks:[], stream:null, recTimer:null,
+               ws:null, ctx:null, src:null, playing:false, curBtn:null, pcmBuf:[], pcmRate:24000, pcmCh:1 };
+function voiceAudioUrl(p){ return apiUrl('/proxy/dashboard/api/audio' + p); }
+function voiceWSUrl(p){
+  var proto = location.protocol==='https:' ? 'wss:' : 'ws:';
+  return proto + '//' + location.host + apiUrl('/proxy/dashboard/api/audio' + p);
+}
+function voiceGetText(btn){
+  var msgEl = btn.closest('.msg');
+  if(!msgEl) return '';
+  var text = msgEl.getAttribute('data-content') || (msgEl.querySelector('.md-text') ? msgEl.querySelector('.md-text').textContent : '');
+  var tmp = document.createElement('textarea'); tmp.innerHTML = text; text = tmp.value;
+  return text;
+}
+function voiceBtnHtml(mode){
+  if(mode==='stop') return '<svg viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>停止';
+  return '<svg viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>播放';
+}
+function voiceStopAll(resetBtn){
+  var v = _voice;
+  if(v.ws){ try{ v.ws.send(JSON.stringify({stop:true})); }catch(e){} try{ v.ws.close(); }catch(e){} v.ws=null; }
+  if(v.src){ try{ v.src.stop(); }catch(e){} v.src=null; }
+  if(v.ctx && v.ctx.state==='running'){ try{ v.ctx.close(); }catch(e){} }
+  v.ctx=null; v.pcmBuf=[]; v.playing=false;
+  if(resetBtn!==false){
+    if(v.curBtn){ try{ v.curBtn.classList.remove('speaking'); v.curBtn.innerHTML=voiceBtnHtml('play'); }catch(e){} }
+    v.curBtn=null;
+  }
+}
+function voicePlayNext(){
+  var v = _voice;
+  if(v.playing) return;
+  var samples = v.pcmBuf.shift();
+  if(!samples || !samples.length) return;
+  try{
+    if(!v.ctx){ v.ctx = new (window.AudioContext||window.webkitAudioContext)(); }
+    if(v.ctx.state==='suspended'){ v.ctx.resume(); }
+    var buf = v.ctx.createBuffer(1, samples.length, v.pcmRate||24000);
+    var d = buf.getChannelData(0);
+    for(var i=0;i<samples.length;i++){ d[i]=samples[i]; }
+    var s = v.ctx.createBufferSource(); s.buffer=buf; s.connect(v.ctx.destination);
+    s.onended = function(){ if(v.src===s) v.src=null; v.playing=false; voicePlayNext(); };
+    v.src=s; v.playing=true; s.start();
+  }catch(e){ console.warn('[voice] play failed', e); v.playing=false; }
+}
+function speakMsg(btn){
+  var v = _voice;
+  var text = voiceGetText(btn);
+  if(!text){ toast('无可播放内容'); return; }
+  if(v.curBtn === btn){ voiceStopAll(true); return; }   // 点击打断 = barge-in
+  voiceStopAll(false);
+  // 1) 服务端流式 TTS
+  try{
+    var ws = new WebSocket(voiceWSUrl('/speak-stream'));
+    v.ws = ws; v.pcmBuf=[]; v.pcmRate=24000; v.pcmCh=1; v.playing=false;
+    btn.classList.add('speaking'); btn.innerHTML=voiceBtnHtml('stop'); v.curBtn=btn;
+    var gotStart = false, finished = false;
+    function finishOk(){
+      if(v.ws===ws){ try{ ws.close(); }catch(e){} v.ws=null; }
+      if(finished) return; finished = true;
+      if(v.curBtn===btn){ btn.classList.remove('speaking'); btn.innerHTML=voiceBtnHtml('play'); v.curBtn=null; }
+    }
+    ws.onopen = function(){
+      ws.send(JSON.stringify({ text: text }));   // 整段下发，服务端按句切分逐句合成
+      ws.send(JSON.stringify({ done: true }));
+    };
+    ws.onmessage = function(ev){
+      if(typeof ev.data === 'string'){
+        try{
+          var j = JSON.parse(ev.data);
+          if(j.type==='start'){ gotStart=true; v.pcmRate=j.sample_rate||24000; v.pcmCh=j.channels||1; return; }
+          if(j.type==='end'){ finishOk(); return; }
+          if(j.type==='fallback'){ try{ ws.close(); }catch(e){} v.ws=null; speakMsgFallback(btn, text); return; }
+        }catch(e){}
+        return;
+      }
+      if(gotStart && ev.data && ev.data.byteLength){
+        var f = new Float32Array(ev.data.byteLength/2);
+        var dv = new DataView(ev.data);
+        for(var i=0;i<f.length;i++){ f[i]=dv.getInt16(i*2,true)/32768; }
+        v.pcmBuf.push(f);
+        voicePlayNext();
+      }
+    };
+    ws.onerror = function(){ try{ ws.close(); }catch(e){} v.ws=null; if(!finished) speakMsgFallback(btn, text); };
+    ws.onclose = function(){ if(v.ws===ws) v.ws=null; };
+    return;
+  }catch(e){ console.warn('[voice] stream unavailable', e); }
+  // 2) 整段 TTS 降级
+  speakMsgFallback(btn, text);
+}
+function speakMsgFallback(btn, text){
+  var v = _voice;
+  text = text.replace(/[#*`~\[\]()]/g,'').replace(/\n+/g,'。');
+  fetch(voiceAudioUrl('/speak'), { method:'POST', headers:{'Content-Type':'application/json','X-Monitor-Token':monitorToken||''}, body: JSON.stringify({ text: text }) })
+    .then(function(r){ if(!r.ok) throw new Error('speak '+r.status); return r.json(); })
+    .then(function(j){
+      if(!j.ok || !j.data_url) throw new Error(j.error||'TTS failed');
+      var au = new Audio(j.data_url);
+      var stopIt = function(){ try{ au.pause(); au.src=''; }catch(e){} voiceStopAll(true); btn.removeEventListener('click', stopIt); };
+      au.onended = function(){ btn.removeEventListener('click', stopIt); if(v.curBtn===btn){ btn.classList.remove('speaking'); btn.innerHTML=voiceBtnHtml('play'); v.curBtn=null; } };
+      btn.classList.add('speaking'); btn.innerHTML=voiceBtnHtml('stop'); v.curBtn=btn;
+      btn.addEventListener('click', stopIt);
+      au.play().catch(function(){ btn.removeEventListener('click', stopIt); if(v.curBtn===btn){ btn.classList.remove('speaking'); btn.innerHTML=voiceBtnHtml('play'); v.curBtn=null; } toast('语音播放失败：浏览器拦截自动播放，请点击播放按钮'); });
+    })
+    .catch(function(){
+      // 3) 浏览器 speechSynthesis 兜底
+      if(!window.speechSynthesis){ toast('语音播放不可用'); return; }
+      if(v.curBtn===btn){ v.curBtn=null; }
+      window.speechSynthesis.cancel();
+      var utter = new SpeechSynthesisUtterance(text);
+      utter.lang='zh-CN'; utter.rate=1.0;
+      utter.onend = function(){ btn.classList.remove('speaking'); btn.innerHTML=voiceBtnHtml('play'); };
+      utter.onerror = utter.onend;
+      btn.classList.add('speaking'); btn.innerHTML=voiceBtnHtml('stop');
+      window.speechSynthesis.speak(utter);
+    });
+}
+/* ── 麦克风语音输入（STT：录音 → transcribe → 填入/自动发送） ── */
+function toggleVoiceRecord(){
+  if(_voice.recording){ stopVoiceRecord(); } else { startVoiceRecord(); }
+}
+function micIconHtml(){
+  return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><line x1="12" y1="17" x2="12" y2="22"/></svg>';
+}
+function startVoiceRecord(){
+  var btn = document.getElementById('btnMic');
+  var v = _voice;
+  if(v.recording) return;
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){ toast('当前浏览器不支持录音'); return; }
+  navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream){
+    v.stream = stream;
+    var mime = '';
+    try{
+      if(window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) mime='audio/webm;codecs=opus';
+      else if(window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported('audio/webm')) mime='audio/webm';
+    }catch(e){}
+    try{ v.recorder = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream); }
+    catch(e){ v.recorder = new MediaRecorder(stream); }
+    v.chunks = [];
+    v.recorder.ondataavailable = function(ev){ if(ev.data && ev.data.size) v.chunks.push(ev.data); };
+    v.recorder.onstop = function(){
+      try{ stream.getTracks().forEach(function(t){ t.stop(); }); }catch(e){}
+      v.recording = false;
+      if(btn){ btn.classList.remove('recording'); btn.innerHTML = micIconHtml(); }
+      var blob = new Blob(v.chunks, { type: (v.recorder.mimeType||'audio/webm').split(';')[0] || 'audio/webm' });
+      v.chunks = [];
+      if(!blob.size){ toast('没有录到声音'); return; }
+      var reader = new FileReader();
+      reader.onload = function(){ transcribeVoice(reader.result, blob.type.split(';')[0] || 'audio/webm'); };
+      reader.readAsDataURL(blob);
+    };
+    v.recorder.start();
+    v.recording = true;
+    if(btn){ btn.classList.add('recording'); btn.innerHTML='<svg viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>'; }
+    toast('正在录音…再次点击麦克风停止');
+    v.recTimer = setTimeout(function(){ if(v.recording) stopVoiceRecord(); }, 60000);  // 60s 自动停止
+  }).catch(function(){ toast('无法访问麦克风（权限被拒绝或设备不可用）'); });
+}
+function stopVoiceRecord(){
+  var v = _voice;
+  if(v.recTimer){ clearTimeout(v.recTimer); v.recTimer=null; }
+  if(v.recorder && v.recorder.state !== 'inactive'){ try{ v.recorder.stop(); }catch(e){} }
+  else {
+    if(v.stream){ try{ v.stream.getTracks().forEach(function(t){ t.stop(); }); }catch(e){} }
+    v.recording = false;
+    var btn = document.getElementById('btnMic'); if(btn){ btn.classList.remove('recording'); btn.innerHTML = micIconHtml(); }
+  }
+}
+function transcribeVoice(dataUrl, mime){
+  var btn = document.getElementById('btnMic');
+  toast('语音识别中…');
+  fetch(voiceAudioUrl('/transcribe'), { method:'POST', headers:{'Content-Type':'application/json','X-Monitor-Token':monitorToken||''}, body: JSON.stringify({ data_url: dataUrl, mime_type: mime }) })
+    .then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){ if(!r.ok){ var e = new Error(j.error||('transcribe '+r.status)); e.j=j; throw e; } return j; }); })
+    .then(function(j){
+      if(btn){ btn.classList.remove('recording'); btn.innerHTML = micIconHtml(); }
+      var t = (j.transcript || '').trim();
+      if(!t){ toast('没有听清，请再说一次'); return; }
+      var ta = document.getElementById('chatInput');
+      if(ta){ ta.value = t; autoResize(ta); }
+      if(localStorage.getItem('fnos-voice-autosend') !== '0'){ sendChat(); }
+      else { toast('识别完成'); try{ ta.focus(); }catch(e){} }
+    })
+    .catch(function(err){
+      if(btn){ btn.classList.remove('recording'); btn.innerHTML = micIconHtml(); }
+      var msg = err && err.j && err.j.error ? err.j.error : (err && err.message ? err.message : '语音识别失败');
+      toast('语音识别失败：'+msg);
+    });
+}
+/* ── 语音设置 ── */
+function openVoiceSettings(){
+  var on = localStorage.getItem('fnos-voice-autoplay') !== '0';
+  var autosend = localStorage.getItem('fnos-voice-autosend') !== '0';
+  var html = '<div class="modal-overlay" id="voiceSetOverlay" onclick="if(event.target===this)closeVoiceSettings()">' +
+    '<div class="modal" style="max-width:440px">' +
+    '<div class="modal-head"><h3>🎙️ 语音设置</h3><button class="modal-close" onclick="closeVoiceSettings()">×</button></div>' +
+    '<div class="modal-body" style="padding:14px 16px">' +
+    '<div class="vs-row"><div><div class="vs-info">自动朗读回复</div><div class="vs-desc">助手回复完成后自动语音播放（流式 TTS，点击播放按钮可打断）</div></div>' +
+    '<input type="checkbox" id="vsAutoplay" '+(on?'checked':'')+'></div>' +
+    '<div class="vs-row"><div><div class="vs-info">语音输入自动发送</div><div class="vs-desc">识别完成后直接发送；关闭则只填入输入框</div></div>' +
+    '<input type="checkbox" id="vsAutosend" '+(autosend?'checked':'')+'></div>' +
+    '<div class="vs-row"><div><div class="vs-info">安全网关（tool_guard）</div><div class="vs-desc" id="vsGuardDesc">拦截危险命令（rm -rf /、dd 写盘、格式化、关机等）。加载中…</div></div>' +
+    '<input type="checkbox" id="vsGuard"></div>' +
+    '<div class="vs-row"><div><div class="vs-info">试听</div><div class="vs-desc">STT/TTS 服务商在官方仪表盘「设置」中配置（默认 edge-tts 免费语音）</div></div>' +
+    '<button class="ov-actbtn" onclick="voiceTest()">播放测试语音</button></div>' +
+    '</div>' +
+    '<div class="modal-foot" style="padding:12px 16px;display:flex;justify-content:flex-end;gap:8px">' +
+    '<button class="btn" onclick="closeVoiceSettings()">取消</button>' +
+    '<button class="btn primary" onclick="saveVoiceSettings()">保存</button>' +
+    '</div></div></div>';
+  var div = document.createElement('div'); div.innerHTML = html; document.body.appendChild(div.firstChild);
+  fetch(apiUrl('/api/studio/security'), { headers: monitorToken?{'X-Monitor-Token':monitorToken}:{} })
+    .then(function(r){ return r.json(); }).then(function(j){
+      var cb = document.getElementById('vsGuard'); if(!cb) return;
+      cb.checked = j.enabled !== false;
+      var d = document.getElementById('vsGuardDesc'); if(d) d.textContent = '拦截危险命令（rm -rf /、dd 写盘、格式化、关机等）当前' + ((j.enabled===false)?'已关闭':'已开启') + '（共 '+((j.blockRules||13))+' 条规则）';
+    }).catch(function(){});
+}
+function saveVoiceSettings(){
+  localStorage.setItem('fnos-voice-autoplay', document.getElementById('vsAutoplay').checked?'1':'0');
+  localStorage.setItem('fnos-voice-autosend', document.getElementById('vsAutosend').checked?'1':'0');
+  var g = document.getElementById('vsGuard');
+  if(g){ fetch(apiUrl('/api/studio/security'), { method:'PUT', headers:{'Content-Type':'application/json','X-Monitor-Token':monitorToken||''}, body: JSON.stringify({ enabled: g.checked }) }).catch(function(){}); }
+  closeVoiceSettings();
+  toast('语音设置已保存');
+}
+function closeVoiceSettings(){ var el = document.getElementById('voiceSetOverlay'); if(el) el.remove(); }
+function voiceTest(){
+  fetch(voiceAudioUrl('/speak'), { method:'POST', headers:{'Content-Type':'application/json','X-Monitor-Token':monitorToken||''}, body: JSON.stringify({ text: '你好，我是你的 AI 小助手。这是一段语音测试。' }) })
+    .then(function(r){ if(!r.ok) throw new Error('speak '+r.status); return r.json(); })
+    .then(function(j){ if(!j.ok || !j.data_url) throw new Error(j.error||'TTS failed'); new Audio(j.data_url).play().catch(function(){}); })
+    .catch(function(err){ toast('试听失败：'+(err&&err.message?err.message:'')); });
+}
+/* ── 欢迎页（Octop 风 QUICK START 六宫格） ── */
+var WELCOME_QUICK = [
+  { id:'sum',   name:'总结文档',   ico:'📄', hint:'帮我总结这份文档：' },
+  { id:'email', name:'写邮件',     ico:'✉️', hint:'帮我写一封得体的邮件：' },
+  { id:'code',  name:'解释代码',   ico:'💻', hint:'帮我解释这段代码：' },
+  { id:'plan',  name:'制定计划',   ico:'📋', hint:'帮我制定一个计划：' },
+  { id:'trans', name:'翻译润色',   ico:'🌐', hint:'帮我翻译并润色这段文字：' },
+  { id:'brain', name:'头脑风暴',   ico:'💡', hint:'来一次头脑风暴，主题是：' }
+];
+function welcomeHTML(){
+  // 专家模式：当前活跃 profile 带快捷提问时，展示 Octop 风格个性化欢迎
+  var prof = null;
+  try { prof = _profiles.find(function(p){ return p.id === _persona; }) || null; } catch(e){}
+  var qp = (prof && Array.isArray(prof.quick_prompts) && prof.quick_prompts.length) ? prof.quick_prompts : null;
+  if(qp){
+    var chips = qp.slice(0,6).map(function(q){
+      var txt = String(q||'').trim(); if(!txt) return '';
+      var label = txt.length > 20 ? txt.slice(0,20)+'…' : txt;
+      return '<div class="wq-card" onclick="quickFill(\''+_jsStr(txt)+'\')" title="'+esc(txt)+'"><span class="wq-name">'+esc(label)+'</span></div>';
+    }).join('');
+    var sub = String(prof.prompt||'').slice(0,90);
+    return '<div class="welcome-wrap">' +
+      '<div class="welcome-hero">' +
+      '<div class="welcome-avatar">'+(prof.emoji||'🤖')+'</div>' +
+      '<div class="welcome-title">Hi! 我是 '+(prof.name||'AI 助手')+'</div>' +
+      '<div class="welcome-sub">'+(sub?esc(sub)+'…':'选一个快捷任务开始，或直接输入你的问题')+'</div>' +
+      '</div><div class="wq-grid">'+chips+'</div></div>';
+  }
+  var cards = WELCOME_QUICK.map(function(c){
+    return '<div class="wq-card" onclick="quickStartFill(\''+c.id+'\')"><span class="wq-ico">'+c.ico+'</span><span class="wq-name">'+c.name+'</span><span class="wq-hint">'+c.hint+'…</span></div>';
+  }).join('');
+  return '<div class="welcome-wrap">' +
+    '<div class="welcome-hero"><div class="welcome-title">Hi! 我是你的 AI 小助手</div>' +
+    '<div class="welcome-sub">选一个快捷任务开始，或直接输入你的问题</div></div>' +
+    '<div class="wq-grid">'+cards+'</div></div>';
+}
+function quickFill(text){
+  var ta = document.getElementById('chatInput');
+  if(ta){ ta.value = text; autoResize(ta); try{ ta.focus(); }catch(e){} }
+}
+function quickStartFill(id){
+  var c = WELCOME_QUICK.find(function(x){ return x.id===id; });
+  if(!c) return;
+  var ta = document.getElementById('chatInput');
+  if(ta){ ta.value = c.hint; autoResize(ta); try{ ta.focus(); }catch(e){} }
+}
+
+function quoteMsg(btn){
+  var msgEl = btn.closest('.msg');
+  var text = msgEl ? (msgEl.getAttribute('data-content') || msgEl.querySelector('.md-text').textContent) : '';
+  if(!text){ toast('无可引用内容','error'); return; }
+  var tmp = document.createElement('textarea'); tmp.innerHTML = text; text = tmp.value;
+  _currentQuote = text.length > 500 ? text.slice(0, 500) + '…' : text;
+  var preview = document.getElementById('quotePreview');
+  var previewText = document.getElementById('quotePreviewText');
+  if(preview && previewText){
+    previewText.textContent = '引用: ' + (_currentQuote.length > 80 ? _currentQuote.slice(0, 80) + '…' : _currentQuote);
+    preview.classList.add('show');
+  }
+  var input = document.getElementById('chatInput');
+  if(input) input.focus();
+  toast('💬 已引用，输入问题后发送');
+}
+function clearQuote(){
+  _currentQuote = null;
+  var preview = document.getElementById('quotePreview');
+  if(preview) preview.classList.remove('show');
+}
+
+function forkMsg(btn){
+  var msgEl = btn.closest('.msg');
+  var text = msgEl ? (msgEl.getAttribute('data-content') || msgEl.querySelector('.md-text').textContent) : '';
+  if(!text){ toast('无可 Fork 内容','error'); return; }
+  var tmp = document.createElement('textarea'); tmp.innerHTML = text; text = tmp.value;
+  var forkContent = text.length > 800 ? text.slice(0, 800) + '…' : text;
+  // 创建新会话并注入 fork 上下文
+  fetch(apiUrl('/api/sessions'), { method:'POST', headers:monitorToken?{'X-Monitor-Token':monitorToken}:{} })
+    .then(function(r){ return r.json(); })
+    .then(function(s){
+      _sessions.unshift(s);
+      currentSession = s.id;
+      setSessionAgent(s.id, currentAgent || 'default');
+      _applyPendingModel(s.id);
+      _openTabs.push(s.id); persistTabs();
+      renderSessionTabs(); renderRail(); updateHeader();
+      var body = document.getElementById('chatBody');
+      if(body){
+        body.innerHTML = '<div class="system-tip">🍴 Fork 新话题（基于上一条回复）</div>' +
+          '<div class="msg assistant"><div class="msg-bubble"><div class="quote-block"><div class="quote-label">FORK 来源</div>' + escapeHtml(forkContent) + '</div></div><div class="msg-meta">Fork 上下文 · ' + fmtDateTime(Date.now()) + '</div></div>';
+      }
+      // 设置标题
+      var titleEl = document.getElementById('chatTitle');
+      if(titleEl) titleEl.textContent = 'branch: ' + (forkContent.slice(0, 20) || '新话题');
+      toast('🍴 已 Fork 为新话题，请继续提问');
+      var input = document.getElementById('chatInput');
+      if(input) input.focus();
+    }).catch(function(){ toast('Fork 失败','error'); });
+}
+
+/* ============================ 多 Agent 圆桌讨论 ============================ */
+var _rtState = { active:false, agents:[], rounds:2, currentRound:0, history:[], sessionId:null };
+
+function openRoundtable(){
+  if(!_profilesLoaded){ fetchProfiles(function(){ openRoundtable(); }); toast('加载 Agent 列表…'); return; }
+  var agents = _profiles.length ? _profiles : [{id:'default',name:'默认助手',emoji:'🤖'}];
+  var html = '<div class="modal-overlay" id="rtOverlay" onclick="if(event.target===this)closeRoundtable()">' +
+    '<div class="modal" style="max-width:500px">' +
+    '<div class="modal-head"><h3>🎙️ 多 Agent 圆桌讨论</h3><button class="modal-close" onclick="closeRoundtable()">×</button></div>' +
+    '<div class="modal-body" style="padding:16px">' +
+    '<p style="font-size:13px;color:var(--text2);margin-bottom:14px;line-height:1.5">选择 2 个或以上的 Agent，它们将在同一对话中轮流发言、互相讨论，最终给出综合方案。</p>' +
+    '<div style="font-size:13px;font-weight:600;margin-bottom:6px;color:var(--text)">参与讨论的 Agent（点击选择）</div>' +
+    '<div class="rt-agent-pick" id="rtAgentPick">' +
+    agents.map(function(p){ return '<div class="rt-agent-chip" data-id="'+esc(p.id)+'" onclick="this.classList.toggle(\'selected\')"><span class="rt-emoji">'+(p.emoji||'🤖')+'</span>'+esc(p.name||p.id)+'</div>'; }).join('') +
+    '</div>' +
+    '<div style="font-size:13px;font-weight:600;margin-bottom:6px;color:var(--text)">讨论轮数</div>' +
+    '<div class="rt-round-config"><label>轮数</label><input type="number" id="rtRounds" value="2" min="1" max="20" step="1"><span class="rt-round-hint">每位 Agent 每轮发言一次，可根据需要自由设定</span></div>' +
+    '<div style="font-size:12px;color:var(--text3);margin-top:4px;line-height:1.5">💡 每轮中各 Agent 会看到前序 Agent 的发言，并进行回应、补充或反驳。轮数越多讨论越深入。</div>' +
+    '</div>' +
+    '<div class="modal-foot" style="padding:12px 16px;display:flex;justify-content:flex-end;gap:8px">' +
+    '<button class="btn" onclick="closeRoundtable()">取消</button>' +
+    '<button class="btn primary" onclick="startRoundtable()">🚀 开始讨论</button>' +
+    '</div></div></div>';
+  var div=document.createElement('div'); div.innerHTML=html; document.body.appendChild(div.firstChild);
+}
+function closeRoundtable(){ var el=document.getElementById('rtOverlay'); if(el) el.remove(); }
+
+function startRoundtable(){
+  var chips = document.querySelectorAll('#rtAgentPick .rt-agent-chip.selected');
+  if(chips.length < 2){ toast('请至少选择 2 个 Agent','error'); return; }
+  var agents = [];
+  chips.forEach(function(c){
+    var id = c.getAttribute('data-id');
+    var p = _profiles.find(function(x){ return x.id===id; });
+    agents.push({ id:id, name:(p&&p.name)||id, emoji:(p&&p.emoji)||'🤖', prompt:(p&&p.prompt)||'', model:(p&&p.model)||'' });
+  });
+  var rounds = parseInt(document.getElementById('rtRounds').value) || 2;
+  if(rounds < 1) rounds = 1;
+  if(rounds > 20){ rounds = 20; toast('轮数已限制为最大 20 轮'); }
+  closeRoundtable();
+  // 创建新会话
+  fetch(apiUrl('/api/sessions'), { method:'POST', headers:monitorToken?{'X-Monitor-Token':monitorToken}:{} })
+    .then(function(r){ return r.json(); })
+    .then(function(s){
+      _rtState = { active:true, agents:agents, rounds:rounds, currentRound:0, history:[], sessionId:s.id };
+      _sessions.unshift(s); currentSession = s.id;
+      setSessionAgent(s.id, 'team');
+      _applyPendingModel(s.id);
+      _openTabs.push(s.id); persistTabs();
+      renderSessionTabs(); renderRail();
+      switchPage('chat');
+      var titleEl=document.getElementById('chatTitle'); if(titleEl) titleEl.textContent='🎙️ 圆桌: '+agents.map(function(a){return a.name;}).join(' + ');
+      var subEl=document.getElementById('chatSubtitle'); if(subEl) subEl.textContent=agents.length+' 位 Agent · '+rounds+' 轮讨论';
+      var body=document.getElementById('chatBody');
+      if(body){
+        body.innerHTML='<div class="system-tip">🎙️ 圆桌讨论已开启：'+agents.map(function(a){return a.emoji+' '+a.name;}).join('、')+' · 共 '+rounds+' 轮</div>' +
+          '<div class="rt-divider">请提出议题，各 Agent 将轮流发言讨论</div>';
+      }
+      toast('🎙️ 圆桌讨论已就绪，请提出议题');
+    }).catch(function(){ toast('创建圆桌会话失败','error'); });
+}
+
+/* 圆桌模式下的发送：用户提问后各 Agent 轮流发言 */
+function rtSend(userText){
+  var body=document.getElementById('chatBody'); if(!body) return;
+  // 显示用户消息
+  var userDiv=document.createElement('div'); userDiv.className='msg user';
+  userDiv.innerHTML='<div class="msg-bubble">'+escapeHtml(userText).replace(/\n/g,'<br>')+'</div><div class="msg-meta">你 · '+fmtDateTime(Date.now())+'</div>';
+  body.appendChild(userDiv); body.scrollTop=body.scrollHeight;
+  _rtState.history.push({ role:'user', name:'用户', content:userText });
+  _rtState.currentRound = 0;
+  rtNextRound();
+}
+
+function rtNextRound(){
+  _rtState.currentRound++;
+  if(_rtState.currentRound > _rtState.rounds){
+    // 所有轮次结束，让最后一个 Agent 做总结
+    rtSummarize();
+    return;
+  }
+  var body=document.getElementById('chatBody');
+  var divider=document.createElement('div'); divider.className='rt-divider';
+  divider.textContent='第 '+_rtState.currentRound+' / '+_rtState.rounds+' 轮';
+  body.appendChild(divider); body.scrollTop=body.scrollHeight;
+  rtAgentSpeak(0);
+}
+
+function rtAgentSpeak(idx){
+  var agents=_rtState.agents;
+  if(idx >= agents.length){
+    // 本轮结束，进入下一轮
+    setTimeout(rtNextRound, 500);
+    return;
+  }
+  var agent=agents[idx];
+  var body=document.getElementById('chatBody');
+  // 显示“正在发言”状态
+  var statusDiv=document.createElement('div'); statusDiv.className='rt-status'; statusDiv.id='rtStatus';
+  statusDiv.innerHTML='<span class="rt-pulse"></span>'+agent.emoji+' '+esc(agent.name)+' 正在发言…';
+  body.appendChild(statusDiv); body.scrollTop=body.scrollHeight;
+
+  // 构建 system prompt
+  var sys = '【圆桌讨论模式】\n' +
+    '你正在参加一场多智能体圆桌讨论。参与者有：' + agents.map(function(a){return a.emoji+a.name;}).join('、') + '。\n' +
+    '你的身份是：' + agent.emoji + ' ' + agent.name + '。\n' +
+    (agent.prompt ? '你的角色设定：' + agent.prompt + '\n' : '') +
+    '规则：\n' +
+    '1. 请基于你的专业角度发言，回应其他人的观点。\n' +
+    '2. 可以赞同、补充、反驳其他 Agent 的意见。\n' +
+    '3. 发言简洁有力，每次不超过 300 字。\n' +
+    '4. 如果是最后一轮，请给出你的最终结论和建议。';
+
+  // 构建上下文消息
+  var contextMsg = '以下是目前的讨论记录：\n';
+  _rtState.history.forEach(function(h){
+    contextMsg += '【' + h.name + '】: ' + h.content + '\n\n';
+  });
+  contextMsg += '现在请你（' + agent.name + '）发言。';
+
+  // 创建消息气泡
+  var asst=document.createElement('div'); asst.className='msg assistant rt-agent';
+  asst.innerHTML='<div class="rt-speaker"><span class="rt-sp-emoji">'+agent.emoji+'</span>'+esc(agent.name)+'</div>' +
+    '<div class="msg-bubble"><div class="md-text"><span class="cursor-blink">|</span></div></div>' +
+    '<div class="msg-meta">'+esc(agent.name)+' · '+fmtDateTime(Date.now())+'</div>';
+  body.appendChild(asst); body.scrollTop=body.scrollHeight;
+  var mdEl=asst.querySelector('.md-text');
+  var fullText='';
+
+  streamChat({
+    session_id: _rtState.sessionId,
+    message: contextMsg,
+    system: sys,
+    model: agent.model || undefined
+  }, {
+    onDelta: function(d){ fullText+=d; mdEl.innerHTML=renderMarkdown(fullText,true); body.scrollTop=body.scrollHeight; },
+    onTool: function(){},
+    onInfo: function(){},
+    onError: function(err){ mdEl.innerHTML='<span class="error-text">⚠ '+esc(err)+'</span>'; rtAfterAgent(idx); },
+    onDone: function(){
+      mdEl.innerHTML=renderMarkdown(fullText);
+      _rtState.history.push({ role:'assistant', name:agent.name, emoji:agent.emoji, content:fullText });
+      rtAfterAgent(idx);
+    }
+  });
+}
+
+function rtAfterAgent(idx){
+  var st=document.getElementById('rtStatus'); if(st) st.remove();
+  setTimeout(function(){ rtAgentSpeak(idx+1); }, 600);
+}
+
+function rtSummarize(){
+  var body=document.getElementById('chatBody');
+  var divider=document.createElement('div'); divider.className='rt-divider';
+  divider.textContent='📝 综合总结';
+  body.appendChild(divider); body.scrollTop=body.scrollHeight;
+
+  var statusDiv=document.createElement('div'); statusDiv.className='rt-status'; statusDiv.id='rtStatus';
+  statusDiv.innerHTML='<span class="rt-pulse"></span>📝 正在生成综合方案…';
+  body.appendChild(statusDiv); body.scrollTop=body.scrollHeight;
+
+  var summaryMsg='以下是完整的圆桌讨论记录：\n';
+  _rtState.history.forEach(function(h){ summaryMsg+='【'+h.name+'】: '+h.content+'\n\n'; });
+  summaryMsg+='请作为主持人，综合以上所有 Agent 的讨论，给出最终的综合方案。包括：\n1. 各方核心观点摘要\n2. 共识与分歧\n3. 最终推荐方案\n4. 注意事项';
+
+  var asst=document.createElement('div'); asst.className='msg assistant rt-agent';
+  asst.innerHTML='<div class="rt-speaker"><span class="rt-sp-emoji">📝</span>主持人 · 综合总结</div>' +
+    '<div class="msg-bubble" style="border-left-color:#10b981"><div class="md-text"><span class="cursor-blink">|</span></div></div>' +
+    '<div class="msg-meta">综合方案 · '+fmtDateTime(Date.now())+'</div>';
+  body.appendChild(asst); body.scrollTop=body.scrollHeight;
+  var mdEl=asst.querySelector('.md-text');
+  var fullText='';
+
+  streamChat({
+    session_id: _rtState.sessionId,
+    message: summaryMsg,
+    system: '你是圆桌讨论的主持人，负责综合所有参与者的发言给出最终方案。请客观、全面、结构化地总结。'
+  }, {
+    onDelta: function(d){ fullText+=d; mdEl.innerHTML=renderMarkdown(fullText,true); body.scrollTop=body.scrollHeight; },
+    onTool: function(){},
+    onInfo: function(){},
+    onError: function(err){ mdEl.innerHTML='<span class="error-text">⚠ '+esc(err)+'</span>'; var st=document.getElementById('rtStatus'); if(st) st.remove(); },
+    onDone: function(){
+      mdEl.innerHTML=renderMarkdown(fullText);
+      var st=document.getElementById('rtStatus'); if(st) st.remove();
+      var done=document.createElement('div'); done.className='rt-divider';
+      done.textContent='✅ 圆桌讨论结束';
+      body.appendChild(done); body.scrollTop=body.scrollHeight;
+      _rtState.history.push({ role:'assistant', name:'主持人', content:fullText });
+      toast('✅ 圆桌讨论完成');
+      loadSessions();
+    }
+  });
+}
+
+/* ============================ 新建会话弹窗 ============================ */
+function openNewSessionModal(){
+  // 获取 profiles 和 models 列表
+  var html='<div class="modal-overlay new-session-modal" id="newSessionOverlay" onclick="if(event.target===this)closeNewSessionModal()">' +
+    '<div class="modal" style="max-width:440px">' +
+    '<div class="modal-head"><h3>新建会话</h3><button class="modal-close" onclick="closeNewSessionModal()">\u00d7</button></div>' +
+    '<div class="modal-body">' +
+    '<div class="field"><label>Agent / Profile</label><select id="nsAgent"><option value="default">默认主力助手</option></select></div>' +
+    '<div class="field"><label>模型</label><select id="nsModel"><option value="">默认模型</option></select></div>' +
+    '<div class="field"><label>工作区文件夹</label><input type="text" id="nsWorkspace" placeholder="留空使用默认工作区" value=""></div>' +
+    '</div>' +
+    '<div class="modal-foot" style="padding:12px 16px;display:flex;justify-content:flex-end;gap:8px">' +
+    '<button class="ov-actbtn" onclick="closeNewSessionModal()">取消</button>' +
+    '<button class="ov-actbtn primary" onclick="createNewSession()">创建</button>' +
+    '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+  // 加载 profiles
+  apiGet('/api/profiles').then(function(res){
+    if(res && res.ok && res.profiles){
+      var sel=document.getElementById('nsAgent');
+      res.profiles.forEach(function(p){
+        if(p.id!=='default') sel.innerHTML+='<option value="'+esc(p.id)+'">'+esc(p.emoji||'')+' '+esc(p.name||p.id)+'</option>';
+      });
+    }
+  });
+  // 加载模型
+  apiGet('/api/config').then(function(res){
+    if(res && res.providers){
+      var sel=document.getElementById('nsModel');
+      res.providers.forEach(function(p){
+        if(p.models && p.models.length){
+          p.models.forEach(function(m){ sel.innerHTML+='<option value="'+esc(m)+'">'+esc(m)+'</option>'; });
+        } else if(p.model){
+          sel.innerHTML+='<option value="'+esc(p.model)+'">'+esc(p.model)+'</option>';
+        }
+      });
+    }
+  });
+}
+function closeNewSessionModal(){ var o=document.getElementById('newSessionOverlay'); if(o) o.remove(); }
+function createNewSession(){
+  var agent=document.getElementById('nsAgent').value;
+  var model=document.getElementById('nsModel').value;
+  var workspace=document.getElementById('nsWorkspace').value.trim();
+  closeNewSessionModal();
+  fetch(apiUrl('/api/sessions'), { method:'POST', headers:monitorToken?{'X-Monitor-Token':monitorToken}:{}, body:JSON.stringify({agent:agent,model:model,workspace:workspace}) })
+    .then(function(r){return r.json();})
+    .then(function(s){
+      _sessions.unshift(s);
+      currentSession=s.id;
+      setSessionAgent(s.id, agent||'default');
+      _applyPendingModel(s.id);
+      _openTabs.push(s.id); persistTabs();
+      var ta=document.getElementById('chatInput'); if(ta) ta.value='';
+      renderSessionTabs(); renderRail(); updateHeader();
+      var body=document.getElementById('chatBody');
+      if(body) body.innerHTML='<div class="system-tip">新会话已创建'+(agent!=='default'?' · Agent: '+esc(agent):'')+(model?' · 模型: '+esc(model):'')+'</div>';
+      if(workspace) _fmCwd=workspace;
+      toast('✅ 新会话已创建');
+    }).catch(function(){ toast('创建会话失败','error'); });
+}
+function updateHeader(){
+  var s = _sessions.find(function(x){ return x.id===currentSession; });
+  var title = document.getElementById('chatTitle');
+  var sub = document.getElementById('chatSubtitle');
+  if(title) title.textContent = s ? (s.title||'未命名会话') : '新对话';
+  if(sub) sub.textContent = (s ? (s.title||'会话') : '默认主力助手') + ' · ' + (_sessions.length) + ' 个会话';
+  renderSessionTabs();
+}
+function openRailDrawer(){
+  var r=document.getElementById('chatRail'); if(r){ r.classList.remove('hidden'); r.classList.add('open'); }
+  var o=document.getElementById('chatRailOverlay'); if(o) o.classList.add('open');
+}
+function closeRailDrawer(){
+  var r=document.getElementById('chatRail'); if(r) r.classList.remove('open');
+  var o=document.getElementById('chatRailOverlay'); if(o) o.classList.remove('open');
+}
+function toggleRail(){
+  var rail=document.getElementById('chatRail'); if(!rail) return;
+  rail.classList.toggle('hidden');
+  var collapsed = rail.classList.contains('hidden');
+  var ic=document.getElementById('iconCollapse'), ie=document.getElementById('iconExpand');
+  if(ic) ic.style.display = collapsed?'none':'block';
+  if(ie) ie.style.display = collapsed?'block':'none';
+  var rt=document.getElementById('railToggle'); if(rt) rt.title = collapsed?'展开会话树':'折叠会话树';
+  syncSessionTabsVisibility();
+}
+
+/* ============================ 对话输入 / 发送 ============================ */
+function autoResize(t){
+  t.style.height='auto'; t.style.height=t.scrollHeight+'px';
+  var btn=document.getElementById('sendBtn'); if(btn) btn.disabled=!t.value.trim() && _pendingAttachments.length===0;
+}
+function onKey(e){ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendChat(); } }
+function sendChat(){
+  var ta=document.getElementById('chatInput');
+  var text=ta.value.trim();
+  if(!text && _pendingAttachments.length===0) return;
+  ta.value=''; ta.style.height='auto';
+  var btn=document.getElementById('sendBtn'); if(btn) btn.disabled=true;
+  if(text.charAt(0)==='/'){ handleSlashCommand(text); return; }
+  // 圆桌讨论模式
+  if(_rtState.active && currentSession===_rtState.sessionId){ rtSend(text); return; }
+  sendRaw(text);
+}
+
+/* 真实发送：流式对话（SSE / XHR 降级） */
+/* 统一 system 注入点：专家 / 专家团（决策 3）
+ * 团队启用 → 优先拼接团队多智能体上下文；否则单专家 → 追加一条 system message（不替换 persona）。
+ * 所有专家/专家团注入只走这一处。 */
+function injectExpertSystem(sys, userMessage){
+  if(!sys) sys='';
+  var ext=_cfg.extensions||{};
+  // ⓪ 工作流最高优先：启用且有步骤时，注入 DAG 编排上下文，让 AI 按工作流执行
+  var wf=ext.workflow;
+  if(wf && wf.enabled && wf.steps && wf.steps.length){
+    var wl=['', '【工作流 · DAG 编排模式】'];
+    wl.push('工作流名称：'+(wf.name||'未命名'));
+    if(wf.description) wl.push('描述：'+wf.description);
+    wl.push('并发上限：'+(wf.concurrency||2));
+    if(wf.inputs && wf.inputs.length){
+      wl.push('输入变量：');
+      wf.inputs.forEach(function(inp){ wl.push('  - '+inp.name+'：'+(inp.description||'')+(inp.required?'（必填）':'')); });
+    }
+    // 构建变量替换表：{{request}} → 用户消息，{{context}} → 空
+    var varMap = { '{{request}}': (userMessage||''), '{{context}}': '' };
+    wl.push('');
+    wl.push('执行步骤（按依赖顺序，每个步骤的完整任务指令如下）：');
+    wf.steps.forEach(function(s,i){
+      var dep=(s.depends_on&&s.depends_on.length)?'（依赖：'+s.depends_on.join(', ')+'）':'';
+      wl.push('');
+      wl.push('  ── 步骤 '+(i+1)+'：['+s.id+'] ──');
+      wl.push('  专家：'+(s.expert||'自动分配')+'  输出变量：'+(s.output||'无')+' '+dep);
+      if(s.task){
+        // 替换模板变量 {{request}} / {{context}} 为实际值，中间变量（如 {{ceo_decision}}）保留为占位符
+        var resolvedTask = s.task;
+        Object.keys(varMap).forEach(function(k){
+          resolvedTask = resolvedTask.split(k).join(varMap[k]);
+        });
+        wl.push('  任务指令：');
+        resolvedTask.split('\n').forEach(function(line){ wl.push('    '+line); });
+      }
+    });
+    wl.push('');
+    wl.push('═══════ 执行规则（必须严格遵守）═══════');
+    wl.push('1. 你是工作流编排者，必须使用 delegate_task（任务委派）工具按上述 DAG 依赖顺序逐步执行每个步骤。');
+    wl.push('2. 对于没有依赖的步骤（depends_on 为空），可以并行派发 delegate_task。');
+    wl.push('3. 对于有依赖的步骤，必须等依赖步骤的 delegate_task 全部返回后，将输出结果填入对应变量（如 {{ceo_decision}}），再派发下一步。');
+    wl.push('4. 每次 delegate_task 的 instruction 必须包含对应步骤的完整"任务指令"内容，并将其中仍存在的 {{变量名}} 替换为已获得的实际值。');
+    wl.push('5. 所有步骤完成后，汇总各步骤输出，给出完整的最终结果。');
+    wl.push('6. 严禁跳过 delegate_task 直接自己作答。必须真实调用 delegate_task 派发子智能体执行每个步骤。');
+    return sys + '\n' + wl.join('\n');
+  }
+  // ① 专家团优先
+  if(ext.team_enabled && ext.team && ext.team.length){
+    var lines=['', '【专家团 · 多智能体协作模式（必须通过任务委派 delegate_task 执行）】'];
+    lines.push('你现在的身份是「主协调智能体」，负责拆解任务、委派专家、汇总结果。你手下有以下专家成员：');
+    lines.push('');
+    ext.team.forEach(function(m){
+      var ap=(window.AGENCY_PERSONAS||[]).find(function(p){ return p.id===m.id; });
+      var pm = ap?ap.prompt:'';
+      lines.push('◆ 成员：'+(m.name||m.id)+(m.dept?'（'+m.dept+'）':''));
+      if(pm) lines.push(pm);
+      lines.push('');
+    });
+    lines.push('═══ 强制执行规则（不可违反）═══');
+    lines.push('1. 收到用户任务后，先将其拆解为若干子任务，并判断哪些专家成员与子任务相关。');
+    lines.push('2. 对每个相关成员，必须调用 delegate_task（任务委派）工具真实地派发一个子智能体去执行，严禁自己“假装”成专家直接作答。每次 delegate_task 的指令开头必须写明：“你现在扮演【成员名】，其专长如下：<该成员的上述人设>。请完成以下子任务：<具体子任务内容>”。');
+    lines.push('3. 调用 delegate_task 时 tasks 参数必须是合法的 JSON 数组（array）：多个任务对象之间必须用英文逗号分隔，中括号 [] 与花括号 {} 必须配对完整，字符串必须用英文双引号包裹，不要遗漏逗号或括号，确保能被 JSON 解析器正确解析（否则会报 “Expecting \',\' delimiter” 错误导致委派失败）。');
+    lines.push('4. 与任务无关的成员可以不派发；但至少派发 1 个子任务。能并行就并行派发。');
+    lines.push('5. 等所有 delegate_task 子智能体返回结果后，你作为主协调者汇总、去重、整合各方产出，给出结构化的最终答案，并注明各部分来自哪位专家。');
+    lines.push('6. 再次强调：不许跳过 delegate_task 直接以单人口吻回答。是否真正调用了 delegate_task 是判断你是否在执行专家团协作的唯一标准。');
+    return sys + '\n' + lines.join('\n');
+  }
+  // ② 单专家（追加，不替换 persona）
+  if(_selectedExpert && _selectedExpert.prompt){
+    return sys + '\n\n【专家角色】'+(_selectedExpert.name||'')+'\n'+_selectedExpert.prompt;
+  }
+  return sys;
+}
+
+function sendRaw(text){
+  var attachments = _pendingAttachments.slice();
+  _pendingAttachments = [];
+  renderAttachChips();
+  var body = document.getElementById('chatBody');
+  if(!body) return;
+
+  // 注入引用上下文
+  var quoteHtml = '';
+  if(_currentQuote){
+    quoteHtml = '<div class="quote-block"><div class="quote-label">引用</div>' + escapeHtml(_currentQuote) + '</div>';
+    text = '【引用上下文】\n' + _currentQuote + '\n\n【用户追问】\n' + text;
+    clearQuote();
+  }
+
+  var userDiv = document.createElement('div'); userDiv.className='msg user';
+  var chips = attachments.map(function(a){ return '<span class="attach-chip">📎 '+esc(a.name||'附件')+'</span>'; }).join(' ');
+  userDiv.innerHTML = '<div class="msg-bubble">'+quoteHtml+escapeHtml(text).replace(/\n/g,'<br>')+(chips?'<div style="margin-top:6px">'+chips+'</div>':'')+'</div><div class="msg-meta">你 · '+fmtDateTime(Date.now())+'</div>';
+  body.appendChild(userDiv); body.scrollTop=body.scrollHeight;
+
+  var asst = document.createElement('div'); asst.className='msg assistant';
+  asst.innerHTML = '<div class="msg-bubble"><div class="md-text"><span class="cursor-blink">|</span></div><div class="chat-info"></div><div class="tool-calls" data-collapsed="true"><div class="tool-summary" onclick="toggleToolCalls(this.parentNode)"><span class="tc-ico">🛠</span><span class="tc-text">工具调用</span><span class="tc-toggle">展开 ▾</span></div><div class="tool-list"></div></div></div><div class="reply-status thinking" id="replyStatus"><span class="rs-icon">🤔</span><span class="rs-text">正在思考<span class="rs-dots"></span></span><span class="rs-bar"><span class="rs-bar-inner"></span></span></div><div class="msg-meta">Hermes · '+fmtDateTime(Date.now())+'</div>';
+  body.appendChild(asst); body.scrollTop=body.scrollHeight;
+  var mdEl = asst.querySelector('.md-text');
+  var statusEl = asst.querySelector('.reply-status');
+  var toolBox = asst.querySelector('.tool-calls');
+  var toolList = asst.querySelector('.tool-list');
+  var toolSummary = asst.querySelector('.tool-summary');
+  var infoEl = asst.querySelector('.chat-info');
+  var fullText = '';
+  var toolCards = {};
+  var toolCount = 0;
+  function updateToolSummary(){
+    if(!toolSummary) return;
+    toolSummary.querySelector('.tc-text').textContent = '已调用 '+toolCount+' 个工具';
+    var tog = toolSummary.querySelector('.tc-toggle');
+    if(tog) tog.textContent = (toolBox.getAttribute('data-collapsed')==='true') ? '展开 ▾' : '收起 ▴';
+  }
+
+  if(!currentSession){
+    // 团队模式或工作流启用时，自动创建的会话归入 team 分组
+    var _ext = _cfg.extensions || {};
+    var _teamOn = _ext.team_enabled && _ext.team && _ext.team.length;
+    var _wfOn = _ext.workflow && _ext.workflow.enabled && _ext.workflow.steps && _ext.workflow.steps.length;
+    var _aid = (_teamOn || _wfOn) ? 'team' : (currentAgent || 'default');
+    if (_teamOn || _wfOn) { ensureAgent('team', { name: _ext.team_name || _ext.workflow.name || '我的团队', icon: _wfOn ? '⚙️' : '👥' }); currentAgent = 'team'; }
+    fetch(apiUrl('/api/sessions'), { method:'POST', headers: monitorToken?{'X-Monitor-Token':monitorToken}:{} })
+      .then(function(r){ return r.json(); })
+      .then(function(s){ _sessions.unshift(s); currentSession=s.id; setSessionAgent(s.id, _aid); _applyPendingModel(s.id); _openTabs.push(s.id); persistTabs(); renderSessionTabs(); renderRail(); updateHeader(); doStream(); })
+      .catch(function(){ toast('创建会话失败'); mdEl.textContent='⚠ 无法创建会话'; });
+  } else {
+    doStream();
+  }
+
+  function doStream(){
+    var sid = currentSession;  // 捕获：本会话的 sid（后台流式继续时切换不影响这里的 sid）
+    _chatHTML[sid] = _chatHTML[sid] || '';  // 初始化缓存（防止首次流式就被清空）
+    _tabStreaming[sid] = true; renderSessionTabs();
+    var sys = _personaPrompt || '';
+    if(_activeSkills.length){ sys += '\n\n【已启用技能】请在本轮对话中优先使用以下技能：'+_activeSkills.join('、')+'。'; }
+    sys = injectExpertSystem(sys, text);
+    var payload = {
+      session_id: sid,
+      message: buildMessageContent(text, attachments),
+      system: sys
+    };
+    var _sessModel = _getSessionModel(sid);
+    if(_sessModel){
+      if(typeof _sessModel === 'object' && _sessModel.model){
+        payload.model = _sessModel.model;
+        if(_sessModel.provider) payload.provider = _sessModel.provider;
+      } else {
+        payload.model = _sessModel;
+      }
+    }
+    streamChat(payload, {
+      onDelta: function(d){
+        fullText += d;
+        // 第一次收到内容：切换到“正在回复”状态
+        if(statusEl && statusEl.classList.contains('thinking')){
+          statusEl.className='reply-status generating';
+          statusEl.innerHTML='<span class="rs-icon">✍️</span><span class="rs-text">正在回复<span class="rs-dots"></span></span><span class="rs-bar"><span class="rs-bar-inner"></span></span>';
+        }
+        mdEl.innerHTML = renderMarkdown(fullText, true); body.scrollTop=body.scrollHeight; _chatHTML[sid] = body.innerHTML;
+      },
+      onReasoning: function(r){
+        // 推理模型思考过程：状态从“正在思考”切换，并流式显示思考块（避免 content 为空时 UI 卡死）
+        if(statusEl && statusEl.classList.contains('thinking')){
+          statusEl.className='reply-status generating';
+          statusEl.innerHTML='<span class="rs-icon">💭</span><span class="rs-text">正在思考<span class="rs-dots"></span></span><span class="rs-bar"><span class="rs-bar-inner"></span></span>';
+        }
+        var rb = asst.querySelector('.reasoning-block');
+        if(!rb){
+          rb = document.createElement('div');
+          rb.className = 'reasoning-block';
+          rb.innerHTML = '<div class="reasoning-head">💭 思考过程</div><div class="reasoning-text"></div>';
+          mdEl.parentNode.insertBefore(rb, mdEl);
+        }
+        rb.querySelector('.reasoning-text').textContent += r;
+        rb.scrollTop = rb.scrollHeight;
+        body.scrollTop=body.scrollHeight; _chatHTML[sid] = body.innerHTML;
+      },
+      onTool: function(tp){
+        // 技能调用渲染为 chip（Issue #9），不占完整工具卡片
+        if(tp.skill || (tp.tool && /skill/i.test(tp.tool))){
+          var sName = tp.toolZh || tp.name || tp.tool || '技能';
+          var chip = document.createElement('span');
+          chip.className = 'skill-invoke-chip';
+          chip.textContent = '🧩 ' + sName;
+          toolList.appendChild(chip);
+          updateToolSummary();
+          body.scrollTop=body.scrollHeight;
+          _chatHTML[sid] = body.innerHTML;
+          return;
+        }
+        var id = tp.toolCallId || tp.tool || 'tool';
+        var card = toolCards[id];
+        if(!card){
+          card = document.createElement('div');
+          card.className = 'tool-call';
+          if(tp.toolCallId) card.setAttribute('data-tid', tp.toolCallId);
+          toolList.appendChild(card);
+          toolCards[id] = card;
+          toolCount++;
+        }
+        // 同一工具可能多次推送事件（start → done → result），按最新状态重绘
+        var running = !(tp.status==='done'||tp.status==='completed'||tp.status==='finish'||tp.status==='finished');
+        var hasResult = !!(tp.result);
+        // 含结果且已完成时默认折叠，避免长输出淹没聊天
+        var collapsed = (!running && hasResult);
+        card.className = 'tool-call' + (running ? ' running' : '') + (collapsed ? ' collapsed' : '');
+        var emoji = tp.emoji || TOOL_EMOJI[tp.tool] || '🔧';
+        var name = tp.toolZh || TOOL_NAME_ZH[tp.tool] || tp.tool || '工具';
+        var html = '<div class="tool-head" onclick="this.parentNode.classList.toggle(\'collapsed\')">'+
+          '<span class="tool-icon">'+emoji+'</span>'+
+          '<span class="tool-name">'+esc(name)+'</span>'+
+          '<span class="tool-status '+(running?'running':'done')+'">'+(running?'执行中…':'已完成')+'</span>'+
+        '</div>';
+        var label = tp.label || tp.command || tp.summary || '';
+        if(label) html += '<div class="tool-cmd"><span class="tool-cmd-label">命令</span>'+escapeHtml(label)+'</div>';
+        if(tp.result) html += '<div class="tool-out"><span class="tool-cmd-label">结果</span>'+escapeHtml(tp.result)+'</div>';
+        card.innerHTML = html;
+        updateToolSummary();
+        // 流式进行中（有运行中的工具）保持展开；全部完成后折叠
+        if(running) toolBox.setAttribute('data-collapsed','false');
+        body.scrollTop=body.scrollHeight;
+        _chatHTML[sid] = body.innerHTML;
+      },
+      onInfo: function(i){
+        if(!i) return;
+        infoEl.innerHTML = '<span class="info-dot"></span>'+escapeHtml(i);
+        infoEl.style.display = 'flex';
+        body.scrollTop=body.scrollHeight;
+        _chatHTML[sid] = body.innerHTML;
+      },
+      onUsage: function(u){
+        if(!u) return;
+        var meta = asst.querySelector('.msg-meta');
+        if(meta){
+          var t = (u.total_tokens!=null) ? u.total_tokens
+                : ((u.prompt_tokens||0) + (u.completion_tokens||0));
+          meta.textContent = 'Hermes · '+fmtDateTime(Date.now())+' · ' + t + ' tokens';
+        }
+      },
+      onError: function(err){ var _raw = String(err||''); var _needCfg = /No inference provider configured/i.test(_raw); var _html = _needCfg ? '⚠ 尚未配置模型服务：请先到「模型」页添加模型供应商并填写 API Key。<br><span style="font-size:11px;opacity:.8">（网关返回：'+esc(_raw)+'）</span>' : '⚠ '+esc(_raw); mdEl.innerHTML = '<span class="error-text">'+_html+'</span>' + (_needCfg ? '<div style="margin-top:8px"><button onclick="switchPage(\'models\')" style="padding:5px 12px;border-radius:8px;border:1px solid var(--red);background:transparent;color:var(--red);cursor:pointer;font-size:12px">去配置模型 →</button></div>' : ''); if(_needCfg) renderConfigBanner(); if(statusEl){ statusEl.className='reply-status done'; statusEl.innerHTML='<span class="rs-icon">⚠️</span><span class="rs-text">回复出错</span>'; statusEl.style.color='var(--red)'; } _tabStreaming[sid]=false; renderSessionTabs(); _chatHTML[sid] = body.innerHTML; },
+      onDone: function(aborted){
+        _tabStreaming[sid]=false; renderSessionTabs();
+        mdEl.innerHTML = renderMarkdown(fullText) + (aborted ? ' <em>(已停止)</em>' : '');
+        infoEl.style.display = 'none';
+        // 状态指示器：显示“回答完成”
+        if(statusEl){
+          statusEl.className='reply-status done';
+          statusEl.innerHTML='<span class="rs-icon">✅</span><span class="rs-text">'+(aborted?'已停止':'回答完成')+'</span><span class="rs-bar"><span class="rs-bar-inner" style="width:100%"></span></span>';
+          setTimeout(function(){ statusEl.classList.add('fade-out'); }, 4000);
+          setTimeout(function(){ statusEl.style.display='none'; }, 4600);
+        }
+        // 完成后折叠工具区（Issue #8）；若仍有运行中的工具则保持展开
+        if(toolBox){
+          var anyRunning = toolList.querySelector('.tool-call.running');
+          if(!anyRunning){ toolBox.setAttribute('data-collapsed','true'); updateToolSummary(); }
+          else { toolBox.setAttribute('data-collapsed','false'); updateToolSummary(); }
+        }
+        hideScrollBtn();
+        _msgState.streaming=false; _msgState.abortCtrl=null;
+        // 添加操作按钮（播放/引用/Fork）
+        asst.setAttribute('data-content', fullText.replace(/\n/g,'&#10;').replace(/"/g,'&quot;'));
+        var actBar=document.createElement('div'); actBar.className='msg-actions';
+        actBar.innerHTML='<button class="msg-act-btn" onclick="speakMsg(this)" title="语音播放"><svg viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>播放</button>' +
+          '<button class="msg-act-btn" onclick="quoteMsg(this)" title="引用回复"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>引用</button>' +
+          '<button class="msg-act-btn" onclick="forkMsg(this)" title="Fork 新话题"><svg viewBox="0 0 24 24"><circle cx="12" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><circle cx="18" cy="6" r="3"/><path d="M18 9v1a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V9"/><path d="M12 12v3"/></svg>Fork</button>';
+        asst.insertBefore(actBar, asst.querySelector('.msg-meta'));
+        // 自动朗读（语音设置开关 fnos-voice-autoplay，默认开；未中断且有内容时触发）
+        if(!aborted && fullText && localStorage.getItem('fnos-voice-autoplay') !== '0'){
+          var _spkBtn = actBar.querySelector('.msg-act-btn');
+          if(_spkBtn){ setTimeout(function(){ try{ speakMsg(_spkBtn); }catch(e){} }, 350); }
+        }
+        _chatHTML[sid] = body.innerHTML;  // 完成后同步缓存
+        loadSessions();
+      }
+    });
+  }
+}
+function buildMessageContent(text, attachments){
+  var imgs=[], files=[];
+  (attachments||[]).forEach(function(a){ if(a.type && a.type.indexOf('image/')===0) imgs.push(a.url); else files.push(a.url); });
+  return { text: text||'', images: imgs, files: files };
+}
+
+/* 流式聊天：WebSocket 主通道（抗代理超时 + 自动重连），SSE/XHR 降级 */
+function wsChatUrl(sid){
+  var proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  return proto + '//' + location.host + apiUrl('/api/chat/ws') + '?session_id=' + encodeURIComponent(sid) + '&token=' + encodeURIComponent(monitorToken || '');
+}
+function streamChat(payload, cb){
+  _msgState.streaming = true;
+  var done = false;
+  var ws = null;
+  var fallbackTimer = null;
+  var wsOpened = false;
+  var reconnectAttempts = 0;
+  var maxReconnects = 3;  // 最多自动重连 3 次
+  var reconnectDelay = 2000; // 首次重连延迟 2s
+
+  function finish(){
+    if(done) return; done = true;
+    clearTimeout(fallbackTimer);
+    _msgState.streaming = false; _msgState.abortCtrl = null; _msgState.ws = null;
+  }
+  function handleMsg(p){
+    if(p.keepalive) return;
+    if(p.delta) cb.onDelta(p.delta);
+    else if(p.reasoning && cb.onReasoning) cb.onReasoning(p.reasoning);
+    else if(p.tool_progress) cb.onTool(p.tool_progress);
+    else if(p.error) cb.onError(p.error);
+    else if(p.info) cb.onInfo(p.info);
+    else if(p.usage && cb.onUsage) cb.onUsage(p.usage);
+  }
+  function doFallback(){
+    if(done) return;
+    console.warn('[Chat] WS fallback to SSE after ' + reconnectAttempts + ' reconnect attempts');
+    streamChatSSE(payload, cb);
+    finish();
+  }
+
+  function tryReconnect(){
+    if(done || reconnectAttempts >= maxReconnects){ doFallback(); return; }
+    reconnectAttempts++;
+    var delay = reconnectDelay * Math.pow(2, reconnectAttempts - 1); // 2s, 4s, 8s
+    console.log('[Chat] WS reconnect attempt ' + reconnectAttempts + '/' + maxReconnects + ' in ' + delay + 'ms');
+    cb.onInfo && cb.onInfo('连接中断，正在重连(' + reconnectAttempts + '/' + maxReconnects + ')…');
+    setTimeout(function(){
+      if(done) return;
+      try { ws = new WebSocket(wsChatUrl(payload.session_id)); } catch(e){ doFallback(); return; }
+      _msgState.ws = ws;
+      var reconnectTimer = setTimeout(function(){
+        if(ws && ws.readyState !== WebSocket.OPEN){ try{ ws.close(); }catch(e){} tryReconnect(); }
+      }, 10000);
+      ws.onopen = function(){
+        clearTimeout(reconnectTimer);
+        console.log('[Chat] WS reconnected successfully');
+        cb.onInfo && cb.onInfo('重连成功，继续接收回复…');
+        // 重连后服务器会从缓存返回完整结果
+      };
+      ws.onmessage = function(e){
+        try {
+          var p = JSON.parse(e.data);
+          if(p.done){ finish(); cb.onDone(false); try{ ws.close(); }catch(ex){} return; }
+          handleMsg(p);
+        } catch(ex){}
+      };
+      ws.onerror = function(){
+        if(done) return;
+        clearTimeout(reconnectTimer);
+        tryReconnect();
+      };
+      ws.onclose = function(ev){
+        if(done) return;
+        clearTimeout(reconnectTimer);
+        if(ev.code !== 1000){ tryReconnect(); }
+        else { finish(); cb.onDone(false); }
+      };
+    }, delay);
+  }
+
+  // 1) POST 消息入队
+  fetch(apiUrl('/api/chat/ws-send'), {
+    method: 'POST',
+    headers: { 'Content-Type':'application/json', 'X-Monitor-Token': monitorToken||'' },
+    body: JSON.stringify(payload)
+  }).then(function(r){
+    if(!r.ok){
+      // 403 = 安全网关拦截（tool_guard）→ 携带 blocked 标记走专门兜底
+      return r.json().catch(function(){ return {}; }).then(function(j){
+        if(j && j.blocked){ var e = new Error(j.error || '消息被安全网关拦截'); e.noFallback = true; throw e; }
+        throw new Error('ws-send ' + r.status);
+      });
+    }
+    return r.json();
+  }).then(function(){
+    if(done) return;
+    // 2) 建立 WS 连接取流
+    try { ws = new WebSocket(wsChatUrl(payload.session_id)); } catch(e){ doFallback(); return; }
+    _msgState.ws = ws;
+    _msgState.abortCtrl = { abort: function(){ try{ ws.close(1000, 'user stop'); }catch(e){} } };
+
+    // 30 秒内未 open 则降级（从 15s 延长到 30s，给慢网络更多时间）
+    fallbackTimer = setTimeout(function(){
+      if(ws && ws.readyState !== WebSocket.OPEN){ try{ ws.close(); }catch(e){} doFallback(); }
+    }, 30000);
+
+    ws.onopen = function(){ wsOpened = true; clearTimeout(fallbackTimer); };
+    ws.onmessage = function(e){
+      try {
+        var p = JSON.parse(e.data);
+        if(p.done){ finish(); cb.onDone(false); try{ ws.close(); }catch(ex){} return; }
+        handleMsg(p);
+      } catch(ex){}
+    };
+    ws.onerror = function(){
+      if(done) return;
+      clearTimeout(fallbackTimer);
+      // 如果 WS 曾连接成功后断开，尝试重连而非直接降级
+      if(wsOpened){ tryReconnect(); }
+      else { doFallback(); }
+    };
+    ws.onclose = function(ev){
+      if(done) return;
+      clearTimeout(fallbackTimer);
+      if(ev.code !== 1000){
+        console.warn('[Chat] WS closed abnormally code=' + ev.code);
+        // 如果 WS 曾连接成功后断开，尝试重连
+        if(wsOpened){ tryReconnect(); }
+        else { doFallback(); }
+      } else {
+        finish(); cb.onDone(false);
+      }
+    };
+  }).catch(function(err){
+    // 安全网关拦截（tool_guard）：还原输入并提示，不降级 SSE 重发
+    if(err && err.noFallback){
+      try{
+        var _body=document.getElementById('chatBody');
+        var _ul=_body?_body.querySelector('.msg.user:last-child'):null;
+        if(_ul) _ul.remove();
+        var _restore = (typeof payload.message==='string') ? payload.message : ((payload.message && payload.message.text)||'');
+        if(_restore){
+          var ta=document.getElementById('chatInput');
+          if(ta){ ta.value=_restore; autoResize(ta); try{ ta.focus(); }catch(e){} }
+        }
+      }catch(e){}
+      toast(err.message || '消息被安全网关拦截');
+      return;
+    }
+    // ws-send 失败 → 直接走 SSE
+    doFallback();
+  });
+}
+
+/* SSE 降级路径（fetch 优先，再降 XHR） */
+function streamChatSSE(payload, cb){
+  _msgState.streaming = true;
+  var controller = new AbortController();
+  _msgState.abortCtrl = { abort: function(){ try{ controller.abort(); }catch(e){} } };
+
+  function handleEvent(p){
+    if(p.tool_progress) cb.onTool(p.tool_progress);
+    else if(p.delta) cb.onDelta(p.delta);
+    else if(p.reasoning && cb.onReasoning) cb.onReasoning(p.reasoning);
+    else if(p.error) cb.onError(p.error);
+    else if(p.info) cb.onInfo(p.info);
+    else if(p.usage) cb.onUsage && cb.onUsage(p.usage);
+  }
+
+  fetch(apiUrl('/api/chat/stream'), {
+    method:'POST',
+    headers: { 'Content-Type':'application/json', 'X-Monitor-Token': monitorToken||'' },
+    body: JSON.stringify(payload),
+    signal: controller.signal
+  }).then(function(r){
+    if(!r.ok){ cb.onError('HTTP '+r.status); cb.onDone(false); return; }
+    var reader = r.body.getReader();
+    var dec = new TextDecoder();
+    var buf = '';
+    function pump(){
+      reader.read().then(function(res){
+        if(res.done){ cb.onDone(false); return; }
+        buf += dec.decode(res.value, { stream:true });
+        var events = buf.split('\n\n'); buf = events.pop() || '';
+        events.forEach(function(ev){
+          ev.split('\n').forEach(function(line){
+            if(line.indexOf('data:')===0){
+              var data = line.slice(5).trim();
+              if(data==='[DONE]') return;
+              try { handleEvent(JSON.parse(data)); } catch(e){}
+            }
+          });
+        });
+        pump();
+      }).catch(function(){ cb.onDone(false); });
+    }
+    pump();
+  }).catch(function(e){
+    if(e && e.name==='AbortError'){ cb.onDone(true); return; }
+    streamChatXhr(payload, cb);
+  });
+}
+function streamChatXhr(payload, cb){
+  var xhr = new XMLHttpRequest();
+  _msgState.abortCtrl = { abort: function(){ try{ xhr.abort(); }catch(e){} } };
+  var buf='', pos=0, done=false;
+  function process(){
+    var chunk = buf.slice(pos); pos = buf.length; buf += '';
+    var rest = chunk; var events = rest.split('\n\n'); buf = events.pop() || '';
+    events.forEach(function(ev){
+      ev.split('\n').forEach(function(line){
+        if(line.indexOf('data:')===0){
+          var data = line.slice(5).trim();
+          if(data==='[DONE]') return;
+          try { var p=JSON.parse(data); handleXhr(p); } catch(e){}
+        }
+      });
+    });
+    function handleXhr(p){
+      if(p.tool_progress) cb.onTool(p.tool_progress);
+      else if(p.delta) cb.onDelta(p.delta);
+      else if(p.reasoning && cb.onReasoning) cb.onReasoning(p.reasoning);
+      else if(p.error) cb.onError(p.error);
+      else if(p.info) cb.onInfo(p.info);
+    }
+  }
+  xhr.open('POST', apiUrl('/api/chat/stream'), true);
+  xhr.setRequestHeader('Content-Type','application/json');
+  if(monitorToken) xhr.setRequestHeader('X-Monitor-Token', monitorToken);
+  xhr.onprogress = function(){ var t=xhr.responseText; var evs=t.slice(pos).split('\n\n'); buf = t; process(); };
+  xhr.onload = function(){ if(done) return; done=true; process(); if(xhr.status>=400) cb.onError('HTTP '+xhr.status); cb.onDone(false); };
+  xhr.onerror = function(){ if(done) return; done=true; cb.onError('网络错误'); cb.onDone(false); };
+  xhr.onabort = function(){ if(done) return; done=true; cb.onDone(true); };
+  xhr.send(JSON.stringify(payload));
+}
+function chatStop(){
+  if(currentSession){
+    fetch(apiUrl('/api/chat/stop'), { method:'POST', headers:{'Content-Type':'application/json','X-Monitor-Token':monitorToken||''}, body: JSON.stringify({ session_id: currentSession }) }).catch(function(){});
+  }
+  if(_msgState.ws){ try{ _msgState.ws.close(1000, 'user stop'); }catch(e){} _msgState.ws=null; }
+  if(_msgState.abortCtrl) _msgState.abortCtrl.abort();
+}
+
+/* 附件上传（Profile 隔离：profile=当前 Agent，存 profiles/<agent>/uploads/） */
+function uploadAttachment(f, url){
+  var fd = new FormData();
+  fd.append('file', f);
+  fd.append('profile', window.currentAgent || 'default');
+  var hdrs = {}; if(monitorToken) hdrs['X-Monitor-Token']=monitorToken;
+  return fetch(apiUrl(url), { method:'POST', body:fd, headers:hdrs })
+    .then(function(r){ return r.json(); })
+    .then(function(out){
+      if(out && !out.error && out.url){
+        _pendingAttachments.push({ url:out.url, type:f.type, name:(f.name || 'file') });
+        renderAttachChips();
+        autoResize(document.getElementById('chatInput'));
+        return true;
+      }
+      toast('上传失败：'+(out && out.error || '未知错误'));
+      return false;
+    })
+    .catch(function(){ toast('上传失败，无法连接后端'); return false; });
+}
+function attachFile(){
+  var inp = document.createElement('input'); inp.type='file'; inp.style.display='none';
+  document.body.appendChild(inp);
+  inp.onchange = function(){
+    var f = inp.files[0];
+    if(!f){ document.body.removeChild(inp); return; }
+    var isImg = /^image\//.test(f.type);
+    uploadAttachment(f, isImg ? '/api/chat/upload-image' : '/api/chat/upload-file').then(function(ok){
+      if(ok) toast('附件已添加：'+f.name);
+    });
+    document.body.removeChild(inp);
+  };
+  inp.click();
+}
+function renderAttachChips(){
+  var comp = document.getElementById('chatComposer');
+  if(!comp) return;
+  var box = document.getElementById('attachChips');
+  if(!box){ box=document.createElement('div'); box.id='attachChips'; box.className='attach-chips'; comp.insertBefore(box, comp.firstChild); }
+  if(!_pendingAttachments.length){ box.style.display='none'; box.innerHTML=''; return; }
+  box.style.display='flex';
+  box.innerHTML = _pendingAttachments.map(function(a,i){
+    var isImg = a.type && /^image\//.test(a.type);
+    var icon = isImg ? '🖼️' : '📎';
+    var name = esc(a.name || (isImg ? '图片' : '附件'));
+    return '<span class="attach-chip"><span class="file-icon">'+icon+'</span><span class="file-name" title="'+name+'">'+name+'</span><span class="x" onclick="removeAttach('+i+')" title="移除">×</span></span>';
+  }).join('');
+}
+function removeAttach(i){
+  _pendingAttachments.splice(i,1);
+  renderAttachChips();
+  autoResize(document.getElementById('chatInput'));
+}
+
+/* 聊天输入框粘贴图片/文件（Ctrl+V）
+ * - 图片 → upload-image（Profile 隔离）
+ * - 其他文件（如剪贴板文件复制）→ upload-file
+ * - 纯文本不拦截，保持原样 */
+function onChatPaste(e){
+  var cd = (e && e.clipboardData) || window.clipboardData || null;
+  if(!cd || !cd.items) return;            // 无剪贴板数据：交给浏览器默认行为
+  // 先同步收集所有文件，避免 items 在异步回调中失效
+  var files = [];
+  for(var i=0;i<cd.items.length;i++){
+    var it = cd.items[i];
+    if(it.kind === 'file'){
+      var f = it.getAsFile();
+      if(f) files.push(f);
+    }
+  }
+  if(!files.length) return;              // 纯文本：不拦截，允许默认粘贴
+  e.preventDefault();                     // 检测到文件：阻止文本域写入原始数据
+  files.forEach(function(f){
+    var isImg = /^image\//.test(f.type || '');
+    uploadAttachment(f, isImg ? '/api/chat/upload-image' : '/api/chat/upload-file');
+  });
+}
+
+/* ============================ Mini Popup ============================ */
+/* 构建模型下拉选项（按 Provider 分组、仅含启用模型）；当前值不在列表中时补一个自定义项 */
+function buildModelOptionsHtml(currentValue, emptyLabel){
+  var cur = String(currentValue||'');
+  var html = '<option value="">'+esc(emptyLabel||'（跟随默认配置）')+'</option>';
+  var found = !cur;
+  (_cfg.providers||[]).forEach(function(p){
+    var provName = p.name || p.id;
+    var models = (p.models && p.models.length) ? p.models : [{ id:p.model||'auto', name:p.model||'auto', enabled:true }];
+    var opts='';
+    models.forEach(function(m){
+      if(m.enabled === false) return;
+      var modelId = m.id || m.name || 'auto';
+      var modelName = m.name || m.id || 'auto';
+      if(modelId===cur) found=true;
+      opts += '<option value="'+esc(modelId)+'"'+(modelId===cur?' selected':'')+'>'+esc(modelName)+'</option>';
+    });
+    if(opts) html += '<optgroup label="'+esc(provName)+'">'+opts+'</optgroup>';
+  });
+  if(!found) html += '<optgroup label="当前配置"><option value="'+esc(cur)+'" selected>'+esc(cur)+'（不在模型列表中）</option></optgroup>';
+  return html;
+}
+function buildMiniData(){
+  // 模型选择器：按 Provider 分组展示模型列表（Issue #5），避免全部挤在一起
+  var modelGroups = [];
+  (_cfg.providers||[]).forEach(function(p){
+    var provName = p.name || p.id;
+    var provId = p.id || p.name;
+    var models = (p.models && p.models.length) ? p.models : [{ id:p.model||'auto', name:p.model||'auto', enabled:true }];
+    var enabledModels = [];
+    models.forEach(function(m){
+      if(m.enabled === false) return;
+      var modelId = m.id || m.name || 'auto';
+      var modelName = m.name || m.id || 'auto';
+      var isActive = false;
+      var _curModel = _getSessionModel();
+      if(_curModel && typeof _curModel === 'object' && _curModel.model){
+        isActive = (_curModel.provider === provId && _curModel.model === modelId);
+      }
+      enabledModels.push({ t: modelName, d: modelId, ico:'⚙️', active: isActive, provider: provId, model: modelId });
+    });
+    if(enabledModels.length) modelGroups.push({ name: provName, base_url: p.base_url||'', items: enabledModels });
+  });
+  if(!modelGroups.length) modelGroups = [{ name:'未配置', items:[{ t:'未配置模型', d:'请到「模型」页添加', ico:'⚙️' }] }];
+  var connectors = (_connState.list||[]).map(function(c){
+    return { t:c.name||c.kind, d:c.configured?'已启用':'未配置', ico:(c.icon||'🔌') };
+  });
+  if(!connectors.length) connectors = PV.octopConnectors.slice(0,3).map(function(c){ return { t:c.name, d:'未配置', ico:c.icon }; });
+  var skills = (_skillLocal.length?_skillLocal:(_state&&_state.skills&&PV.skillsLocal))||[];
+  var skillItems = (skills.length?skills:PV.skillsLocal).map(function(sk){
+    var nm = sk.name||sk.id||'技能';
+    return { t:nm, d:sk.desc||sk.description||'', ico:sk.icon||'📦', active:_activeSkills.indexOf(nm)>=0 };
+  });
+  return {
+    model:{ title:'选择模型', groups:modelGroups },
+    connector:{ title:'选择连接器', items:connectors, foot:'管理连接器' },
+    skill:{ title:'选择技能', items:skillItems },
+    expert:{ title:'选择专家', items: expertsList().map(function(e){ return { id:e.id, t:e.name, d:e.dept||'', ico:e.icon||'🎯', active:false }; }) },
+    quick:{ title:'快捷指令', search:false, groups:PV.quickGroups }
+  };
+}
+function expertsList(){
+  if(window.AGENCY_PERSONAS && window.AGENCY_PERSONAS.length){
+    return window.AGENCY_PERSONAS.map(function(p){
+      return { id:p.id, name:(p.label||p.name||'未命名'), dept:(p.dept_label||p.dept||''), deptId:(p.dept||''), icon:(p.emoji||p.icon||'🎯') };
+    });
+  }
+  return PV.experts.map(function(e){ return { id:e.id, name:e.name, dept:(e.dept||''), deptId:(e.dept||''), icon:(e.icon||'🎯') }; });
+}
+/* 动态加载 agency-agents-zh 专家库（Issue #1）。
+   打包后的 app 中 js/personas_library.js 可能因浏览器缓存/加载时序失败，这里兜底注入并回调重渲染。
+   采用版本号缓存键（替代 Date.now() 强制每次重下载）+ 多次重试，确保 268 位专家必然加载。 */
+function ensurePersonasLibrary(cb, attempt){
+  if(window.AGENCY_PERSONAS && window.AGENCY_PERSONAS.length){ if(cb) cb(); return; }
+  attempt = attempt || 1;
+  var s = document.createElement('script');
+  s.src = 'js/personas_library.js?v=' + (window.__APP_VER__ || 'app') + '&t=' + attempt;
+  s.onload = function(){ if(cb) cb(); };
+  s.onerror = function(){
+    if(attempt < 4){ setTimeout(function(){ ensurePersonasLibrary(cb, attempt + 1); }, 400 * attempt); }
+    else if(cb) cb();
+  };
+  document.head.appendChild(s);
+}
+/* 启动时强制刷新专家库（即便 index.html 已同步加载，也重新拉取最新版，规避旧缓存导致只剩 8 个） */
+function bootstrapPersonasLibrary(){
+  ensurePersonasLibrary(function(){
+    if(window.AGENCY_PERSONAS && window.AGENCY_PERSONAS.length){
+      if(window.__expRendered){ renderExperts(); }
+      if(window.__personasOpenMini){ window.__personasOpenMini(); }
+    }
+  });
+}
+function openMini(btn, key){
+  if(activeBtn===btn){ closeMini(); return; }
+  closeMini();
+  activeBtn=btn; activePanel=key;
+  popup=document.getElementById('miniPopup');
+  var d=buildMiniData()[key];
+  document.getElementById('popupTitle').textContent=d.title;
+  var sw=document.getElementById('popupSearchWrap');
+  sw.style.display = d.search===false ? 'none':'block';
+  if(d.search!==false){ var _ps=document.getElementById('popupSearch'); _ps.placeholder='搜索'+d.title.replace('选择',''); _ps.value=''; }
+  var foot=document.getElementById('popupFoot');
+  if(d.foot){ foot.style.display='block'; foot.textContent=d.foot; foot.onclick=function(){ closeMini(); switchPage('connectors'); }; }
+  else foot.style.display='none';
+
+  var tabs=document.getElementById('popupTabs');
+  if(key==='expert'){
+    tabs.style.display='flex';
+    tabs.innerHTML='<div class="mini-popup-tab '+(_expertPickerTab==='single'?'active':'')+'" onclick="switchExpertPickerTab(\'single\')">专家</div>'+
+      '<div class="mini-popup-tab '+(_expertPickerTab==='team'?'active':'')+'" onclick="switchExpertPickerTab(\'team\')">专家团</div>'+
+      '<div class="mini-popup-tab '+(_expertPickerTab==='workflow'?'active':'')+'" onclick="switchExpertPickerTab(\'workflow\')">工作流</div>'+
+      '<div class="mini-popup-tab '+(_expertPickerTab==='persona'?'active':'')+'" onclick="switchExpertPickerTab(\'persona\')">智能体</div>';
+  } else {
+    tabs.style.display='none'; tabs.innerHTML='';
+  }
+
+  document.getElementById('popupBody').innerHTML=buildMiniPopupBody(key,d);
+  popup.classList.toggle('wide', key==='quick');
+  popup.classList.add('open');
+  positionPopup(btn);
+}
+function switchExpertPickerTab(tab){
+  _expertPickerTab=tab;
+  var tabNames={single:'专家',team:'专家团',workflow:'工作流',persona:'智能体'};
+  var tabs=document.getElementById('popupTabs');
+  Array.from(tabs.children).forEach(function(el){ el.classList.toggle('active', el.textContent===tabNames[tab]); });
+  document.getElementById('popupBody').innerHTML=buildMiniPopupBody('expert', buildMiniData().expert);
+}
+function buildMiniPopupBody(key,d){
+  var body='';
+  if(key==='quick'){
+    body='<div class="cmd-grid">';
+    (d.groups||[]).forEach(function(g){
+      body+='<div class="cmd-group-title">'+esc(g.title)+'</div>';
+      g.commands.forEach(function(c){
+        body+='<div class="cmd-cell" onclick="pickQuick(\''+esc(c.cmd).replace(/\\/g,'\\\\').replace(/'/g,"\\'")+'\')">'+
+          '<div class="ico">'+c.ico+'</div><div><div class="title">'+esc(c.title)+'</div><div class="sub">'+esc(c.cmd)+'</div></div></div>';
+      });
+    });
+    body+='</div>';
+  } else if(key==='model'){
+    // 模型选择器：按 Provider 分组渲染，支持会话级模型选择
+    body='<div class="pick-list pick-groups">';
+    // 添加"跟随默认"选项（清除当前会话的模型选择）
+    var _curModel = _getSessionModel();
+    body+='<div class="pop-item '+(!_curModel?'active':'')+'" data-clear="1" onclick="clearSessionModel()" style="border-bottom:1px solid var(--border);margin-bottom:4px;padding-bottom:8px">'+
+      '<div class="ico">🔄</div><div class="txt"><div class="t">跟随默认配置</div><div class="d">清除当前会话的模型选择</div></div><div class="check"></div></div>';
+    (d.groups||[]).forEach(function(g){
+      body+='<div class="pick-group"><div class="pick-group-head">'+esc(g.name)+'</div>';
+      (g.items||[]).forEach(function(it){
+        var _attrs = ' data-provider="'+esc(it.provider||g.name)+'" data-model="'+esc(it.model||it.t)+'"';
+        body+='<div class="pop-item '+(it.active?'active':'')+'"'+_attrs+' onclick="pickItem(\'model\',this)">'+
+        '<div class="ico">'+it.ico+'</div><div class="txt"><div class="t">'+esc(it.t)+'</div><div class="d">'+esc(it.d)+'</div></div><div class="check"></div></div>';
+      });
+      body+='</div>';
+    });
+    body+='</div>';
+    // 添加提示：模型选择是会话级的
+    body+='<div style="padding:8px 12px;font-size:11px;color:var(--text3);border-top:1px solid var(--border)">💡 模型选择仅对当前会话生效，切换会话后可选择不同模型</div>';
+  } else if(key==='expert'){
+    if(_expertPickerTab==='team'){
+      var team=_cfg.extensions.team||[];
+      if(!team.length){
+        body='<div class="pick-list"><div class="empty-state" style="padding:20px 0;text-align:center;color:var(--text3)">专家团为空。<br>点击下方「使用专家团」将自动按部门组建跨领域团队。</div></div>';
+      } else {
+        body='<div class="pick-list">';
+        team.forEach(function(m){
+          body+='<div class="pop-item" data-id="'+esc(m.id||'')+'">'+
+            '<div class="ico">'+(m.icon||'🎯')+'</div><div class="txt"><div class="t">'+esc(m.name||'')+'</div><div class="d">'+esc(m.dept||'')+'</div></div>'+
+            '<button class="action sm" onclick="event.stopPropagation();removeTeamMember(\''+esc(m.id)+'\')" style="margin-top:0;flex:none">移除</button>'+
+            '</div>';
+        });
+        body+='</div><div class="team-cta-wrap"><button class="team-cta '+(_cfg.extensions.team_enabled?'on':'off')+'" onclick="useExpertTeam()">'+
+          '<span class="ico">'+( _cfg.extensions.team_enabled?'✓':'👥' )+'</span>'+
+          '<span>'+(_cfg.extensions.team_enabled?'已启用专家团':'使用专家团')+'</span>'+
+          '<span class="hint">'+( _cfg.extensions.team_enabled?'点击重新应用':'多智能体协作' )+'</span>'+
+          '</button></div>';
+      }
+    } else if(_expertPickerTab==='workflow'){
+      var presets=window.AO_WORKFLOW_PRESETS||[];
+      var curKey=String((_cfg.extensions.workflow&&_cfg.extensions.workflow.key)||'').replace(/\\/g,'/');
+      var curEnabled=!!(_cfg.extensions.workflow&&_cfg.extensions.workflow.enabled&&_cfg.extensions.workflow.steps&&_cfg.extensions.workflow.steps.length);
+      if(!presets.length){
+        body='<div class="pick-list"><div class="empty-state" style="padding:20px 0;text-align:center;color:var(--text3)">暂无工作流模板。<br>请在「扩展→工作流」页面添加。</div></div>';
+      } else {
+        body='<div class="pick-list">';
+        presets.forEach(function(p){
+          var isActive=(curEnabled&&String(p.key).replace(/\\/g,'/')===curKey);
+          body+='<div class="pop-item'+(isActive?' active':'')+'" data-key="'+esc(p.key)+'" onclick="pickWorkflowFromMini(this.getAttribute(\'data-key\'))">' +
+            '<div class="ico">🎛️</div><div class="txt"><div class="t">'+esc(p.name)+'</div><div class="d">'+esc(p.description||'')+(isActive?' · 当前已启用':'')+'</div></div><div class="check"></div></div>';
+        });
+        body+='</div>';
+        if(curEnabled){
+          body+='<div class="team-cta-wrap"><button class="team-cta on" onclick="clearWorkflowFromMini()">'+
+            '<span class="ico">✓</span><span>已启用工作流：'+esc((_cfg.extensions.workflow||{}).name||'')+'</span><span class="hint">点击停用</span></button></div>';
+        }
+      }
+    } else if(_expertPickerTab==='persona'){
+      var personas=allPersonas();
+      body='<div class="pick-list">';
+      Object.keys(personas).forEach(function(k){
+        var p=personas[k];
+        var isActive=(_persona===k);
+        body+='<div class="pop-item'+(isActive?' active':'')+'" data-id="'+esc(k)+'" onclick="pickPersonaFromMini(\''+esc(k).replace(/'/g,"\\'")+'\')">' +
+          '<div class="ico">'+(p.emoji||'🤖')+'</div><div class="txt"><div class="t">'+esc(p.label||k)+'</div><div class="d">'+esc((p.prompt||'').slice(0,40))+(isActive?' · 当前角色':'')+'</div></div><div class="check"></div></div>';
+      });
+      body+='</div>';
+    } else {
+      body='<div class="pick-list">';
+      (d.items||[]).forEach(function(it){
+        // 选中态：与「单专家注入对象」_selectedExpert 比对
+        var selExpert = (_selectedExpert && _selectedExpert.id===(it.id||''));
+        body+='<div class="pop-item'+(selExpert?' active':'')+'" data-id="'+esc(it.id||'')+'" onclick="pickItem(\'expert\',this)">'+
+          '<div class="ico">'+it.ico+'</div><div class="txt"><div class="t">'+esc(it.t)+'</div><div class="d">'+esc(it.d)+'</div></div><div class="check"></div></div>';
+      });
+      body+='</div>';
+    }
+  } else {
+    body='<div class="pick-list">';
+    (d.items||[]).forEach(function(it){
+      body+='<div class="pop-item '+(it.active?'active':'')+'" onclick="pickItem(\''+key+'\',this)">'+
+        '<div class="ico">'+it.ico+'</div><div class="txt"><div class="t">'+esc(it.t)+'</div><div class="d">'+esc(it.d)+'</div></div><div class="check"></div></div>';
+    });
+    body+='</div>';
+  }
+  return body;
+}
+/* 迷你弹窗通用搜索过滤：模型/专家/技能/连接器/快捷指令条目按文本实时筛选。
+   模型多达上百个时避免逐个翻找；过滤后空分组连同组头一起隐藏。 */
+function filterMiniPopup(){
+  var ps=document.getElementById('popupSearch'); if(!ps) return;
+  var q=(ps.value||'').trim().toLowerCase();
+  var body=document.getElementById('popupBody'); if(!body) return;
+  body.querySelectorAll('.pop-item').forEach(function(it){
+    var txt=((it.textContent||'')+' '+(it.getAttribute('data-provider')||'')+' '+(it.getAttribute('data-model')||'')).toLowerCase();
+    it.style.display = (!q || txt.indexOf(q)>=0) ? '' : 'none';
+  });
+  body.querySelectorAll('.pick-group').forEach(function(g){
+    var any=false; g.querySelectorAll('.pop-item').forEach(function(it){ if(it.style.display!=='none') any=true; });
+    g.style.display = (!q || any) ? '' : 'none';
+  });
+  body.querySelectorAll('.cmd-cell').forEach(function(c){
+    var txt=(c.textContent||'').toLowerCase();
+    c.style.display = (!q || txt.indexOf(q)>=0) ? '' : 'none';
+  });
+}
+function positionPopup(btn){
+  if(window.innerWidth<=768) return;
+  popup.classList.add('top');
+  var rect=btn.getBoundingClientRect();
+  var width=activePanel==='quick'?560:360;
+  var left=rect.left + rect.width/2 - width/2;
+  if(left<8) left=8;
+  if(left+width>window.innerWidth-8) left=window.innerWidth-width-8;
+  popup.style.left=left+'px';
+  popup.style.top=(rect.top - popup.offsetHeight - 10)+'px';
+  popup.style.width=width+'px';
+  var arrowLeft=rect.left + rect.width/2 - left;
+  popup.style.setProperty('--arrow-left', Math.max(18, Math.min(width-18, arrowLeft))+'px');
+}
+function closeMini(){
+  if(popup){ popup.classList.remove('open','wide'); }
+  activeBtn=null; activePanel=null;
+  document.querySelectorAll('.tool-btn').forEach(function(b){ b.classList.remove('active'); });
+}
+function pickItem(key, el){
+  var name = el.querySelector('.t') ? el.querySelector('.t').textContent : '';
+  if(key==='expert'){
+    // 工具栏专家选择器：为专家开启独立会话并注入单专家（决策 3，不替换 persona）
+    pickItemExpert(el.getAttribute('data-id'), el);
+    return;
+  } else if(key==='model'){
+    var b=document.getElementById('btnModel');
+    if(b){
+      b.setAttribute('data-tip','模型: '+name); b.classList.add('active');
+      // 更新徽章
+      var oldBadge = b.querySelector('.model-badge'); if(oldBadge) oldBadge.remove();
+      var badge=document.createElement('span');
+      badge.className='model-badge';
+      badge.textContent=name.length>8?name.slice(0,8)+'…':name;
+      b.appendChild(badge);
+    }
+    var prov = el.getAttribute('data-provider');
+    var model = el.getAttribute('data-model');
+    if(prov && model){
+      _selectedModel = { provider: prov, model: model };
+    } else {
+      _selectedModel = name;
+    }
+    _setSessionModel(currentSession, _selectedModel);
+    toast('已选择模型：'+name+'（仅当前会话）');
+    closeMini();
+    return;
+  } else if(key==='connector'){
+    // 连接器：选定连接器并在输入区渲染调用卡片（Fix #3/#5/#6）
+    var kind=''; var c=null;
+    for(var ci=0; ci<PV.octopConnectors.length; ci++){ if(PV.octopConnectors[ci].name===name){ kind=PV.octopConnectors[ci].kind; c=PV.octopConnectors[ci]; break; } }
+    if(kind){ _selectedConnector = kind; renderConnectorChip(c); toast('已选择连接器：'+name); }
+    closeMini();
+    return;
+  } else if(key==='skill'){
+    // 真实切换「已启用技能」：加入/移除 _activeSkills，渲染 chip，并在发送时注入 system 提示
+    var idx=_activeSkills.indexOf(name);
+    if(idx>=0){ _activeSkills.splice(idx,1); el.classList.remove('active'); toast('已停用技能：'+name); }
+    else { _activeSkills.push(name); el.classList.add('active'); toast('已启用技能：'+name); }
+    var b2=document.getElementById('btnSkill'); if(b2) b2.classList.toggle('active', _activeSkills.length>0);
+    renderSkillChips();
+    return; // 保持弹窗打开，可继续勾选多个技能
+  }
+  closeMini();
+}
+/* 工具栏专家选择器：为所选专家创建/复用独立会话，并设为单专家注入对象 */
+function pickItemExpert(id, el){
+  var name = (el && el.querySelector('.t')) ? el.querySelector('.t').textContent : '';
+  var prompt=''; var pid=id;
+  if(!pid && name){
+    var f=(window.AGENCY_PERSONAS||[]).find(function(x){ return (x.label||x.name)===name; });
+    if(f) pid=f.id;
+  }
+  var ap=(window.AGENCY_PERSONAS||[]).find(function(x){ return x.id===pid; });
+  if(ap){ prompt=ap.prompt||''; if(!name) name=(ap.label||ap.name||pid); }
+  var expertName = name || (pid ? pid : '');
+  // Issue #6 修正：选择单个专家时不再自动创建专家团，仅注入该专家的系统提示；
+  // 专家团模式需通过「选择专家」弹窗的「专家团」tab 手动启用。
+  // 为每个专家创建独立的顶层 agent 分组，会话归入该分组而非 default
+  var agentId = 'exp-' + pid;
+  var agent = ensureAgent(agentId, { name: expertName, icon: (ap && (ap.emoji||ap.icon)) || '🎯', expertId: pid });
+  function afterSwitch(){
+    currentAgent = agentId;
+    _selectedExpert = { id:pid||'', name:expertName, prompt:prompt };
+    // 互斥：停用工作流 & 专家团
+    if(_cfg.extensions.workflow&&_cfg.extensions.workflow.enabled){ _cfg.extensions.workflow.enabled=false; _cfg.extensions.workflow.active=false; renderWorkflowBar(); }
+    _cfg.extensions.team_enabled=false; renderTeamBar();
+    var t=document.getElementById('chatTitle'); if(t) t.textContent=expertName;
+    renderSelectedExpertBar();
+    toast('已为专家「'+expertName+'」开启独立会话（发送时注入系统提示）');
+  }
+  // 仅复用「已归属本专家分组」的会话，确保每个专家拥有独立、稳定的会话窗口；
+  // 不再按标题接管 default 会话（会导致专家会话混入默认分组、出现「未按专家分类」的观感）。
+  var existing = _sessions.find(function(s){
+    var owner = _sessionAgent[s.id] || 'default';
+    return owner === agentId;
+  });
+  if(existing){
+    switchSession(agentId, existing.id); afterSwitch();
+  } else {
+    fetch(apiUrl('/api/sessions'), { method:'POST', headers: monitorToken?{'X-Monitor-Token':monitorToken}:{} })
+      .then(function(r){ return r.json(); })
+      .then(function(s){
+        _sessions.unshift(s);
+        currentSession=s.id; currentAgent=agentId;
+        setSessionAgent(s.id, agentId);
+        // 新专家分组默认展开，便于立即看到会话
+        localStorage.setItem('hermes_rail_open_'+agentId, 'true');
+        _openTabs.push(s.id); persistTabs();
+        renderSessionTabs(); renderRail(); updateHeader();
+        if(window.innerWidth<=768) closeRailDrawer();
+        sendRaw('/title '+expertName); afterSwitch();
+      })
+      .catch(function(){ toast('创建会话失败'); });
+  }
+  closeMini();
+}
+function agencyIdByName(name){
+  if(!window.AGENCY_PERSONAS) return '';
+  var f=window.AGENCY_PERSONAS.find(function(x){ return (x.label||x.name)===name; });
+  return f ? f.id : '';
+}
+/* 专家团专属会话分组：启用专家团时建立「专家团」标签卡片，会话归入该分组（与单专家分组一致） */
+function enterTeamSession(){
+  var team=_cfg.extensions.team||[];
+  if(!team.length) return;   // 无成员不建分组
+  var teamName=_cfg.extensions.team_name||'专家团';
+  var agentId='team';
+  var ag=ensureAgent(agentId, { name:teamName, icon:'👥' });
+  if(ag && (ag.name!==teamName || ag.icon!=='👥')){ ag.name=teamName; ag.icon='👥'; saveAgents(); }
+  function afterTeamSwitch(){
+    currentAgent=agentId;
+    var t=document.getElementById('chatTitle'); if(t) t.textContent=teamName;
+  }
+  // 复用已归属专家团分组的会话，否则新建一个并归入该分组
+  var existing=_sessions.find(function(s){ return (_sessionAgent[s.id]||'default')===agentId; });
+  if(existing){
+    switchSession(agentId, existing.id); afterTeamSwitch();
+  } else {
+    fetch(apiUrl('/api/sessions'), { method:'POST', headers: monitorToken?{'X-Monitor-Token':monitorToken}:{} })
+      .then(function(r){ return r.json(); })
+      .then(function(s){
+        _sessions.unshift(s);
+        currentSession=s.id; currentAgent=agentId;
+        setSessionAgent(s.id, agentId);
+        localStorage.setItem('hermes_rail_open_'+agentId, 'true');
+        _openTabs.push(s.id); persistTabs();
+        renderSessionTabs(); renderRail(); updateHeader();
+        if(window.innerWidth<=768) closeRailDrawer();
+        sendRaw('/title '+teamName); afterTeamSwitch();
+      })
+      .catch(function(){ toast('创建会话失败'); });
+  }
+}
+/* 启用专家团模式（从工具栏弹窗触发）：开启委派并切到默认 agent，后续发送走专家团注入 */
+function useExpertTeam(){
+  var team=_cfg.extensions.team||[];
+  // 专家团为空时不再只 toast 提示后退出，而是自动按部门各取 1 位组建一个跨领域团队，
+  // 否则用户「启用专家团」后实际仍只走单专家分支。
+  if(!team.length){
+    if(typeof buildTeam==='function') buildTeam();
+    team=_cfg.extensions.team||[];
+    if(!team.length){
+      // 连 buildTeam 都没有数据来源（AGENCY_PERSONAS 也没加载），给个明确提示
+      toast('专家团为空且无专家数据，请先在「扩展→专家」加载专家库');
+      return;
+    }
+  }
+  _cfg.extensions.team_enabled=true;
+  // 互斥：停用工作流
+  if(_cfg.extensions.workflow&&_cfg.extensions.workflow.enabled){ _cfg.extensions.workflow.enabled=false; _cfg.extensions.workflow.active=false; renderWorkflowBar(); }
+  if(!_cfg.extensions.toolsets) _cfg.extensions.toolsets={};
+  _cfg.extensions.toolsets.delegation=true;
+  saveConfig(); if(typeof renderTeam==='function') renderTeam(); renderTeamBar();
+  // 清除单专家选择，让 system 注入走专家团分支；并为专家团建立专属「专家团」会话分组
+  _selectedExpert=null; renderSelectedExpertBar();
+  enterTeamSession();
+  closeMini();
+  toast('已启用专家团：'+team.length+' 人协作（发送消息即自动触发）');
+}
+/* 工具栏工作流选择器：从 mini popup 应用并激活工作流，互斥清除专家/专家团 */
+function pickWorkflowFromMini(key){
+  var nk=String(key||'').replace(/\\/g,'/');
+  var p=(window.AO_WORKFLOW_PRESETS||[]).find(function(x){ return String(x.key).replace(/\\/g,'/')===nk; });
+  if(!p){ toast('未找到工作流模板'); return; }
+  _cfg.extensions.workflow = {
+    key:p.key, name:p.name, description:p.description,
+    enabled:true, active:true, concurrency:(p.concurrency||2), category:(p.category||''),
+    inputs:(p.inputs||[]), steps:(p.steps||[])
+  };
+  // 互斥：清除单专家 & 专家团
+  _selectedExpert=null; renderSelectedExpertBar();
+  _cfg.extensions.team_enabled=false; renderTeamBar();
+  if(!_cfg.extensions.toolsets) _cfg.extensions.toolsets={};
+  _cfg.extensions.toolsets.delegation=true;
+  saveConfig(); if(typeof renderWorkflow==='function') renderWorkflow(); if(typeof renderTeam==='function') renderTeam();
+  // 工作流会话分组：建立专属分组，会话归入其中（与专家团分组同理）
+  var wfAgentId = 'wf_' + p.key;
+  ensureAgent(wfAgentId, { name: p.name, icon: '🛠️' });
+  var wfExisting = _sessions.find(function(s){ return (_sessionAgent[s.id]||'default')===wfAgentId; });
+  if(wfExisting){
+    switchSession(wfAgentId, wfExisting.id);
+  } else {
+    fetch(apiUrl('/api/sessions'), { method:'POST', headers: monitorToken?{'X-Monitor-Token':monitorToken}:{} })
+      .then(function(r){ return r.json(); })
+      .then(function(s){
+        _sessions.unshift(s);
+        currentSession=s.id; currentAgent=wfAgentId;
+        setSessionAgent(s.id, wfAgentId);
+        localStorage.setItem('hermes_rail_open_'+wfAgentId, 'true');
+        _openTabs.push(s.id); persistTabs();
+        renderSessionTabs(); renderRail(); updateHeader();
+      })
+      .catch(function(){ toast('创建会话失败'); });
+  }
+  var t=document.getElementById('chatTitle'); if(t) t.textContent=p.name;
+  renderWorkflowBar();
+  closeMini();
+  toast('已启用工作流：'+p.name+'（发送消息即自动触发）');
+}
+function clearWorkflowFromMini(){
+  _cfg.extensions.workflow = { enabled:false, active:false, key:'', name:'', concurrency:2, category:'', inputs:[], steps:[] };
+  saveConfig(); if(typeof renderWorkflow==='function') renderWorkflow();
+  renderWorkflowBar();
+  var t=document.getElementById('chatTitle'); if(t) t.textContent='默认主力助手';
+  toast('已停用工作流');
+  // 刷新 mini popup 内容
+  if(activePanel==='expert') document.getElementById('popupBody').innerHTML=buildMiniPopupBody('expert', buildMiniData().expert);
+}
+/* 工具栏智能体选择器：从 mini popup 切换默认角色（persona），互斥清除专家/专家团/工作流 */
+function pickPersonaFromMini(id){
+  var p=allPersonas()[id]; if(!p){ toast('未找到角色'); return; }
+  selectPersona(id);
+  // 互斥：清除单专家 & 专家团 & 工作流
+  if(_cfg.extensions.workflow&&_cfg.extensions.workflow.enabled){ _cfg.extensions.workflow.enabled=false; _cfg.extensions.workflow.active=false; renderWorkflowBar(); }
+  _cfg.extensions.team_enabled=false; renderTeamBar();
+  saveConfig();
+  currentAgent='default';
+  var t=document.getElementById('chatTitle'); if(t) t.textContent=p.label||id;
+  var sub=document.getElementById('chatSubtitle'); if(sub) sub.textContent=(p.label||id)+' · 默认角色';
+  closeMini();
+  toast('已切换默认角色：'+(p.label||id));
+}
+/* 工作流状态栏（显示在聊天区上方，类似 selectedExpertBar） */
+function renderWorkflowBar(){
+  var bar=document.getElementById('workflowBar');
+  var wf=_cfg.extensions.workflow;
+  var active=!!(wf&&wf.enabled&&wf.steps&&wf.steps.length);
+  if(!bar){
+    if(!active) return;
+    var comp=document.getElementById('chatComposer'); if(!comp) return;
+    bar=document.createElement('div'); bar.id='workflowBar'; bar.className='selected-expert-bar';
+    comp.parentNode.insertBefore(bar, comp);
+  }
+  if(!active){ bar.style.display='none'; return; }
+  bar.style.display='flex';
+  bar.innerHTML='<span class="seb-label">当前工作流：</span><strong>🎛️ '+esc(wf.name||'')+'</strong><span style="color:var(--text3);font-size:12px">'+(wf.steps?wf.steps.length:0)+' 个步骤 · 发送即触发</span><button class="action sm" onclick="clearWorkflowFromMini()">停用</button>';
+}
+/* 专家团状态栏（显示在聊天区上方，与工作流状态栏一致）：
+   当前专家团：成员名、… · N 个角色 · 发送即触发 + 停用按钮 */
+function renderTeamBar(){
+  var bar=document.getElementById('teamBar');
+  var team=_cfg.extensions.team||[];
+  // 与工作流互斥：注入优先级工作流 > 专家团，工作流激活时不显示专家团栏
+  var wf=_cfg.extensions.workflow;
+  var wfActive=!!(wf&&wf.enabled&&wf.steps&&wf.steps.length);
+  var active=!!(_cfg.extensions.team_enabled&&team.length&&!wfActive);
+  if(!bar){
+    if(!active) return;
+    var comp=document.getElementById('chatComposer'); if(!comp) return;
+    bar=document.createElement('div'); bar.id='teamBar'; bar.className='selected-expert-bar';
+    comp.parentNode.insertBefore(bar, comp);
+  }
+  if(!active){ bar.style.display='none'; return; }
+  bar.style.display='flex';
+  var names=team.map(function(m){ return m.name||m.id; }).join('、');
+  bar.innerHTML='<span class="seb-label">当前专家团：</span><strong style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(names)+'">👥 '+esc(names)+'</strong><span style="color:var(--text3);font-size:12px;white-space:nowrap">'+team.length+' 个角色 · 发送即触发</span><button class="action sm" onclick="disableTeamFromBar()">停用</button>';
+}
+/* 从状态栏停用专家团：关闭 team_enabled 并同步扩展页开关 */
+function disableTeamFromBar(){
+  _cfg.extensions.team_enabled=false;
+  setToggle('teamEnabledToggle', false);
+  saveConfig(); if(typeof renderTeam==='function') renderTeam(); renderTeamBar();
+  toast('已停用专家团');
+}
+/* 连接器激活卡片（渲染在输入区上方，best-effort 调用首个工具） */
+function renderConnectorChip(c){
+  var comp=document.getElementById('chatComposer'); if(!comp) return;
+  var box=document.getElementById('connectorChip');
+  if(!box){ box=document.createElement('div'); box.id='connectorChip'; box.className='connector-chip'; comp.insertBefore(box, comp.firstChild); }
+  box.style.display='flex';
+  box.innerHTML='<span class="cc-ico">'+c.icon+'</span><span class="cc-name">'+esc(c.name)+'</span>'+
+    '<button class="cc-btn" onclick="invokeSelectedConnector()">调用</button>'+
+    '<button class="cc-x" onclick="clearConnectorChip()">×</button>';
+}
+function clearConnectorChip(){ var box=document.getElementById('connectorChip'); if(box){ box.style.display='none'; box.innerHTML=''; } _selectedConnector=''; }
+function invokeSelectedConnector(){
+  if(!_selectedConnector) return;
+  var c=PV.octopConnectors.find(function(x){ return x.kind===_selectedConnector; });
+  if(!c || !c.tools || !c.tools.length){ toast('该连接器无可用工具，请先在「连接器」页配置'); return; }
+  var tool=c.tools[0]; var args={};
+  toast('正在调用 '+c.name+' · '+tool.name+'…');
+  apiPost('/api/connectors/'+encodeURIComponent(_selectedConnector)+'/call', { tool:tool.name, args:args })
+    .then(function(r){
+      if(r && (r.ok || r.result!=null)){
+        var txt = (typeof r.result==='string') ? r.result : JSON.stringify(r.result,null,2);
+        appendSystemMessage(c.name+' · '+tool.name+'：\n'+txt);
+      } else if(r && r.error){ toast('调用失败：'+r.error); }
+      else { toast('调用完成（无返回）'); }
+    })
+    .catch(function(){
+      // 后端无此端点 / 连接器未配置：优雅降级为发送引用消息
+      toast('该连接器需先在「连接器」页配置并保存');
+      if(currentSession) sendRaw('请通过已配置的 '+c.name+' 连接器处理以下请求：');
+    });
+}
+var _selectedModelMap = (function(){ try{ var s=localStorage.getItem('hermes_selected_model_map'); return s?JSON.parse(s):{}; }catch(e){ return {}; } })();
+// 无当前会话时选择的模型暂存于此，会话创建后自动绑定（修复：新建会话前选模型被丢弃的问题）
+var _pendingModel = '';
+function _getSessionModel(sid){ return _selectedModelMap[sid||currentSession] || ''; }
+function _setSessionModel(sid, val){ if(!sid) sid=currentSession; if(!sid){ if(val) _pendingModel = val; return; } if(val){ _selectedModelMap[sid]=val; } else { delete _selectedModelMap[sid]; } try{ localStorage.setItem('hermes_selected_model_map', JSON.stringify(_selectedModelMap)); }catch(e){} }
+// 会话创建成功后调用：把暂存的模型绑定到新会话（若该会话尚未绑定过模型）
+function _applyPendingModel(sid){
+  if(_pendingModel && sid && !_selectedModelMap[sid]){
+    _selectedModelMap[sid] = _pendingModel;
+    _pendingModel = '';
+    try{ localStorage.setItem('hermes_selected_model_map', JSON.stringify(_selectedModelMap)); }catch(e){}
+    _syncModelBtn();
+  }
+}
+function clearSessionModel(){
+  _pendingModel = '';
+  _setSessionModel(currentSession, '');
+  _selectedModel = '';
+  var b=document.getElementById('btnModel');
+  if(b){
+    b.setAttribute('data-tip','选择模型'); b.classList.remove('active');
+    var oldBadge = b.querySelector('.model-badge'); if(oldBadge) oldBadge.remove();
+  }
+  toast('已清除模型选择，将使用默认配置');
+  closeMini();
+}
+// 兼容旧版全局 key 迁移
+var _selectedModel = (function(){ try{ var s=localStorage.getItem('hermes_selected_model'); if(s){ var v=JSON.parse(s); localStorage.removeItem('hermes_selected_model'); return v; } return ''; }catch(e){ return ''; } })();
+if(_selectedModel && currentSession){ _setSessionModel(currentSession, _selectedModel); _selectedModel=''; }
+function persistSelectedModel(){ _setSessionModel(currentSession, _selectedModel); }
+var _activeSkills = [];   // 当前会话已启用的技能（名称列表），发送时注入 system 提示
+var _selectedExpert = null;     // 单专家注入对象 {id,name,prompt}（决策 3，随会话）
+var _selectedConnector = '';    // 当前选中的连接器 kind（字符串）
+var _wfSteps = [];              // 工作流 DAG 编辑中的步骤工作副本
+function renderSkillChips(){
+  var box=document.getElementById('skillChips'); if(!box) return;
+  if(!_activeSkills.length){ box.innerHTML=''; box.style.display='none'; return; }
+  box.style.display='flex';
+  box.innerHTML = _activeSkills.map(function(n){
+    return '<span class="skill-chip" onclick="removeSkill(\''+esc(n).replace(/'/g,"\\'")+'\')">'+esc(n)+' <span class="x">×</span></span>';
+  }).join('');
+}
+function removeSkill(n){
+  var idx=_activeSkills.indexOf(n); if(idx>=0) _activeSkills.splice(idx,1);
+  var b2=document.getElementById('btnSkill'); if(b2) b2.classList.toggle('active', _activeSkills.length>0);
+  renderSkillChips();
+}
+function pickQuick(cmd){ closeMini(); handleSlashCommand(cmd); }
+function handleSlashCommand(cmd){
+  if(!cmd || cmd.charAt(0)!=='/'){ sendRaw(cmd); return; }
+  var parts = cmd.split(' ');
+  var base = parts[0].toLowerCase();
+  var arg = parts.slice(1).join(' ').trim();
+  if(base==='/new'){
+    newSession();
+    return;
+  }
+  if(base==='/stop'){
+    chatStop();
+    toast('已停止当前生成');
+    return;
+  }
+  if(base==='/reset'){
+    if(currentSession){
+      fetch(apiUrl('/api/sessions/'+encodeURIComponent(currentSession)), { method:'DELETE', headers: monitorToken?{'X-Monitor-Token':monitorToken}:{} })
+        .then(function(){ newSession(); toast('已重置当前会话'); })
+        .catch(function(){ toast('重置失败'); });
+    } else { newSession(); }
+    return;
+  }
+  if(base==='/status'){
+    var statusMsg = '当前状态：';
+    statusMsg += 'Gateway ' + (_services.gateway?'运行中':'未启动') + '，';
+    statusMsg += 'Dashboard ' + (_services.dashboard?'运行中':'未启动') + '；';
+    statusMsg += '当前模型 ' + (_cfg.active_provider||'自动') + ' · ' + _getActiveModelName() + '；';
+    statusMsg += '角色 ' + (_persona||'default') + '。';
+    appendSystemMessage(statusMsg);
+    return;
+  }
+  if(base==='/help'){
+    appendSystemMessage('可用命令（与 Hermes 消息网关一致）：/new 新对话、/reset 重置、/stop 停止生成、/retry 重生成、/undo 撤销、/compress 压缩上下文、/title 设置标题、/status 状态、/model 切换模型、/provider 提供方、/personality 人格、/reasoning 推理、/usage 用量、/insights 洞察、/plan 计划、/reload-mcp 重载MCP、/yolo YOLO、/help 帮助。未在此列出的命令将直接转发给 Hermes 网关按斜杠命令执行。');
+    return;
+  }
+  // 其余为 Hermes 真实斜杠命令，原样转发给网关执行（不加“执行命令：”前缀，避免被当作普通文本）
+  sendRaw(cmd);
+}
+function appendSystemMessage(text){
+  var body=document.getElementById('chatBody'); if(!body) return;
+  var div=document.createElement('div'); div.className='system-tip'; div.textContent=text;
+  body.appendChild(div); body.scrollTop=body.scrollHeight;
+}
+
+/* ============================ Router ============================ */
+function switchPage(name){
+  document.querySelectorAll('.nav-btn').forEach(function(b){ b.classList.remove('active'); });
+  var btn=Array.from(document.querySelectorAll('.nav-btn')).find(function(b){ return b.getAttribute('onclick') && b.getAttribute('onclick').includes("'"+name+"'"); });
+  if(btn) btn.classList.add('active');
+  document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('active'); });
+  var p=document.getElementById('page-'+name); if(p) p.classList.add('active');
+  var rail=document.getElementById('chatRail');
+  if(rail) rail.classList.toggle('hidden', name!=='chat');
+  if(name==='connectors') renderConnectors();
+  if(name==='comm') renderChannels();
+  if(name==='cron') renderCronJobs();
+  if(name==='memory') renderMemoryPage();
+  if(name==='learning') renderLearning();
+  if(name==='usage') renderUsagePage();
+  if(name==='overview') renderOverview();
+  if(name==='models') renderProviders();
+  if(name==='extensions') renderExtensions();
+  if(name==='experts') renderExpertsPage();
+  if(name==='updates'){ checkHermesUpdate(); checkAppUpdate(); }
+  if(name==='settings') renderSettings();
+  if(name!=='chat') hideScrollBtn();   // 回到底部按钮仅用于聊天页（Issue #10）
+}
+
+/* ============================ Theme ============================ */
+function setTheme(mode){
+  currentTheme=mode;
+  document.body.classList.remove('theme-light','theme-dark');
+  if(mode==='light'){ document.body.classList.add('theme-light'); }
+  else if(mode==='dark'){ document.body.classList.add('theme-dark'); }
+  else {
+    if(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) document.body.classList.add('theme-dark');
+    else document.body.classList.add('theme-light');
+  }
+  document.querySelectorAll('.glob-btn').forEach(function(b){ b.classList.remove('active'); });
+  var map={'auto':'btnThemeAuto','light':'btnThemeLight','dark':'btnThemeDark'};
+  var id=map[mode]; if(id){ var b=document.getElementById(id); if(b) b.classList.add('active'); }
+  try { localStorage.setItem('fnos-theme-mode', mode); } catch(e){}
+}
+
+/* ============================ 概览 ============================ */
+var _connecting = false;  // 重启/启动/停止进行中，保持「连接中」琥珀态，避免闪烁离线
+function applyServiceState(s){
+  var gw = !!(s.gateway && s.gateway.running);
+  var db = !!(s.dashboard && s.dashboard.running);
+  _services = { gateway:gw, dashboard:db };
+  // 动作进行中且服务尚未就绪：保持连接中（琥珀），不要闪离线
+  if(_connecting && !(gw||db)){
+    var b0=document.getElementById('ovStatusBadge'); var t0=document.getElementById('ovStatusText');
+    if(b0) b0.className='ov-status connecting';
+    if(t0) t0.textContent='连接中…';
+    var bd0=document.getElementById('brandDot'); if(bd0) bd0.className='brand-dot connecting';
+    return;
+  }
+  _connecting = false;
+  var badge=document.getElementById('ovStatusBadge');
+  var txt=document.getElementById('ovStatusText');
+  if(badge) badge.className='ov-status '+(gw||db?'on':'off');
+  if(txt) txt.textContent=(gw||db)?'运行中':'已停止';
+  var brandDot=document.getElementById('brandDot');
+  if(brandDot) brandDot.className='brand-dot '+(gw?'online':(db?'connecting':'offline'));
+  setToggle('gwToggle', gw); setToggle('dbToggle', db);
+  var gsp=document.getElementById('gwStateText'); if(gsp) gsp.textContent= gw?'运行中':'未启动';
+  var dsp=document.getElementById('dbStateText'); if(dsp) dsp.textContent= db?'运行中':'未启动';
+  // 端口随服务端配置动态显示（v0.20.65 端口迁移到 8742/9219，避免与同机 hermes-studio 的 8642 冲突）
+  var gport = (s.gateway && s.gateway.port) || 8742;
+  var dport = (s.dashboard && s.dashboard.port) || 9219;
+  var gpe=document.getElementById('gwPort'); if(gpe) gpe.textContent=gport;
+  var dpe=document.getElementById('dbPort'); if(dpe) dpe.textContent=dport;
+  // 系统信息：统一走 ID，避免 querySelectorAll 索引错位；优先使用服务端已格式化的 s.uptime
+  var upEl=document.getElementById('sysUptime');
+  if(upEl){
+    if(s.uptime!=null){ upEl.textContent=s.uptime; }
+    else if(s.uptimeMs!=null){ upEl.textContent=fmtUptime(s.uptimeMs); }
+  }
+  var memEl=document.getElementById('sysMem');
+  if(memEl && s.memoryKB!=null){ memEl.textContent=Math.round(s.memoryKB/1024)+' MB'; }
+  var hvEl=document.getElementById('sysHermesVer');
+  if(hvEl && s.gateway && s.gateway.version){ hvEl.textContent=fmtHermesVer(s.gateway.version, s.hermes_version_date); }
+  var avEl=document.getElementById('sysAppVer');
+  if(avEl && s.app_version){ avEl.textContent=s.app_version; }
+  if(s.app_version){ window.__APP_VER__ = s.app_version; }
+  // 顶栏与更新页当前版本同步
+  var brand=document.getElementById('brandVer');
+  if(brand && s.app_version){ brand.textContent='v'+s.app_version; }
+  var hermCur=document.getElementById('hermesCurrent');
+  if(hermCur && s.gateway && s.gateway.version){ hermCur.textContent=fmtHermesVer(s.gateway.version, s.hermes_version_date); }
+  var appCur=document.getElementById('appCurrent');
+  if(appCur && s.app_version){ appCur.textContent='v'+s.app_version; }
+}
+function renderOverview(){
+  apiGet('/api/status').then(function(s){
+    if(!s || s.error){ setStatusOffline(); return; }
+    applyServiceState(s);
+    // 初始化日志过滤区折叠状态（手机端默认收起，电脑端始终展开）
+    initLogFilterToggle();
+    // 同步多会话标签栏可见性（仅左侧折叠时显示）
+    syncSessionTabsVisibility();
+    // 默认加载 Monitor 日志（仅首次）
+    if(!_logInited){ _logInited=true; setTimeout(function(){ appendLog('monitor','Monitor 日志'); }, 100); }
+  }).catch(function(){ setStatusOffline(); });
+}
+// 轻量级状态轮询：只更新顶栏状态点与服务卡片，不重渲染日志/系统信息区块（避免打断日志查看）
+function tickStatus(){
+  apiGet('/api/status').then(function(s){
+    if(!s || s.error){ if(!_connecting) setStatusOffline(); return; }
+    applyServiceState(s);
+  }).catch(function(){ if(!_connecting) setStatusOffline(); });
+}
+function setStatusOffline(){
+  var badge=document.getElementById('ovStatusBadge'); var txt=document.getElementById('ovStatusText');
+  if(badge) badge.className='ov-status off';
+  if(txt) txt.textContent='离线';
+  var brandDot=document.getElementById('brandDot'); if(brandDot) brandDot.className='brand-dot offline';
+  setToggle('gwToggle',false); setToggle('dbToggle',false);
+  var gsp=document.getElementById('gwStateText'); if(gsp) gsp.textContent='未启动';
+  var dsp=document.getElementById('dbStateText'); if(dsp) dsp.textContent='未启动';
+}
+function fmtHermesVer(ver, date){
+  if(!ver || ver==='--') return ver;
+  if(/\(\d{4}\.\d{1,2}\.\d{1,2}\)/.test(ver)) return ver;
+  if(date && ver.indexOf(date)===-1) return ver+' ('+date+')';
+  return ver;
+}
+function fmtUptime(ms){
+  // 服务端 uptimeMs 为毫秒；统一转换为秒再格式化
+  var sec = Math.floor((Number(ms)||0)/1000);
+  var d=Math.floor(sec/86400); sec%=86400;
+  var h=Math.floor(sec/3600); sec%=3600;
+  var m=Math.floor(sec/60);
+  var parts=[];
+  if(d>0) parts.push(d+'天');
+  if(h>0) parts.push(h+'小时');
+  parts.push(m+'分钟');
+  return parts.join(' ');
+}
+function setToggle(id, on){ var t=document.getElementById(id); if(t) t.classList.toggle('on', !!on); }
+function toggleService(name){
+  var running = name==='dashboard' ? _services.dashboard : _services.gateway;
+  if(running){ stopServices(name); } else { startServices(name); }
+}
+function startServices(which){
+  var path = which==='dashboard' ? '/api/dashboard/start' : '/api/start';
+  _connecting = true;
+  apiPost(path, {}).then(function(r){
+    if(r && r.error){ toast('启动失败：'+r.error); _connecting=false; }
+    else { toast('正在启动'+(which?(' '+which):'服务')); }
+    tickStatus();
+  }).catch(function(e){ toast('启动请求失败：'+e.message); _connecting=false; });
+}
+function stopServices(which){
+  var path = which==='dashboard' ? '/api/dashboard/stop' : '/api/stop';
+  _connecting = true;
+  apiPost(path, {}).then(function(r){
+    if(r && r.error){ toast('停止失败：'+r.error); _connecting=false; }
+    else { toast('正在停止'+(which?(' '+which):'服务')); }
+    tickStatus();
+  }).catch(function(e){ toast('停止请求失败：'+e.message); _connecting=false; });
+}
+function restartServices(){
+  _connecting = true;
+  apiPost('/api/restart', {}).then(function(r){ if(r && r.error){ toast('重启失败：'+r.error); _connecting=false; } else toast('正在重启服务'); tickStatus(); }).catch(function(e){ toast('重启请求失败：'+e.message); _connecting=false; });
+}
+function pollStatus(){
+  var tries=0;
+  (function check(){
+    tries++;
+    apiGet('/api/status').then(function(s){
+      if(s && !s.error){
+        var gw=!!(s.gateway&&s.gateway.running), db=!!(s.dashboard&&s.dashboard.running);
+        if(gw||db||tries>=15){ _services={gateway:gw,dashboard:db}; renderOverview(); }
+        else setTimeout(check, 1000);
+      } else if(tries<15){ setTimeout(check,1000); }
+    }).catch(function(){ if(tries<15) setTimeout(check,1000); });
+  })();
+}
+function openDashboard(){ window.open(BASE + '/proxy/dashboard/', '_blank'); }
+function refreshSysInfo(){
+  apiGet('/api/status').then(function(s){
+    if(!s || s.error) return;
+    var upEl=document.getElementById('sysUptime');
+    if(upEl){
+      if(s.uptime!=null){ upEl.textContent=s.uptime; }
+      else if(s.uptimeMs!=null){ upEl.textContent=fmtUptime(s.uptimeMs); }
+    }
+    var memEl=document.getElementById('sysMem');
+    if(memEl && s.memoryKB!=null){ memEl.textContent=Math.round(s.memoryKB/1024)+' MB'; }
+  }).catch(function(){});
+}
+// 日志查看器状态：与 dashboard/logs 对齐（来源、级别、组件、行数、关键词）
+var _logState = {
+  source: 'monitor',
+  level: 'all',
+  component: 'all',
+  lines: 100,
+  keyword: '',
+  rawLines: [],
+  titleMap: { monitor:'Monitor 日志', agent:'Agent 日志', gui:'GUI 日志', error:'错误日志', gateway:'Gateway 日志', gateway_restart:'Gateway 重启记录', gateway_close:'Gateway 关闭诊断', gateway_exit:'Gateway 退出诊断', all:'全部日志' },
+  fileMap: { monitor:'hermes.log', agent:'agent.log', gui:'gui.log', error:'errors.log', gateway:'gateway.log', gateway_restart:'gateway-restart.log', gateway_close:'gateway-shutdown-diag.log', gateway_exit:'gateway-exit-diag.log' },
+  sourceFiles: {
+    monitor: ['monitor'], agent: ['agent'], gateway: ['gateway'], error: ['error'], gui: ['gui'],
+    gateway_restart: ['gateway_restart'], gateway_close: ['gateway_close'], gateway_exit: ['gateway_exit'],
+    all: ['monitor','agent','gateway','error','gui','gateway_restart','gateway_close','gateway_exit']
+  }
+};
+function setLogSource(s){ _logState.source=s||'monitor'; applyLogFilters(true); }
+function setLogLevel(l){ _logState.level=l||'all'; applyLogFilters(false); }
+function setLogComponent(c){ _logState.component=c||'all'; applyLogFilters(false); }
+function setLogLines(n){ _logState.lines=parseInt(n)||100; applyLogFilters(true); }
+function clearLogKeyword(){ var k=document.getElementById('logKeyword'); if(k) k.value=''; _logState.keyword=''; applyLogFilters(false); }
+
+// 手机端折叠/展开日志过滤区（电脑端无按钮，过滤区始终可见）
+function toggleLogFilters(){
+  var bar=document.getElementById('ovLogBar');
+  var btn=document.getElementById('ovLogFilterToggle');
+  var lbl=document.getElementById('ovLogFilterToggleLabel');
+  if(!bar||!btn) return;
+  var open=!bar.classList.contains('open');
+  bar.classList.toggle('open', open);
+  btn.classList.toggle('on', open);
+  if(lbl) lbl.textContent = open ? '收起日志过滤' : '显示日志过滤';
+  try { localStorage.setItem('hermes_log_filter_open', open?'true':'false'); } catch(e){}
+}
+// 启动时根据 localStorage + 屏幕宽度决定初始状态
+function initLogFilterToggle(){
+  var bar=document.getElementById('ovLogBar');
+  var btn=document.getElementById('ovLogFilterToggle');
+  var lbl=document.getElementById('ovLogFilterToggleLabel');
+  if(!bar||!btn) return;
+  var open=false;
+  try { open = localStorage.getItem('hermes_log_filter_open')==='true'; } catch(e){}
+  bar.classList.toggle('open', open);
+  btn.classList.toggle('on', open);
+  if(lbl) lbl.textContent = open ? '收起日志过滤' : '显示日志过滤';
+}
+function applyLogFilters(refetch){
+  var k=document.getElementById('logKeyword');
+  _logState.keyword = k ? k.value : '';
+  updateLogFilterUI();
+  if(refetch){ fetchLogLines(); return; }
+  renderLogLines();
+}
+function updateLogFilterUI(){
+  document.querySelectorAll('[data-log-source]').forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-log-source')===_logState.source); });
+  document.querySelectorAll('[data-log-level]').forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-log-level')===_logState.level); });
+  document.querySelectorAll('[data-log-comp]').forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-log-comp')===_logState.component); });
+  document.querySelectorAll('[data-log-lines]').forEach(function(b){ b.classList.toggle('active', parseInt(b.getAttribute('data-log-lines'))===_logState.lines); });
+}
+function fetchLogLines(){
+  var pre=document.getElementById('logPre'); if(!pre) return;
+  pre.innerHTML='[ 加载日志中… ]';
+  var files = _logState.sourceFiles[_logState.source] || [_logState.source];
+  var pending = files.length;
+  var all = [];
+  files.forEach(function(tag){
+    var file = _logState.fileMap[tag] || 'hermes.log';
+    fetch(apiUrl('/api/logs/read?file='+encodeURIComponent(file)+'&lines='+encodeURIComponent(_logState.lines)), { cache:'no-store', headers: monitorToken?{'X-Monitor-Token':monitorToken}:{} })
+      .then(function(r){ return r.json(); })
+      .then(function(d){ (d && d.lines||[]).forEach(function(l){ all.push({tag:tag, line:l}); }); })
+      .catch(function(){})
+      .finally(function(){ pending--; if(pending===0){ _logState.rawLines=all; renderLogLines(); } });
+  });
+}
+function detectLogLevel(line){
+  var m = String(line).match(/\b(DEBUG|INFO|WARNING|WARN|ERROR|CRITICAL|FATAL)\b/i);
+  if(!m) return '';
+  var lvl = m[1].toLowerCase();
+  if(lvl==='warn') return 'warning';
+  if(lvl==='critical' || lvl==='fatal') return 'error';
+  return lvl;
+}
+function detectLogComponent(line){
+  var s = String(line);
+  var m = s.match(/\b(?:DEBUG|INFO|WARNING|WARN|ERROR|CRITICAL|FATAL)\s+([a-zA-Z0-9_\.]+)/i);
+  var logger = m ? m[1].toLowerCase() : '';
+  if(logger.indexOf('gateway')>=0) return 'gateway';
+  if(logger.indexOf('agent')>=0) return 'agent';
+  if(logger.indexOf('cron')>=0) return 'cron';
+  if(logger.indexOf('cli')>=0 || logger.indexOf('hermes_cli')>=0) return 'cli';
+  if(logger.indexOf('tool')>=0 || /\b(tool_|plugin|mcp)\b/i.test(s)) return 'tools';
+  return '';
+}
+function renderLogLines(){
+  var pre=document.getElementById('logPre'); if(!pre) return;
+  var titleEl=document.getElementById('logBoxTitle'); if(titleEl) titleEl.textContent = _logState.titleMap[_logState.source] || '日志';
+  var kwLower = (_logState.keyword||'').toLowerCase();
+  var filtered = _logState.rawLines.filter(function(item){
+    var lvl = detectLogLevel(item.line);
+    var comp = detectLogComponent(item.line) || item.tag;
+    if(_logState.level!=='all' && lvl!==_logState.level) return false;
+    if(_logState.component!=='all' && comp!==_logState.component) return false;
+    if(kwLower && String(item.line).toLowerCase().indexOf(kwLower)<0) return false;
+    return true;
+  });
+  if(!filtered.length){ pre.innerHTML = '[ 无匹配日志 ]'; pre.scrollTop = 0; return; }
+  // 倒序：最新日志排在最上方（Issue：日志排版用倒序）
+  pre.innerHTML = filtered.slice().reverse().map(function(item){
+    var lvl = detectLogLevel(item.line);
+    return lvl ? '<span class="log-'+lvl+'">'+esc(item.line)+'</span>' : esc(item.line);
+  }).join('\n');
+  pre.scrollTop = 0;
+}
+function appendLog(tag, msg){
+  // 兼容旧入口：设置来源并重新拉取
+  _logState.source = tag || 'monitor';
+  var k=document.getElementById('logKeyword'); if(k) k.value='';
+  _logState.keyword='';
+  applyLogFilters(true);
+}
+function clearLog(){
+  var files = _logState.sourceFiles[_logState.source] || [_logState.source];
+  files.forEach(function(tag){
+    var file = _logState.fileMap[tag] || 'hermes.log';
+    apiPost('/api/logs/clear', { file: file }).catch(function(){});
+  });
+  var pre=document.getElementById('logPre'); if(pre) pre.textContent='';
+}
+function toggleLogRefresh(){
+  var t=document.getElementById('logRefreshToggle');
+  if(!t) return;
+  t.classList.toggle('on');
+  if(t.classList.contains('on')){
+    startLogStream();
+  } else {
+    stopLogStream();
+  }
+}
+function startLogStream(){
+  stopLogStream();
+  try {
+    _logStream = new EventSource(apiUrl('/api/logs'));
+    _logStream.addEventListener('log', function(e){ if(e.data){ var pre=document.getElementById('logPre'); if(pre){ pre.textContent = (pre.textContent?pre.textContent+'\n':'')+e.data; pre.scrollTop=pre.scrollHeight; } } });
+    _logStream.onerror = function(){ stopLogStream(); };
+  } catch(e){ toast('日志流不可用'); }
+}
+function stopLogStream(){ if(_logStream){ try{_logStream.close();}catch(e){} _logStream=null; } }
+
+/* ============================ 模型 / Provider ============================ */
+function loadConfig(){
+  return apiGet('/api/config').then(function(cfg){
+    if(cfg && !cfg.error){
+      _cfg = cfg;
+      // hermes 是否已配置模型（服务端判定：config.yaml 含 model/providers 段）
+      window.__hermesConfigured = (cfg.hermes_configured !== false);
+      if(!_cfg.extensions) _cfg.extensions = { toolsets:{}, mcp_servers:[], skills_dirs:[], persona:'default', memory:{enabled:true,char_limit:2200}, team:[], team_name:'' };
+      if(!_cfg.extensions.toolsets) _cfg.extensions.toolsets = {};
+      if(!_cfg.extensions.memory) _cfg.extensions.memory = {enabled:true,char_limit:2200};
+      if(!_cfg.extensions.memory.policy) _cfg.extensions.memory.policy = {};
+      if(!_cfg.extensions.skills_config) _cfg.extensions.skills_config = {};
+      if(!_cfg.extensions.tools_config) _cfg.extensions.tools_config = {};
+      if(!_cfg.extensions.team_enabled) _cfg.extensions.team_enabled = false;
+      if(!_cfg.extensions.expert_favorites) _cfg.extensions.expert_favorites = [];
+      if(!_cfg.extensions.external_resources) _cfg.extensions.external_resources = {};
+      if(!_cfg.extensions.workflow) _cfg.extensions.workflow = { enabled:false, active:false };
+      else if(_cfg.extensions.workflow.active == null) _cfg.extensions.workflow.active = false;
+      if(!_cfg.extensions.tools_config) _cfg.extensions.tools_config = {};
+      if(_cfg.extensions.team_enabled===undefined) _cfg.extensions.team_enabled = false;
+      if(!_cfg.extensions.expert_favorites) _cfg.extensions.expert_favorites = [];
+      if(_cfg.extensions.persona===undefined) _cfg.extensions.persona = 'default';
+      if(!_cfg.extensions.persona) _cfg.extensions.persona = 'default';
+      if(!_cfg.extensions.external_resources) _cfg.extensions.external_resources = { superpowers_zh:{enabled:false,path:'skills/superpowers-zh'}, ai_coding_guide:{enabled:false,url:'https://github.com/jnMetaCode/ai-coding-guide'}, shellward:{enabled:false,mode:'audit',mcp:{command:'shellward',args:['shellward-mcp']}} };
+      if(!_cfg.extensions.memory.policy) _cfg.extensions.memory.policy = {};
+      if(!_cfg.extensions.workflow || typeof _cfg.extensions.workflow!=='object') _cfg.extensions.workflow = { enabled:false, active:false, key:'', name:'', concurrency:2, category:'', inputs:[], steps:[] };
+      if(_cfg.extensions.workflow.active===undefined) _cfg.extensions.workflow.active = false;
+      if(_cfg.extensions.persona)       _persona = _cfg.extensions.persona;
+      // Issue #7：清缓存/换浏览器后，从服务端恢复会话角色分组与会话→分组映射
+      // Issue #7：始终以服务端持久化的角色分组与会话→分组映射为准（清缓存/换浏览器后恢复，
+      // 且不被本地可能已失效的旧值遮蔽，否则会出现「所有会话挤在默认分组」的观感）。
+      if(Array.isArray(_cfg.extensions.agents) && _cfg.extensions.agents.length){
+        _agents = _cfg.extensions.agents.slice();
+        if(!_agents.some(function(a){ return a.id==='default'; })) _agents.unshift({ id:'default', name:'默认主力助手', icon:'🤖', expertId:null });
+      }
+      // 未配置模型时强制只保留默认分组：残留的专家/团队分组无意义，
+      // 且 saveAgents 回写 localStorage 后会顺便清掉浏览器端的旧残留
+      if(_cfg.hermes_configured === false){
+        _agents = [{ id:'default', name:'默认主力助手', icon:'🤖', expertId:null }];
+        _sessionAgent = {};
+      }
+      if(_cfg.extensions.session_agent && typeof _cfg.extensions.session_agent==='object'){
+        _sessionAgent = _cfg.extensions.session_agent;
+      }
+      renderConfigBanner();
+      _settingsLoaded = true;
+      applySettingsToggles();
+    } else {
+      toast('读取配置失败：'+(cfg&&cfg.error||'未知'));
+    }
+    return _cfg;
+  }).catch(function(e){ toast('读取配置失败：'+e.message); return _cfg; });
+}
+/* 聊天页横幅：hermes 未配置模型时提示引导（点击跳「模型」页） */
+function renderConfigBanner(){
+  var chat = document.getElementById('page-chat');
+  if(!chat) return;
+  var old = document.getElementById('modelConfigBanner');
+  if(old && old.parentNode) old.parentNode.removeChild(old);
+  if(window.__hermesConfigured !== false) return;
+  var b = document.createElement('div');
+  b.id = 'modelConfigBanner';
+  b.style.cssText = 'margin:8px 14px 0;padding:10px 14px;border-radius:10px;background:var(--warn-banner-bg);border:1px solid var(--warn-banner-border);color:var(--warn-banner-text);font-size:13px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;z-index:5';
+  b.innerHTML = '<span>⚠ 尚未配置模型服务，聊天暂时不可用。请先添加一个模型供应商并填写 API Key。</span>' +
+    '<button onclick="switchPage(\'models\')" style="margin-left:auto;padding:5px 12px;border-radius:8px;border:1px solid var(--warn-banner-border);background:transparent;color:var(--warn-banner-text);cursor:pointer;font-size:12px;white-space:nowrap">去配置模型 →</button>';
+  var bodyEl = chat.querySelector('.chat-body');
+  chat.insertBefore(b, bodyEl || chat.firstChild);
+}
+function saveConfig(){
+  apiPost('/api/config', _cfg).catch(function(e){ console.error('saveConfig failed', e); });
+}
+function renderProviders(){
+  var grid=document.getElementById('providerGrid'); if(!grid) return;
+  var providers = _cfg.providers || [];
+  if(!providers.length){ grid.innerHTML='<div class="empty-state">'+(window.__hermesConfigured===false?'⚠ 尚未配置模型服务：点击右上角「添加」，选择一个模型供应商并填写 API Key 后即可使用。':'暂无 Provider，点击右上角添加。')+'</div>'; return; }
+  var fallback = _cfg.fallback_providers || [];
+  grid.innerHTML = providers.map(function(p, i){
+    var pname = p.name || p.id || '未命名';
+    var isActive = (_cfg.active_provider === pname);
+    var isFallback = fallback.indexOf(pname) >= 0;
+    var enabled = (p.models || []).filter(function(m){ return m.enabled!==false; });
+    var modelText = esc(p.model) || (enabled.length ? esc(enabled[0].id || enabled[0].name || '') : '未选择模型');
+    var temp = p.temperature != null ? p.temperature : '-';
+    var maxT = p.max_tokens != null ? p.max_tokens : '-';
+    var key = p.api_key || p.api_key_masked || '';
+    var keyMasked = '';
+    if (key) {
+      var tail = key.length > 4 ? key.slice(-4) : key;
+      keyMasked = '<span class="provider-key"><span class="key-dot">••••</span>'+esc(tail)+'</span>';
+    } else if (p.api_key_configured) {
+      keyMasked = '<span class="provider-key"><span class="key-dot">••••</span>已配置</span>';
+    }
+    var merchant = p.preset || p.kind || (p.local ? '本地' : '自定义');
+
+    // 状态标签：当前使用（蓝紫）/ 回退模型（黄）/ 普通（无标签）
+    var statusTag = '';
+    if (isActive) statusTag = '<span class="provider-status current">当前使用</span>';
+    else if (isFallback) statusTag = '<span class="provider-status fallback">回退模型</span>';
+
+    // 操作按钮（用 data 属性 + 事件委托，避开 WebView 中失效的 stopPropagation）
+    var buttons = '<div class="provider-actions">';
+    if (isActive) {
+      buttons += '<button class="action disabled" data-provider-action="none">使用中</button>';
+    } else {
+      buttons += '<button class="action" data-provider-action="set-default" data-idx="'+i+'">设为默认</button>';
+      if (isFallback) {
+        buttons += '<button class="action warn" data-provider-action="unset-fallback" data-idx="'+i+'">取消回退</button>';
+      } else {
+        buttons += '<button class="action" data-provider-action="set-fallback" data-idx="'+i+'">设为回退</button>';
+      }
+    }
+    buttons += '<button class="action" data-provider-action="edit" data-idx="'+i+'">编辑</button>';
+    buttons += '<button class="action danger" data-provider-action="delete" data-idx="'+i+'">删除</button>';
+    buttons += '</div>';
+
+    return '<div class="provider-card '+(isActive?'active':'')+'">'+
+      '<div class="provider-card-head">'+
+        '<span class="provider-merchant">'+esc(merchant)+'</span>'+
+        '<span class="provider-name">'+esc(pname)+'</span>'+
+        statusTag+
+      '</div>'+
+      '<div class="provider-model">'+modelText+'</div>'+
+      '<div class="provider-meta">temp '+temp+' · max '+maxT+'</div>'+
+      keyMasked+
+      buttons+
+    '</div>';
+  }).join('');
+  // 一次性事件委托（不依赖 inline stopPropagation，兼容所有浏览器/WebView）
+  if (!grid._providerDelegated) {
+    grid._providerDelegated = true;
+    grid.addEventListener('click', function(ev){
+      var btn = ev.target.closest('button[data-provider-action]');
+      if (!btn || !grid.contains(btn)) return;
+      var idx = parseInt(btn.getAttribute('data-idx'));
+      var action = btn.getAttribute('data-provider-action');
+      if (isNaN(idx)) return;
+      if (action === 'set-default') activateProvider(idx);
+      else if (action === 'set-fallback') setFallbackProvider(idx);
+      else if (action === 'unset-fallback') unsetFallbackProvider(idx);
+      else if (action === 'edit') editProvider(idx);
+      else if (action === 'delete') deleteProvider(idx);
+    });
+  }
+}
+function activateProvider(i){
+  var p=_cfg.providers[i]; if(!p) return;
+  _cfg.active_provider = p.name || p.id;
+  apiPost('/api/config', _cfg).then(function(){ renderProviders(); _syncModelBtn(); toast('已设为默认：'+(p.name||p.id)); }).catch(function(e){ toast('保存失败：'+e.message); });
+}
+function setFallbackProvider(i){
+  var p=_cfg.providers[i]; if(!p) return;
+  var pname = p.name || p.id;
+  if(!_cfg.fallback_providers) _cfg.fallback_providers = [];
+  if(_cfg.fallback_providers.indexOf(pname)>=0){ toast('已是回退模型'); return; }
+  _cfg.fallback_providers.push(pname);
+  apiPost('/api/config', _cfg).then(function(){ renderProviders(); toast('已设为回退：'+pname); }).catch(function(e){ toast('保存失败：'+e.message); });
+}
+function unsetFallbackProvider(i){
+  var p=_cfg.providers[i]; if(!p) return;
+  var pname = p.name || p.id;
+  if(!_cfg.fallback_providers) _cfg.fallback_providers = [];
+  if(_cfg.fallback_providers.indexOf(pname)<0){ toast('不是回退模型'); return; }
+  _cfg.fallback_providers = _cfg.fallback_providers.filter(function(n){ return n!==pname; });
+  apiPost('/api/config', _cfg).then(function(){ renderProviders(); toast('已取消回退：'+pname); }).catch(function(e){ toast('保存失败：'+e.message); });
+}
+function deleteProvider(i){
+  var p=_cfg.providers[i]; if(!p) return;
+  var pname = p.name || p.id;
+  if(!confirm('确定删除模型服务「'+pname+'」吗？此操作不可恢复。')) return;
+  _cfg.providers.splice(i,1);
+  // 若删除的是当前默认，自动切到第一个；同时从回退列表移除
+  if(_cfg.active_provider===pname){ _cfg.active_provider = (_cfg.providers[0]&&(_cfg.providers[0].name||_cfg.providers[0].id))||''; }
+  if(_cfg.fallback_providers){ _cfg.fallback_providers=_cfg.fallback_providers.filter(function(n){ return n!==pname; }); }
+  apiPost('/api/config', _cfg).then(function(){ renderProviders(); toast('已删除：'+pname); }).catch(function(e){ toast('保存失败：'+e.message); });
+}
+function openProviderModal(){ editProvider(null); }
+function addProvider(){
+  // 添加模型服务：默认「自定义」，不预填任何模型
+  openProviderModal();
+}
+function closeProviderModal(){ var m=document.getElementById('providerModal'); if(m) m.style.display='none'; _providerModelCache=null; _providerModelTestResults={}; _editingProviderHasKey=false; }
+var _providerModelCache = null; // 编辑 Provider 时的模型列表 [{id,name,enabled,default}]
+var _providerModelTestResults = {}; // 「测试所有模型」结果缓存：{ 列表下标: {ok, latency, error} }
+var _editingProviderHasKey = false; // 当前编辑的 Provider 是否已配置 Key（用于跳过空 Key 校验）
+function editProvider(idx){
+  var m=document.getElementById('providerModal'); if(!m) return;
+  // Portal：移到 body 直接子元素，避开 .page.active (display:flex) 的 stacking context
+  if (m.parentElement !== document.body) document.body.appendChild(m);
+  m.style.display='flex';
+  var presetSel=document.getElementById('providerPreset');
+  if(presetSel){
+    presetSel.innerHTML='<option value="">自定义</option>';
+    Object.keys(PV.providerPresets).forEach(function(k){
+      var o=document.createElement('option'); o.value=k; o.textContent=PV.providerPresets[k].name; presetSel.appendChild(o);
+    });
+  }
+  var p = (idx!=null && _cfg.providers[idx]) ? _cfg.providers[idx] : null;
+  var titleEl=document.getElementById('providerModalTitle'); if(titleEl) titleEl.textContent = p ? '编辑模型提供商' : '添加模型提供商';
+  _providerModelTestResults = {};
+  document.getElementById('providerId').value = p ? (p.id||idx) : '';
+  document.getElementById('providerName').value = p ? (p.name||'') : '';
+  document.getElementById('providerBaseUrl').value = p ? (p.base_url||'') : '';
+  // API Key 处理：后端出于安全不返回真实 Key，编辑时显示掩码 placeholder + 提示
+  var keyInput = document.getElementById('providerKey');
+  var keyHint = document.getElementById('providerKeyHint');
+  if (p && p.api_key_configured) {
+    // 已配置 Key：输入框留空，placeholder 显示掩码，提示用户留空即保留
+    keyInput.value = '';
+    keyInput.placeholder = p.api_key_masked || '••••已配置';
+    if (keyHint) keyHint.style.display = 'block';
+    _editingProviderHasKey = true;
+  } else if (p && p.api_key && String(p.api_key).indexOf('****') !== 0) {
+    // 极少数情况：前端缓存中有明文 key（如刚添加未保存）
+    keyInput.value = p.api_key;
+    keyInput.placeholder = 'sk-...';
+    if (keyHint) keyHint.style.display = 'none';
+    _editingProviderHasKey = false;
+  } else {
+    keyInput.value = '';
+    keyInput.placeholder = 'sk-...';
+    if (keyHint) keyHint.style.display = 'none';
+    _editingProviderHasKey = false;
+  }
+  document.getElementById('providerNote').value = p ? (p.note||'') : '';
+  document.getElementById('providerTemp').value = p && p.temperature!=null ? p.temperature : '0.7';
+  document.getElementById('providerMaxTokens').value = p && p.max_tokens!=null ? p.max_tokens : '4096';
+  // 初始化模型缓存
+  _providerModelCache = [];
+  if(p && Array.isArray(p.models) && p.models.length){
+    _providerModelCache = p.models.map(_normModel);
+  } else if(p && p.model){
+    _providerModelCache = [_normModel({ id: p.model, name: p.model, enabled: true, default: true })];
+  }
+  if(p && p.preset && document.getElementById('providerPreset')) document.getElementById('providerPreset').value = p.preset;
+  renderProviderModels();
+}
+function onProviderPresetChange(){
+  var preset=document.getElementById('providerPreset').value;
+  var def = preset ? PV.providerPresets[preset] : null;
+  if(def && def.base_url) document.getElementById('providerBaseUrl').value = def.base_url;
+  if(def && def.models && def.models.length){
+    _providerModelCache = def.models.map(function(mo){ return _normModel({ id: mo, name: mo, enabled: true, default: false }); });
+  } else {
+    // 选择「自定义」或预设无模型列表时，清空模型缓存（不残留上一个预设的模型）
+    _providerModelCache = [];
+  }
+  renderProviderModels();
+}
+function _normModel(mo){
+  mo = mo||{};
+  return {
+    id: mo.id||mo.name||'',
+    name: mo.name||mo.id||'',
+    enabled: mo.enabled!==false,
+    default: mo.default===true,
+    capabilities: (mo.capabilities&&mo.capabilities.length)?mo.capabilities:['text'],
+    input_types: (mo.input_types&&mo.input_types.length)?mo.input_types:[],
+    context_window: mo.context_window||0,
+    max_output_tokens: mo.max_output_tokens||0,
+    supports_reasoning: mo.supports_reasoning===true
+  };
+}
+function modelCapabilityBadges(mo){
+  var caps=(mo.capabilities||[]).slice();
+  if(mo.supports_reasoning===true && caps.indexOf('reasoning')<0) caps.unshift('reasoning');
+  var html='';
+  caps.forEach(function(c){ var lab=window.PV&&PV.modelCapabilityLabels&&PV.modelCapabilityLabels[c]?PV.modelCapabilityLabels[c]:c; html+='<span class="cap-badge">'+esc(lab)+'</span>'; });
+  var cw=mo.context_window||0;
+  var ctx = cw>=1000000?'上下文1M':(cw>=256000?'上下文256K':(cw>0?'上下文'+cw:''));
+  if(ctx) html+='<span class="cap-badge ctx">'+esc(ctx)+'</span>';
+  return html;
+}
+function renderProviderModels(){
+  return renderProviderModelList();
+}
+function renderProviderModelList(){
+  var el=document.getElementById('providerModelList'); if(!el) return;
+  var list=_providerModelCache||[];
+  var search=((document.getElementById('providerModelSearch')||{}).value||'').trim().toLowerCase();
+  if(!list.length){ el.innerHTML='<div class="conn-hint">点击右上角「获取模型」自动拉取全部模型，或用上方「+ 添加」手动新增。</div>'; return; }
+  // 批量操作栏
+  var enabledCount = list.filter(function(m){ return m.enabled!==false; }).length;
+  var batchBar = '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);margin-bottom:6px">' +
+    '<label style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--text2);cursor:pointer"><input type="checkbox" '+(enabledCount===list.length?'checked':'')+' onchange="toggleAllModels(this.checked)"> 全选</label>' +
+    '<span style="font-size:11px;color:var(--text3)">'+enabledCount+'/'+list.length+' 已启用</span>' +
+    '</div>';
+  // 平铺展示全部模型
+  var items = list.map(function(m,i){ return {m:m,i:i}; });
+  if(search){
+    items = items.filter(function(it){
+      var mid=(it.m.id||it.m.name||'').toLowerCase();
+      var mname=(it.m.name||'').toLowerCase();
+      var prov=(it.m.provider||'').toLowerCase();
+      return mid.indexOf(search)>=0||mname.indexOf(search)>=0||prov.indexOf(search)>=0;
+    });
+  }
+  if(!items.length){ el.innerHTML='<div class="conn-hint">没有匹配的模型。</div>'; return; }
+  el.innerHTML = batchBar + items.map(function(it){
+    var m=it.m; var i=it.i;
+    var isDefault=m.default===true;
+    var isEnabled=m.enabled!==false;
+    var mid=esc(m.id||m.name||'');
+    var ctxBadge=m.context_window?'<span class="model-mini-badge">'+(m.context_window>=1000000?(m.context_window/1000000).toFixed(m.context_window%1000000?1:0)+'M':(m.context_window/1000)+'K')+'</span>':'';
+    var capsBadges='';
+    var caps=m.capabilities||m.input_types||[];
+    if(caps.indexOf('image')>=0) capsBadges+='<span class="model-mini-badge" style="color:#8b5cf6;border-color:#8b5cf6" title="支持图像">🖼</span>';
+    if(caps.indexOf('audio')>=0) capsBadges+='<span class="model-mini-badge" style="color:#f59e0b;border-color:#f59e0b" title="支持音频">🎧</span>';
+    if(caps.indexOf('reasoning')>=0||m.supports_reasoning) capsBadges+='<span class="model-mini-badge" style="color:#10b981;border-color:#10b981" title="支持推理">🧠</span>';
+    var tr=(_providerModelTestResults||{})[i];
+    var testBadge=tr?(tr.ok?'<span class="model-mini-badge" style="color:var(--success);border-color:var(--success)">✓'+(tr.latency!=null?' '+tr.latency+'ms':'')+'</span>':'<span class="model-mini-badge" title="'+esc(tr.error||'')+'" style="color:#e5534b;border-color:#e5534b">✗</span>'):'';
+    return '<div class="model-item '+(isEnabled?'':'disabled')+(isDefault?' applied':'')+'" data-idx="'+i+'">'+
+      '<label class="model-check" onclick="event.stopPropagation()"><input type="checkbox" '+(isEnabled?'checked':'')+' onchange="toggleModelEnabled('+i+',this.checked)"></label>'+
+      '<span class="model-id" onclick="selectModelInList('+i+', event)">'+mid+'</span>'+
+      '<span class="model-badges">'+
+        (isDefault?'<span class="model-tick">✓默认</span>':'')+
+        testBadge+capsBadges+ctxBadge+
+        '<button class="model-cfg-btn" title="独立配置" onclick="openModelEditModal('+i+', event)">⚙</button>'+
+        '<button class="model-test-btn" title="测试连通性" onclick="testProviderModel('+i+', event)">⚡</button>'+
+      '</span>'+
+    '</div>';
+  }).join('');
+}
+function toggleModelEnabled(i, checked){
+  var list=_providerModelCache||[]; var m=list[i]; if(!m) return;
+  m.enabled = checked;
+  renderProviderModelList();
+}
+function toggleAllModels(checked){
+  var list=_providerModelCache||[];
+  list.forEach(function(m){ m.enabled = checked; });
+  renderProviderModelList();
+}
+function toggleModelGroup(headEl){
+  var body = headEl.nextElementSibling; if(!body) return;
+  var collapsed = body.style.display === 'none';
+  body.style.display = collapsed ? '' : 'none';
+  headEl.classList.toggle('collapsed', !collapsed);
+  headEl.querySelector('.chevron').textContent = collapsed ? '▾' : '▸';
+}
+function selectModelInList(i, ev){
+  ev && ev.stopPropagation();
+  setDefaultProviderModel(i);
+  toast('已应用模型：'+((_providerModelCache[i]||{}).id||''));
+}
+function openModelEditModal(i, ev){
+  if(ev) ev.stopPropagation();
+  var list=_providerModelCache||[]; var m=list[i]; if(!m) return;
+  var modal=document.getElementById('modelEditModal'); if(!modal) return;
+  if (modal.parentElement !== document.body) document.body.appendChild(modal);
+  modal.style.display='flex';
+  document.getElementById('modelEditIdx').value=i;
+  document.getElementById('modelEditId').value=(m.id||'');
+  document.getElementById('modelEditName').value=(m.name||m.id||'');
+  document.getElementById('modelEditTemp').value=(m.temperature!=null?m.temperature:'');
+  document.getElementById('modelEditMaxTokens').value=(m.max_tokens!=null?m.max_tokens:'');
+  var inputTypes=(m.input_types&&m.input_types.length)?m.input_types:(m.capabilities||[]).filter(function(c){return c==='text'||c==='image'||c==='audio';});
+  ['text','image','audio'].forEach(function(t){
+    var el=document.getElementById('modelInput_'+t); if(el) el.classList.toggle('on', inputTypes.indexOf(t)>=0);
+  });
+  document.getElementById('modelEditCtx').value=(m.context_window||0);
+  document.getElementById('modelEditMaxOut').value=(m.max_output_tokens||0);
+  var rt=document.getElementById('modelEditReasoning'); if(rt) rt.classList.toggle('on', !!m.supports_reasoning);
+}
+function closeModelEditModal(){ var m=document.getElementById('modelEditModal'); if(m) m.style.display='none'; }
+function toggleModelInput(chip){ if(chip) chip.classList.toggle('on'); }
+function setCtxPreset(n, targetId){
+  var el=document.getElementById(targetId); if(el){ el.value=n; el.focus(); }
+}
+function saveModelEdit(){
+  var i=parseInt(document.getElementById('modelEditIdx').value);
+  var list=_providerModelCache||[]; var m=list[i]; if(!m) return;
+  m.id=document.getElementById('modelEditId').value.trim()||m.id;
+  m.name=document.getElementById('modelEditName').value.trim()||m.id;
+  // Temperature / Max Tokens：留空表示"用 Provider 默认"（删除字段）
+  var tEl=document.getElementById('modelEditTemp');
+  var mtEl=document.getElementById('modelEditMaxTokens');
+  var tVal=tEl?tEl.value.trim():'';
+  var mtVal=mtEl?mtEl.value.trim():'';
+  if(tVal==='') delete m.temperature; else m.temperature=parseFloat(tVal);
+  if(mtVal==='') delete m.max_tokens; else m.max_tokens=parseInt(mtVal);
+  var its=['text','image','audio'].filter(function(t){ var el=document.getElementById('modelInput_'+t); return el&&el.classList.contains('on'); });
+  m.input_types=its;
+  m.context_window=parseInt(document.getElementById('modelEditCtx').value)||0;
+  m.max_output_tokens=parseInt(document.getElementById('modelEditMaxOut').value)||0;
+  var rt=document.getElementById('modelEditReasoning'); m.supports_reasoning=!!(rt&&rt.classList.contains('on'));
+  var caps=its.slice();
+  if(m.supports_reasoning && caps.indexOf('reasoning')<0) caps.unshift('reasoning');
+  if(m.context_window>=1000000 && caps.indexOf('long_context')<0) caps.push('long_context');
+  m.capabilities=caps;
+  renderProviderModelList();
+  closeModelEditModal();
+  toast('已保存模型配置：'+m.name);
+}
+function toggleProviderModel(i){
+  var list=_providerModelCache||[]; var m=list[i]; if(!m) return;
+  m.enabled = m.enabled===false ? true : false;
+  renderProviderModels();
+}
+function setDefaultProviderModel(i){
+  var list=_providerModelCache||[];
+  list.forEach(function(m, idx){ m.default = (idx===i); });
+  renderProviderModels();
+}
+function deleteProviderModel(i){
+  var list=_providerModelCache||[]; if(!list[i]) return;
+  list.splice(i, 1);
+  renderProviderModels();
+}
+function addProviderModel(){
+  // 从「未列出的模型 ID」输入框读取用户输入
+  var inp=document.getElementById('providerCustomModelId');
+  var v = inp ? (inp.value||'').trim() : '';
+  if(!v){ toast('请输入模型 ID'); if(inp) inp.focus(); return; }
+  // 查重
+  var list=_providerModelCache||[];
+  if(list.some(function(m){ return (m.id||m.name)===v; })){ toast('模型已存在：'+v); return; }
+  list.push(_normModel({ id:v, name:v, enabled:true, default:list.length===0 }));
+  if(inp) inp.value='';
+  renderProviderModelList();
+}
+function updateProviderModelName(i, el){
+  var list=_providerModelCache||[]; var m=list[i]; if(!m) return;
+  var v = (el.textContent||'').trim();
+  m.name = v; m.id = v;
+}
+/* 模型预配置库：获取模型后自动匹配元数据（上下文窗口、能力、最大输出） */
+var MODEL_PRESETS = [
+  // DeepSeek
+  {pattern:/deepseek-v4/i, ctx:1048576, maxOut:16384, caps:['text','reasoning'], label:'DSV4'},
+  {pattern:/deepseek-chat/i, ctx:131072, maxOut:8192, caps:['text'], label:'DeepSeek'},
+  {pattern:/deepseek-reasoner/i, ctx:131072, maxOut:16384, caps:['text','reasoning'], label:'R1'},
+  // OpenAI
+  {pattern:/gpt-4o-mini/i, ctx:128000, maxOut:16384, caps:['text','image','audio'], label:'4o-mini'},
+  {pattern:/gpt-4o/i, ctx:128000, maxOut:16384, caps:['text','image','audio'], label:'4o'},
+  {pattern:/gpt-4\.1-mini/i, ctx:1047576, maxOut:32768, caps:['text','image'], label:'4.1-mini'},
+  {pattern:/gpt-4\.1-nano/i, ctx:1047576, maxOut:32768, caps:['text','image'], label:'4.1-nano'},
+  {pattern:/gpt-4\.1/i, ctx:1047576, maxOut:32768, caps:['text','image'], label:'4.1'},
+  {pattern:/gpt-4-turbo/i, ctx:128000, maxOut:4096, caps:['text','image'], label:'4T'},
+  {pattern:/o3-mini/i, ctx:200000, maxOut:100000, caps:['text','reasoning'], label:'o3-mini'},
+  {pattern:/o3/i, ctx:200000, maxOut:100000, caps:['text','image','reasoning'], label:'o3'},
+  {pattern:/o1-mini/i, ctx:128000, maxOut:65536, caps:['text','reasoning'], label:'o1-mini'},
+  {pattern:/o1/i, ctx:200000, maxOut:100000, caps:['text','image','reasoning'], label:'o1'},
+  // Anthropic
+  {pattern:/claude-opus-4/i, ctx:200000, maxOut:32768, caps:['text','image','reasoning'], label:'Opus4'},
+  {pattern:/claude-sonnet-4/i, ctx:200000, maxOut:16384, caps:['text','image','reasoning'], label:'Sonnet4'},
+  {pattern:/claude-3-7-sonnet/i, ctx:200000, maxOut:16384, caps:['text','image','reasoning'], label:'3.7S'},
+  {pattern:/claude-3-5-sonnet/i, ctx:200000, maxOut:8192, caps:['text','image'], label:'3.5S'},
+  {pattern:/claude-3-5-haiku/i, ctx:200000, maxOut:8192, caps:['text','image'], label:'3.5H'},
+  {pattern:/claude-3-opus/i, ctx:200000, maxOut:4096, caps:['text','image'], label:'3O'},
+  // Qwen
+  {pattern:/qwen-3\.8-max/i, ctx:131072, maxOut:16384, caps:['text','image','reasoning'], label:'Q3.8M'},
+  {pattern:/qwen-3\.7-max/i, ctx:131072, maxOut:16384, caps:['text','image','reasoning'], label:'Q3.7M'},
+  {pattern:/qwen-3\.7-plus/i, ctx:131072, maxOut:16384, caps:['text','image'], label:'Q3.7P'},
+  {pattern:/qwen-3\.6-plus/i, ctx:131072, maxOut:16384, caps:['text','image'], label:'Q3.6P'},
+  {pattern:/qwen-3\.6-flash/i, ctx:131072, maxOut:8192, caps:['text','image'], label:'Q3.6F'},
+  {pattern:/qwen3-235b/i, ctx:131072, maxOut:16384, caps:['text','reasoning'], label:'Q3-235B'},
+  {pattern:/qwen3-32b/i, ctx:131072, maxOut:16384, caps:['text','reasoning'], label:'Q3-32B'},
+  {pattern:/qwen-max/i, ctx:131072, maxOut:8192, caps:['text','image'], label:'QMax'},
+  {pattern:/qwen-plus/i, ctx:131072, maxOut:8192, caps:['text','image'], label:'QPlus'},
+  {pattern:/qwen-turbo/i, ctx:131072, maxOut:8192, caps:['text'], label:'QTurbo'},
+  {pattern:/qwen2\.5-72b/i, ctx:131072, maxOut:8192, caps:['text'], label:'Q2.5-72B'},
+  // Google
+  {pattern:/gemini-2\.5-pro/i, ctx:1048576, maxOut:65536, caps:['text','image','audio','reasoning'], label:'2.5Pro'},
+  {pattern:/gemini-2\.5-flash/i, ctx:1048576, maxOut:65536, caps:['text','image','audio','reasoning'], label:'2.5F'},
+  {pattern:/gemini-2\.0-flash/i, ctx:1048576, maxOut:8192, caps:['text','image','audio'], label:'2.0F'},
+  {pattern:/gemini-1\.5-pro/i, ctx:2097152, maxOut:8192, caps:['text','image','audio'], label:'1.5P'},
+  {pattern:/gemini-1\.5-flash/i, ctx:1048576, maxOut:8192, caps:['text','image','audio'], label:'1.5F'},
+  // SenseNova
+  {pattern:/sensenova.*flash-lite/i, ctx:262144, maxOut:8192, caps:['text'], label:'SN-F Lite'},
+  {pattern:/sensenova.*ul-fast/i, ctx:131072, maxOut:8192, caps:['text'], label:'SN-UL'},
+  {pattern:/sensenova/i, ctx:262144, maxOut:8192, caps:['text','image'], label:'SN'},
+  // GLM
+  {pattern:/glm-5/i, ctx:1048576, maxOut:16384, caps:['text','image','reasoning'], label:'GLM5'},
+  {pattern:/glm-4-plus/i, ctx:128000, maxOut:8192, caps:['text','image'], label:'GLM4+'},
+  {pattern:/glm-4/i, ctx:128000, maxOut:4096, caps:['text','image'], label:'GLM4'},
+  // Groq / Llama
+  {pattern:/llama-4-maverick/i, ctx:1048576, maxOut:8192, caps:['text','image'], label:'L4M'},
+  {pattern:/llama-4-scout/i, ctx:1048576, maxOut:8192, caps:['text','image'], label:'L4S'},
+  {pattern:/llama-3\.3-70b/i, ctx:128000, maxOut:8192, caps:['text'], label:'L3.3'},
+  // Mistral
+  {pattern:/mistral-large/i, ctx:128000, maxOut:8192, caps:['text'], label:'MLarge'},
+  {pattern:/mistral-medium/i, ctx:128000, maxOut:8192, caps:['text'], label:'MMed'},
+  {pattern:/codestral/i, ctx:256000, maxOut:8192, caps:['text'], label:'Code'},
+  // Moonshot
+  {pattern:/moonshot-v1-128k/i, ctx:128000, maxOut:8192, caps:['text'], label:'128K'},
+  {pattern:/moonshot-v1/i, ctx:32000, maxOut:4096, caps:['text'], label:'KS'},
+  // Doubao
+  {pattern:/doubao.*pro.*256k/i, ctx:256000, maxOut:16384, caps:['text'], label:'DB-256K'},
+  {pattern:/doubao.*pro/i, ctx:128000, maxOut:16384, caps:['text'], label:'DB-Pro'},
+  {pattern:/doubao/i, ctx:128000, maxOut:8192, caps:['text'], label:'DB'}
+];
+function matchModelPreset(modelId){
+  if(!modelId) return null;
+  for(var i=0;i<MODEL_PRESETS.length;i++){
+    if(MODEL_PRESETS[i].pattern.test(modelId)) return MODEL_PRESETS[i];
+  }
+  return null;
+}
+
+function fillModelOptionsFromList(list){
+  // 获取模型后写入管理列表：以接口返回为准，仅保留用户对「仍存在」模型的参数编辑
+  var incoming = (list||[]).map(function(mo){
+    return _normModel(typeof mo==='string' ? { id: mo, name: mo, enabled: true, default: false } : mo);
+  });
+  // 自动匹配预配置库，填充上下文/能力/最大输出
+  var presetApplied = 0;
+  incoming.forEach(function(m){
+    var preset = matchModelPreset(m.id || m.name);
+    if(preset){
+      if(!m.context_window) m.context_window = preset.ctx;
+      if(!m.max_output_tokens) m.max_output_tokens = preset.maxOut;
+      if(!m.input_types || !m.input_types.length) m.input_types = preset.caps.filter(function(c){return c==='text'||c==='image'||c==='audio';});
+      if(!m.capabilities || !m.capabilities.length) m.capabilities = preset.caps.slice();
+      if(preset.caps.indexOf('reasoning')>=0 && !m.supports_reasoning) m.supports_reasoning = true;
+      presetApplied++;
+    }
+  });
+  var prev = _providerModelCache || [];
+  var prevById = {};
+  prev.forEach(function(m){ var k=m.id||m.name; if(k) prevById[k]=m; });
+  var result = incoming.map(function(m){
+    var k = m.id||m.name;
+    var old = prevById[k];
+    if(!old) return m;
+    // 保留用户对同一模型的参数编辑
+    return Object.assign({}, m, old, { id: m.id||old.id, name: m.name||old.name||m.id });
+  });
+  _providerModelCache = result;
+  _providerModelTestResults = {};
+  renderProviderModels();
+  toast('已获取 '+result.length+' 个模型' + (presetApplied ? '，自动配置 '+presetApplied+' 个' : ''));
+}
+// 从 Provider 的 /v1/models 接口拉取模型列表（经后端代理，规避 CORS）
+function fetchProviderModels(){
+  var provider=buildProviderObj();
+  if(!provider.base_url){ toast('请先填写 Base URL'); return; }
+  if(!provider.api_key && !_editingProviderHasKey){ toast('请先填写 API Key'); return; }
+  toast('正在获取模型列表…');
+  apiPost('/api/config/test', { provider: provider }).then(function(r){
+    var models=(r&&r.models)?r.models:[];
+    if(models.length){ fillModelOptionsFromList(models); }
+    else if(r&&r.error){ toast('获取失败：'+r.error); }
+    else toast('该端点未返回模型列表，可手动添加');
+  }).catch(function(e){ toast('获取失败：'+e.message); });
+}
+var _autoFetchTimer = null;
+function autoFetchModelsDebounced(){
+  clearTimeout(_autoFetchTimer);
+  _autoFetchTimer = setTimeout(function(){
+    var url = (document.getElementById('providerBaseUrl')||{}).value||'';
+    var key = (document.getElementById('providerKey')||{}).value||'';
+    if(url && key && (_providerModelCache||[]).length === 0){
+      fetchProviderModels();
+    }
+  }, 600);
+}
+function testProviderModel(i, ev){
+  if(ev) ev.stopPropagation();
+  var list=_providerModelCache||[]; var m=list[i]; if(!m){ toast('模型不存在'); return; }
+  var provider = buildProviderObj();
+  if(!provider.base_url){ toast('请先填写 Base URL'); return; }
+  var btn = ev && ev.currentTarget ? ev.currentTarget : null;
+  if(btn){ btn.classList.add('testing'); btn.disabled = true; }
+  toast('正在测试模型：'+(m.id||m.name));
+  apiPost('/api/config/test', { provider: provider, model: m.id }).then(function(r){
+    if(btn){ btn.classList.remove('testing'); btn.disabled = false; }
+    if(r && r.ok){
+      var ms = (r.latency_ms!=null)?(' 延迟 '+r.latency_ms+'ms'):'';
+      toast('✅ 模型可用：'+(m.id||m.name)+ms);
+    } else {
+      toast('❌ 模型不可用：'+(m.id||m.name)+'（'+(r&&r.error?r.error:'接口错误')+'）');
+    }
+  }).catch(function(e){
+    if(btn){ btn.classList.remove('testing'); btn.disabled = false; }
+    toast('测试失败：'+e.message);
+  });
+}
+function testAllProviderModels(){
+  var list=_providerModelCache||[];
+  if(!list.length){ toast('请先获取或添加模型'); return; }
+  var provider=buildProviderObj();
+  if(!provider.base_url){ toast('请先填写 Base URL'); return; }
+  toast('正在测试 '+list.length+' 个模型…');
+  _providerModelTestResults = {};
+  var targets=list.map(function(m,i){ return { id:m.id||m.name, i:i }; });
+  Promise.all(targets.map(function(t){
+    return apiPost('/api/config/test', { provider: provider, model: t.id }).then(function(r){
+      _providerModelTestResults[t.i] = { ok: !!(r&&r.ok), latency: (r&&r.latency_ms!=null)?r.latency_ms:null, error: (r&&r.error)||'' };
+    }).catch(function(e){ _providerModelTestResults[t.i] = { ok:false, error:e.message }; });
+  })).then(function(){
+    var ok=0, fail=0;
+    targets.forEach(function(t){ var r=_providerModelTestResults[t.i]; if(r&&r.ok) ok++; else fail++; });
+    renderProviderModelList();
+    toast('测试完成：✅ '+ok+' 个可用'+(fail?'，❌ '+fail+' 个不可用':''));
+  });
+}
+function toggleKeyVisibility(){
+  var inp=document.getElementById('providerKey');
+  // 如果输入框为空且处于掩码模式（已配置 Key），从后端获取明文
+  if(!inp.value && _editingProviderHasKey){
+    var pid=document.getElementById('providerId').value;
+    if(!pid){ inp.type = inp.type==='password' ? 'text' : 'password'; return; }
+    fetch(apiUrl('/api/provider-key?id='+encodeURIComponent(pid)), { headers: monitorToken?{'X-Monitor-Token':monitorToken}:{} })
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if(d && d.ok && d.api_key){
+          inp.value = d.api_key;
+          inp.type = 'text';
+          var hint=document.getElementById('providerKeyHint');
+          if(hint) hint.textContent = '⚠️ 正在显示明文 Key，保存时将使用此值';
+        } else {
+          toast('无法获取 Key：'+(d&&d.error||'未知错误'));
+        }
+      })
+      .catch(function(){ toast('获取 Key 失败'); });
+    return;
+  }
+  // 已有明文值：切换显示/隐藏
+  inp.type = inp.type==='password' ? 'text' : 'password';
+}
+function validateProvider(evt){
+  var provider = buildProviderObj();
+  if(!provider.base_url){ toast('请先填写 Base URL 后再验证连接'); return; }
+  // 纯连接测试：只验证当前配置（Base URL + Key）能否连通，
+  // 绝不刷新/覆盖模型列表配置（获取模型请用「获取模型列表」按钮）。
+  var btn=_resolveCheckBtn(evt); if(btn){btn.disabled=true;btn.textContent='验证中…';}
+  toast('正在验证连接…');
+  apiPost('/api/config/test', { provider: provider, mode: 'connectivity' }).then(function(r){
+    if(r && r.ok){
+      toast('✅ 连接成功：'+(r.model_count!=null?('端点可用，共 '+r.model_count+' 个模型，'):'')+('延迟 '+(r.latency_ms!=null?r.latency_ms:(r.latency||0))+'ms')+'。当前模型配置未改动');
+    } else {
+      toast('❌ 连接失败：'+((r&&r.error)||'接口未返回明确结果'));
+    }
+  }).catch(function(e){ toast('❌ 连接失败：'+e.message); }).finally(function(){ if(btn){btn.disabled=false;btn.textContent='验证连接';} });
+}
+function buildProviderObj(){
+  var id=document.getElementById('providerId').value;
+  var preset=document.getElementById('providerPreset').value;
+  var name=document.getElementById('providerName').value.trim() || '自定义 Provider';
+  var models = (_providerModelCache||[]).map(function(m){ return { id: m.id, name: m.name||m.id, enabled: m.enabled!==false, default: m.default===true, capabilities: m.capabilities||[], input_types: m.input_types||[], context_window: m.context_window||0, max_output_tokens: m.max_output_tokens||0, supports_reasoning: m.supports_reasoning===true }; });
+  var defaultModel = '';
+  models.forEach(function(m){ if(m.default) defaultModel = m.id; });
+  if(!defaultModel){
+    var first = models.find(function(m){ return m.enabled!==false; });
+    if(first) defaultModel = first.id;
+  }
+  return {
+    id: id || ('custom_'+uid()),
+    name: name,
+    base_url: document.getElementById('providerBaseUrl').value.trim(),
+    api_key: document.getElementById('providerKey').value,
+    model: defaultModel,
+    models: models,
+    note: document.getElementById('providerNote').value,
+    temperature: parseFloat(document.getElementById('providerTemp').value)||0.7,
+    max_tokens: parseInt(document.getElementById('providerMaxTokens').value)||4096,
+    active: true,
+    preset: preset || undefined
+  };
+}
+function saveProvider(){
+  var name=document.getElementById('providerName').value.trim();
+  if(!name){ toast('请填写 Provider 名称'); return; }
+  var provider = buildProviderObj();
+  var existing = _cfg.providers || [];
+  var found = false;
+  for(var i=0;i<existing.length;i++){ if(existing[i].id===provider.id || (existing[i].name&&provider.name&&existing[i].name===provider.name)){ existing[i]=provider; found=true; break; } }
+  if(!found) existing.push(provider);
+  _cfg.providers = existing;
+  if(!_cfg.active_provider) _cfg.active_provider = provider.name;
+  // 守卫（Issue #2）：至少有一个真实 Provider（非 hermes）才允许保存并自动重启网关
+  var realProviders = (existing||[]).filter(function(p){ return (p.id||'').toLowerCase() !== 'hermes'; });
+  if(!realProviders.length){
+    toast('请先添加并启用至少一个模型');
+    return;
+  }
+  apiPost('/api/config', _cfg).then(function(r){
+    if(r && r.error){ toast('保存失败：'+r.error); }
+    else {
+      toast('已保存 Provider，正在重启网关以应用配置…');
+      closeProviderModal(); renderProviders(); _syncModelBtn();
+      // 保存后立即重启网关，使新配置（含 API key）对网关生效。
+      // 本包网关端口已迁移到 8742、仪表盘到 9219，从根本上规避同机 hermes-studio 对其 8642 网关的 `--replace` 抢占
+      // （跨用户进程无法被本包 kill 清除），避免干净重装/并存时被分流到无 provider 的网关。
+      apiPost('/api/restart', {}).catch(function(){ /* 非致命，状态轮询会反映 */ });
+      // 用户要求（v0.20.65）：保存模型后默认创建一个「默认助手」会话以激活网关
+      ensureDefaultSession();
+    }
+  }).catch(function(e){ toast('保存失败：'+e.message); });
+}
+
+// 用户要求（v0.20.65）：保存模型后确保至少存在一个「默认助手」会话，
+// 以便网关被激活、聊天不会因缺少会话而失败。已存在会话则跳过。
+function ensureDefaultSession(){
+  try { if(_sessions && _sessions.length) return; } catch(e){}
+  fetch(apiUrl('/api/sessions'), { method:'POST', headers: monitorToken?{'X-Monitor-Token':monitorToken}:{} })
+    .then(function(r){ return r.json(); })
+    .then(function(s){
+      if(!s || !s.id) return;
+      _sessions.unshift(s);
+      currentSession = s.id;
+      try { setSessionAgent(s.id, currentAgent || 'default'); } catch(e){}
+      _openTabs.push(s.id); persistTabs();
+      renderSessionTabs(); renderRail(); updateHeader();
+    })
+    .catch(function(){});
+}
+
+/* ============================ 扩展 ============================ */
+function extSwitchTab(el, key){
+  document.querySelectorAll('#extTabs .ch-filter').forEach(function(t){ t.classList.remove('active'); });
+  el.classList.add('active');
+  document.querySelectorAll('.ext-pane').forEach(function(p){ p.classList.remove('active'); });
+  var pane=document.getElementById('ext-'+key); if(pane) pane.classList.add('active');
+  if(key==='skills') renderSkills('local');
+  if(key==='mcp') renderMcpServers();
+}
+function extSkillSubtab(el, key){
+  document.querySelectorAll('#ext-skills .skill-subtabs .ch-filter').forEach(function(t){ t.classList.remove('active'); });
+  el.classList.add('active');
+  var bar=document.getElementById('skillMarketBar');
+  if(bar) bar.style.display = (key==='market') ? 'block' : 'none';
+  if(key==='market'){ renderSkillMarket(); } else { renderSkills(key); }
+}
+function renderExtensions(){
+  renderToolsets(); renderSkills('local'); renderExperts(); renderTeam(); renderMemory(); renderWorkflow();
+}
+function renderToolsets(){
+  var el=document.getElementById('toolsetList'); if(!el) return;
+  // GET /proxy/dashboard/* 不带 X-Monitor-Token：proxy 会自动注入 X-Hermes-Session-Token，
+  // 自带 X-Monitor-Token 会触发 CORS 预检，app-center/trim_app_center 对 OPTIONS 返 401，
+  // 导致浏览器控制台出现 401 噪音。这里保持「无自定义头」=简单请求=不预检。
+  fetch(apiUrl('/proxy/dashboard/api/tools/toolsets'), { cache:'no-store' })
+    .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+    .then(function(list){
+      _toolNative = {};
+      (list||[]).forEach(function(t){ if(t && t.name) _toolNative[t.name]=t; });
+      el.innerHTML = Object.keys(_toolNative).map(function(k){
+        var t=_toolNative[k]; var on=!!t.enabled;
+        var icon = toolIconFor(k, t);
+        return extCardHTML(k, t.label||t.name||k, t.description||'', on, 'toggleToolset(\''+k+'\')', icon);
+      }).join('');
+    })
+    .catch(function(){
+      // 仪表盘未启动 / 网络异常：回退到 config.extensions.toolsets（静默）
+      var ts = _cfg.extensions.toolsets || {};
+      var keys = Object.keys(ts);
+      if(!keys.length) keys = PV.toolsets.map(function(t){ return t.id; });
+      el.innerHTML = keys.map(function(k){
+        var def = PV.toolsets.find(function(t){ return t.id===k; }) || { name:k, icon:'🔧' };
+        var on = !!ts[k];
+        var icon = def.icon || toolIconFor(k, def);
+        return extCardHTML(k, def.name||k, def.desc||'', on, 'toggleToolset(\''+k+'\')', icon);
+      }).join('');
+    });
+}
+function extCardHTML(id, name, desc, on, onclick, icon){
+  if(icon==null) icon='🔧';
+  return '<div class="ext-card" onclick="'+onclick+'">'+
+    '<div class="top"><div class="icon">'+icon+'</div><div><div class="name">'+esc(name)+'</div><div class="status '+(on?'on':'off')+'">'+(on?'已启用':'未启用')+'</div></div></div>'+
+    '<div class="actions">'+
+      '<button class="action" onclick="event.stopPropagation();'+onclick+'">'+(on?'关闭':'启用')+'</button>'+
+      '<button class="action secondary" onclick="event.stopPropagation();renderToolConfigModal(\''+esc(id)+'\')">配置</button>'+
+    '</div></div>';
+}
+function toggleToolset(id){
+  var newOn;
+  if(_toolNative && _toolNative[id]){
+    newOn = !_toolNative[id].enabled;
+    _toolNative[id].enabled = newOn;
+    if(_cfg.extensions) _cfg.extensions.toolsets[id] = newOn;
+    fetch(apiUrl('/proxy/dashboard/api/tools/toolsets/'+encodeURIComponent(id)), {
+      method:'PUT', headers:{ 'Content-Type':'application/json', 'X-Monitor-Token':monitorToken||'' }, body: JSON.stringify({ enabled:newOn })
+    }).then(function(){ renderToolsets(); saveConfig(); }).catch(function(){ renderToolsets(); saveConfig(); });
+    return;
+  }
+  var ts = _cfg.extensions.toolsets;
+  ts[id] = !ts[id]; newOn = ts[id];
+  renderToolsets(); saveConfig();
+}
+function renderToolConfigModal(id){
+  var modal=document.getElementById('toolConfigModal'); if(!modal) return;
+  if (modal.parentElement !== document.body) document.body.appendChild(modal);
+  modal.style.display='flex';
+  _toolCfgCurrent = id;
+  var native = _toolNative && _toolNative[id];
+  var titleName = native ? (native.label||native.name) : id;
+  var on = !!(native && native.enabled) || !!(_cfg.extensions.toolsets && _cfg.extensions.toolsets[id]);
+  var icon = toolIconFor(id, native);
+  var title=document.getElementById('toolCfgTitle'); if(title) title.textContent='工具配置：'+titleName;
+  // 优先后端 config_fields（非空），否则用 PV.toolConfigFields 兜底
+  var fields = (native && native.config_fields && native.config_fields.length) ? native.config_fields : ((window.PV && PV.toolConfigFields && PV.toolConfigFields[id]) || []);
+  var body=document.getElementById('toolCfgBody');
+  var cfg = (_cfg.extensions.tools_config && _cfg.extensions.tools_config[id]) || {};
+  var header = '<div class="tool-cfg-header">'+
+    '<div class="icon cfg-icon-lg">'+icon+'</div>'+
+    '<div class="tch-meta"><div class="tch-name">'+esc(titleName)+'</div><div class="status '+(on?'on':'off')+'">'+(on?'已启用':'未启用')+'</div></div>'+
+    '<label class="toggle '+(on?'on':'')+'" id="toolCfgEnable" onclick="toggleToolCfgEnable()"><span class="toggle-switch"></span></label>'+
+    '</div>';
+  if(fields && fields.length){
+    body.innerHTML = header + fields.map(function(f,i){
+      var key=f.key||f.name||('tf_'+i);
+      var val=esc(cfg[key]!=null?cfg[key]:(f.default||''));
+      return '<div class="skill-config-field"><label>'+esc(f.label||key)+(f.required?' *':'')+'</label><input type="'+(f.type==='password'?'password':'text')+'" data-key="'+esc(key)+'" value="'+val+'" placeholder="'+esc(f.placeholder||'')+'"></div>';
+    }).join('');
+  } else {
+    body.innerHTML = header + '<div class="conn-hint">该工具暂无可配置参数，或参数需通过 Hermes 仪表盘配置。</div>';
+  }
+}
+function toggleToolCfgEnable(){
+  var el=document.getElementById('toolCfgEnable'); if(!el) return;
+  var on=el.classList.toggle('on');
+  var st=el.parentNode.querySelector('.status'); if(st){ st.className='status '+(on?'on':'off'); st.textContent=on?'已启用':'未启用'; }
+}
+function closeToolConfigModal(){ var m=document.getElementById('toolConfigModal'); if(m) m.style.display='none'; }
+function saveToolConfig(){
+  var id=_toolCfgCurrent; if(!id) return;
+  var values={}; var inputs=document.querySelectorAll('#toolCfgBody input[data-key]');
+  for(var i=0;i<inputs.length;i++){ values[inputs[i].getAttribute('data-key')]=inputs[i].value; }
+  if(!_cfg.extensions.tools_config) _cfg.extensions.tools_config={};
+  _cfg.extensions.tools_config[id]=values;
+  // 尽力写仪表盘端点（不存在则静默回退本地）
+  fetch(apiUrl('/proxy/dashboard/api/tools/toolsets/'+encodeURIComponent(id)+'/config'), { method:'PUT', headers:{'Content-Type':'application/json','X-Monitor-Token':monitorToken||''}, body:JSON.stringify({ config:values }) })
+    .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); })
+    .catch(function(){});
+  saveConfig();
+  closeToolConfigModal();
+  toast('已保存工具配置：'+id);
+}
+function skillIcon(s){
+  if(!s) return '📦';
+  if(s.icon) return s.icon;
+  if(s.emoji) return s.emoji;
+  var nm = s.name || '';
+  if(window.PV && PV.skillIcons && PV.skillIcons[nm]) return PV.skillIcons[nm];
+  return '📦';
+}
+// 工具集图标：后端 icon/emoji → PV.TOOL_ICON_MAP → PV.skillIcons(按 id/name) → 🔧
+function toolIconFor(id, t){
+  if(t && (t.icon||t.emoji)) return t.icon||t.emoji;
+  if(window.PV){
+    if(PV.TOOL_ICON_MAP && PV.TOOL_ICON_MAP[id]) return PV.TOOL_ICON_MAP[id];
+    if(PV.skillIcons){
+      if(PV.skillIcons[id]) return PV.skillIcons[id];
+      if(t && t.name && PV.skillIcons[t.name]) return PV.skillIcons[t.name];
+    }
+  }
+  return '🔧';
+}
+function renderSkills(kind){
+  var el=document.getElementById('skillGrid'); if(!el) return;
+  if(kind==='native'){
+    fetch(apiUrl('/proxy/dashboard/api/skills'), { cache:'no-store', headers: monitorToken?{'X-Monitor-Token':monitorToken}:{} })
+      .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+      .then(function(list){
+        _skillNative = list||[];
+        if(!_skillNative.length){ el.innerHTML='<div class="empty-state">未获取到原生技能（请先启动仪表盘）。</div>'; return; }
+        el.innerHTML = _skillNative.map(function(s){
+          var on=!!s.enabled; var nm=(s.name||'').replace(/'/g,"\\'");
+          var desc = esc((s.description||s.desc||'').slice(0,80));
+          var tools = Array.isArray(s.tools) ? s.tools.slice(0,4).map(function(t){ return '<code>'+esc(typeof t==='string'?t:(t.name||''))+'</code>'; }).join(' ') : '';
+          return '<div class="ext-card" data-skill="'+nm+'">'+
+            '<div class="top"><div class="icon">'+skillIcon(s)+'</div><div><div class="name">'+esc(s.name||'')+'</div><div class="status '+(on?'on':'off')+'">'+(on?'已启用':'未启用')+'</div></div></div>'+
+            (desc?'<div class="desc">'+desc+'</div>':'')+
+            (tools?'<div class="tools">'+tools+'</div>':'')+
+            '<div class="actions">'+
+              '<button class="action" onclick="event.stopPropagation();toggleNativeSkill(\''+nm+'\')">'+(on?'关闭':'启用')+'</button>'+
+              '<button class="action secondary" onclick="event.stopPropagation();openSkillConfig(\''+nm+'\')">配置</button>'+
+            '</div></div>';
+        }).join('');
+      })
+      .catch(function(){ el.innerHTML='<div class="empty-state">加载原生技能失败（请先启动仪表盘）。</div>'; });
+  } else {
+    apiGet('/api/extensions/skills/local').then(function(res){
+      if(res && res.ok && res.skills){
+        _skillLocal = res.skills;
+        if(!_skillLocal.length){ el.innerHTML='<div class="empty-state">尚未发现已安装技能。</div>'; return; }
+        el.innerHTML = _skillLocal.map(function(s, i){
+          var on=!!(s.status==='enabled'||s.enabled);
+          var nm=(s.name||'').replace(/'/g,"\\'");
+          var desc = esc((s.description||s.desc||'').slice(0,80));
+          return '<div class="ext-card" data-skill="'+nm+'">'+
+            '<div class="top"><div class="icon">'+skillIcon(s)+'</div><div><div class="name">'+esc(s.name||'未命名')+'</div><div class="status '+(on?'on':'off')+'">'+(on?'已启用':'未启用')+'</div></div></div>'+
+            (desc?'<div class="desc">'+desc+'</div>':'')+
+            '<div class="actions">'+
+              '<button class="action" onclick="event.stopPropagation();toggleSkill('+i+')">'+(on?'关闭':'启用')+'</button>'+
+              '<button class="action secondary" onclick="event.stopPropagation();openSkillConfigLocal('+i+')">配置</button>'+
+            '</div></div>';
+        }).join('');
+      } else {
+        el.innerHTML='<div class="empty-state">加载本地技能失败，请部署后重试。</div>';
+      }
+    });
+  }
+}
+function toggleNativeSkill(name){
+  var list=_skillNative||[]; var s=null;
+  for(var i=0;i<list.length;i++){ if(list[i].name===name){ s=list[i]; break; } }
+  if(!s) return;
+  var newOn=!s.enabled;
+  fetch(apiUrl('/proxy/dashboard/api/skills/toggle'), { method:'PUT', headers:{'Content-Type':'application/json','X-Monitor-Token':monitorToken||''}, body: JSON.stringify({ name:name, enabled:newOn }) })
+    .then(function(){ s.enabled=newOn; renderSkills('native'); }).catch(function(){ s.enabled=newOn; renderSkills('native'); });
+}
+function toggleSkill(i){
+  var s=_skillLocal[i]; if(!s) return;
+  toast('本地技能启停需重启 Hermes 后生效（已记录）');
+  // 本地仅做 UI 标记，真实启停由后端安装/重启决定
+}
+// ── 技能市场（扩展→技能→技能市场：精选目录 + SkillHub 搜索，安装/卸载/配置/获取指引）──
+var _skillMarketItems = [];    // 当前市场技能列表（精选目录或搜索结果）
+var _skillMarketFilter = 'all';
+var _installedSkillNames = []; // 全部已安装技能目录名（供搜索结果对照安装状态）
+var _marketCfgCurrent = null;  // 正在配置的市场技能
+function renderSkillMarket(){
+  var el=document.getElementById('skillGrid'); if(!el) return;
+  apiGet('/api/extensions/skills/market-catalog').then(function(res){
+    if(res && res.ok && res.items){
+      _skillMarketItems = res.items;
+      _installedSkillNames = res.installed_names || [];
+      renderSkillMarketGrid();
+    } else {
+      el.innerHTML='<div class="empty-state">加载技能市场失败，请部署后重试。</div>';
+    }
+  });
+}
+function renderSkillMarketCatalog(){
+  var el=document.getElementById('skillMarketSearch'); if(el) el.value='';
+  renderSkillMarket();
+}
+function setSkillMarketFilter(btn, f){
+  _skillMarketFilter = f;
+  ['smFilterAll','smFilterInstalled','smFilterOfficial'].forEach(function(id){ var b=document.getElementById(id); if(b) b.classList.remove('active'); });
+  if(btn) btn.classList.add('active');
+  renderSkillMarketGrid();
+}
+function renderSkillMarketGrid(){
+  var el=document.getElementById('skillGrid'); if(!el) return;
+  var rows=[];
+  (_skillMarketItems||[]).forEach(function(it, i){
+    if(_skillMarketFilter==='installed' && !it.installed) return;
+    if(_skillMarketFilter==='official' && !it.official) return;
+    rows.push({ it:it, i:i });
+  });
+  if(!rows.length){ el.innerHTML='<div class="empty-state">没有匹配的技能。</div>'; return; }
+  el.innerHTML = rows.map(function(r){ return renderSkillMarketCard(r.it, r.i); }).join('');
+}
+function renderSkillMarketCard(it, i){
+  var installed=!!it.installed;
+  var icon=it.icon||'🧩';
+  var official=it.official?'<span class="conn-badge" style="background:rgba(139,92,246,.15);color:#a78bfa;border-color:rgba(139,92,246,.4)">官方</span>':'';
+  var desc=esc((it.desc||it.description||'').slice(0,80));
+  var meta='';
+  if(it._search){
+    var bits=[];
+    if(it.downloads) bits.push(it.downloads+' 次安装');
+    if(it.stars) bits.push(it.stars+' 星');
+    if(bits.length) meta='<div class="conn-hint" style="margin:0 0 10px">'+esc(bits.join(' · '))+'</div>';
+  }
+  var actions='';
+  if(installed){
+    actions+='<button class="action danger" onclick="event.stopPropagation();uninstallMarketSkill('+i+')">卸载</button>';
+    actions+='<button class="action secondary" onclick="event.stopPropagation();configMarketSkill('+i+')">配置</button>';
+  } else {
+    actions+='<button class="action primary" onclick="event.stopPropagation();installMarketSkill('+i+')">安装</button>';
+  }
+  actions+='<button class="action secondary" onclick="event.stopPropagation();openMarketGuide('+i+')">获取指引</button>';
+  return '<div class="ext-card">'+
+    '<div class="top"><div class="icon">'+icon+'</div><div><div class="name">'+esc(it.name||'未命名')+official+'</div><div class="status '+(installed?'on':'off')+'">'+(installed?'已安装':'未安装')+'</div></div></div>'+
+    (desc?'<div class="desc">'+desc+'</div>':'')+
+    meta+
+    '<div class="actions">'+actions+'</div></div>';
+}
+function installMarketSkill(i){
+  var it=_skillMarketItems[i]; if(!it) return;
+  var payload={ slug: it.slug, namespace: it.namespace, name: it.id || it.slug };
+  if(it.mcp && it.mcp.url){ payload.mcp={ name: it.mcp.name, url: it.mcp.url, headers:{} }; }
+  toast('正在安装 '+it.name+'…');
+  apiPost('/api/extensions/skills/install-package', payload).then(function(res){
+    if(res && res.ok){
+      toast('✅ '+it.name+' 安装成功'+((it.mcp&&it.mcp.fields)?'，请点击「配置」输入凭证':''));
+      renderSkillMarket();
+    } else {
+      toast('❌ 安装失败：'+((res&&res.error)||'未知错误'));
+    }
+  });
+}
+function uninstallMarketSkill(i){
+  var it=_skillMarketItems[i]; if(!it) return;
+  var name=it.id || it.slug;
+  if(!confirm('确定卸载技能「'+(it.name||name)+'」？\n将删除其本地文件与注册信息（含 MCP 服务器）。')) return;
+  toast('正在卸载 '+it.name+'…');
+  var payload={ name: name };
+  if(it.mcp && it.mcp.name) payload.mcp_name=it.mcp.name;
+  apiPost('/api/extensions/skills/uninstall', payload).then(function(res){
+    if(res && res.ok){ toast('🗑️ '+it.name+' 已卸载'); renderSkillMarket(); }
+    else { toast('❌ 卸载失败：'+((res&&res.error)||'未知错误')); }
+  });
+}
+function configMarketSkill(i){
+  var it=_skillMarketItems[i]; if(!it) return;
+  _marketCfgCurrent=it;
+  var title=document.getElementById('marketCfgTitle');
+  var body=document.getElementById('marketCfgBody');
+  if(title) title.textContent=(it.name||'技能')+' 配置';
+  if(!body) return;
+  var html='';
+  if(it.mcp && it.mcp.fields && it.mcp.fields.length){
+    if(it.desc||it.description) html+='<div class="conn-desc">'+esc(it.desc||it.description)+'</div>';
+    if(it.cred_hint) html+='<div class="conn-hint">💡 '+esc(it.cred_hint)+'</div>';
+    html+='<div class="conn-section-title">凭证</div><div class="conn-fields">';
+    it.mcp.fields.forEach(function(f){
+      html+='<div class="field"><label>'+esc(f.label||f.key)+'</label><input type="password" id="mktCfg_'+esc(f.key)+'" value="" placeholder="留空则保留原值"></div>';
+    });
+    html+='</div>';
+    html+='<div class="conn-hint">保存后将注册为 MCP 服务器，由对话中的智能体调用（自动重启网关生效）。</div>';
+  } else {
+    if(it.desc||it.description) html+='<div class="conn-desc">'+esc(it.desc||it.description)+'</div>';
+    html+='<div class="conn-hint">💡 凭证提示：'+esc(it.cred_hint||'该技能无需额外凭证')+'</div>';
+    html+='<div class="conn-hint">该技能的凭证由其内置脚本管理，请按「获取指引」完成授权。</div>';
+    var gurl=it.guide_url||it.webUrl||'';
+    if(gurl) html+='<a class="conn-doc" href="'+esc(gurl)+'" target="_blank">📄 查看获取指引 →</a>';
+  }
+  body.innerHTML=html;
+  var m=document.getElementById('marketCfgModal');
+  if(m && m.parentElement!==document.body) document.body.appendChild(m);
+  if(m) m.style.display='flex';
+}
+function closeMarketConfig(){ var m=document.getElementById('marketCfgModal'); if(m) m.style.display='none'; _marketCfgCurrent=null; }
+function saveMarketConfig(){
+  var it=_marketCfgCurrent; if(!it){ closeMarketConfig(); return; }
+  if(!(it.mcp && it.mcp.fields && it.mcp.fields.length)){
+    toast('该技能通过内置脚本配置，请参考获取指引');
+    closeMarketConfig(); return;
+  }
+  var headers={};
+  it.mcp.fields.forEach(function(f){
+    var el=document.getElementById('mktCfg_'+f.key);
+    var v=el?el.value.trim():'';
+    if(v) headers[f.header]=(f.prefix||'')+v;
+  });
+  apiPost('/api/extensions/skills/config-mcp', { name: it.mcp.name, url: it.mcp.url, headers: headers }).then(function(res){
+    if(res && res.ok){ toast('✅ 凭证已保存，网关重启后生效'); closeMarketConfig(); }
+    else { toast('❌ 保存失败：'+((res&&res.error)||'未知错误')); }
+  });
+}
+function openMarketGuide(i){
+  var it=_skillMarketItems[i]; if(!it) return;
+  var url=it.guide_url||it.webUrl||('https://www.skillhub.cn/skills/'+(it.slug||''));
+  window.open(url, '_blank');
+}
+function searchSkillMarket(){
+  var el=document.getElementById('skillMarketSearch');
+  var kw=el?el.value.trim():'';
+  if(!kw){ renderSkillMarket(); return; }
+  var grid=document.getElementById('skillGrid');
+  if(grid) grid.innerHTML='<div class="empty-state">正在搜索 SkillHub…</div>';
+  apiGet('/api/extensions/skills/search?keyword='+encodeURIComponent(kw)).then(function(res){
+    if(res && res.ok && res.items){
+      _skillMarketItems=res.items.map(function(it){
+        return {
+          id: it.slug, name: it.name, icon: '', desc: it.description,
+          slug: it.slug, namespace: it.namespace, guide_url: it.webUrl,
+          cred_hint: '', official: false,
+          installed: _installedSkillNames.indexOf(it.slug)>=0,
+          _search: true, downloads: it.downloads, stars: it.stars
+        };
+      });
+      renderSkillMarketGrid();
+    } else {
+      if(grid) grid.innerHTML='<div class="empty-state">搜索失败：'+esc((res&&res.error)||'未知错误')+'</div>';
+    }
+  });
+}
+var _skillCfgCurrent = null; // { kind:'native'|'local', index, name }
+var _toolCfgCurrent = null;  // 当前正在配置的工具 id（替代放在 body 内会被 innerHTML 覆盖的 hidden input）
+function openSkillConfig(name){
+  var list=_skillNative||[]; var s=null;
+  for(var i=0;i<list.length;i++){ if(list[i].name===name){ s=list[i]; _skillCfgCurrent={kind:'native',index:i,name:name}; break; } }
+  if(!s){ toast('未找到该技能'); return; }
+  renderSkillConfigModal(s);
+}
+function openSkillConfigLocal(i){
+  var s=_skillLocal[i]; if(!s) return;
+  _skillCfgCurrent={kind:'local',index:i,name:s.name};
+  renderSkillConfigModal(s);
+}
+function closeSkillConfigModal(){ document.getElementById('skillConfigModal').style.display='none'; _skillCfgCurrent=null; }
+function renderSkillConfigModal(s){
+  var title = document.getElementById('skillCfgTitle');
+  var body = document.getElementById('skillCfgBody');
+  var setupBtn = document.getElementById('skillCfgSetupBtn');
+  if(title) title.textContent = (s.name||'未命名') + ' 配置';
+  if(!body) return;
+  if(!_skillCfgCurrent) _skillCfgCurrent = { kind:'native', name:s.name };
+  _skillCfgCurrent.name = s.name;
+  var saved = (_cfg.extensions.skills_config && _cfg.extensions.skills_config[s.name]) || {};
+  var icon = skillIcon(s);
+  var on = !!(s.enabled || s.status==='enabled');
+  _skillCfgCurrent.enabled = on;
+  var html = '<div class="setting-row" style="margin-bottom:14px"><div style="display:flex;align-items:center;gap:12px"><div class="cfg-icon-lg">'+icon+'</div><div><div style="font-weight:600">'+esc(s.name||'')+'</div><div class="status '+(on?'on':'off')+'">'+(on?'已启用':'未启用')+'</div></div></div><div class="toggle '+(on?'on':'')+'" onclick="toggleSkillCfgEnabled()"></div></div>';
+  var cliOn = !!saved.cli_disabled;
+  html += '<div class="setting-row" style="margin-bottom:14px"><div><div class="label">Disabled for CLI</div><div class="desc">在 CLI 中禁用此技能</div></div><div class="toggle '+(cliOn?'on':'')+'" id="skillCfgCliToggle" onclick="toggleSkillCfgCli()"></div></div>';
+  if(s.description||s.desc) html += '<p class="conn-desc">'+esc(s.description||s.desc)+'</p>';
+  // 工具列表
+  if(Array.isArray(s.tools) && s.tools.length){
+    html += '<div class="conn-section-title">工具</div><div class="conn-tools">'+s.tools.map(function(t){ var n=typeof t==='string'?t:(t.name||''); return '<code>'+esc(n)+'</code>'; }).join(' ')+'</div>';
+  }
+  // 配置字段（优先用后端给出的 config/schema）
+  var cfgFields = s.config_fields || s.configFields || (s.config && s.config.fields) || (s.schema && s.schema.fields);
+  var providers = s.providers || s.config_options || (s.config && s.config.providers);
+  var savedConfig = saved.config || {};
+  if(providers && providers.length){
+    html += '<div class="conn-section-title">选择提供商</div>';
+    providers.forEach(function(p, idx){
+      var sel = (_skillCfgCurrent.providerIdx===idx);
+      var pid = 'skillProv_'+idx;
+      html += '<div class="skill-config-provider'+(sel?' selected':'')+'">'+
+        '<div class="prov-head"><div><span class="prov-name">'+esc(p.name||p.label||('方案 '+(idx+1)))+'</span> '+(p.badge?'<span class="prov-badge">'+esc(p.badge)+'</span>':'')+'</div><button class="action" style="width:auto;padding:5px 12px" onclick="selectSkillProvider('+idx+')">'+(sel?'已选':'Select')+'</button></div>'+
+        (p.description||p.desc?'<div class="prov-desc">'+esc(p.description||p.desc)+'</div>':'')+
+        '<div id="'+pid+'"></div></div>';
+    });
+  } else if(cfgFields && cfgFields.length){
+    html += '<div class="conn-section-title">配置参数</div>'+renderSkillConfigFields(cfgFields, savedConfig);
+  } else {
+    html += '<div class="conn-hint">该技能未暴露可配置参数，或参数需通过 Hermes 仪表盘/CLI 配置。</div>';
+  }
+  body.innerHTML = html;
+  if(setupBtn) setupBtn.style.display = (s.needs_setup || s.setup_command) ? 'inline-block' : 'none';
+  var scm = document.getElementById('skillConfigModal');
+  if (scm && scm.parentElement !== document.body) document.body.appendChild(scm);
+  document.getElementById('skillConfigModal').style.display='flex';
+}
+function renderSkillConfigFields(fields, values){
+  return fields.map(function(f, i){
+    var key = f.key || f.name || ('field_'+i);
+    var val = esc(values[key] || f.default || '');
+    var ph = esc(f.placeholder || f.label || '');
+    return '<div class="skill-config-field"><label>'+esc(f.label||key)+(f.required?' *':'')+'</label><input type="'+(f.type==='password'?'password':'text')+'" data-key="'+esc(key)+'" value="'+val+'" placeholder="'+ph+'"></div>';
+  }).join('');
+}
+function toggleSkillCfgEnabled(){
+  if(!_skillCfgCurrent) return;
+  if(_skillCfgCurrent.kind==='local'){
+    _skillCfgCurrent.enabled = !_skillCfgCurrent.enabled;
+    var t=document.querySelector('#skillConfigModal .toggle');
+    if(t) t.classList.toggle('on', _skillCfgCurrent.enabled);
+    return;
+  }
+  if(_skillCfgCurrent.kind==='native'){ toggleNativeSkill(_skillCfgCurrent.name); renderSkillConfigModal(_skillNative[_skillCfgCurrent.index]); }
+}
+function toggleSkillCfgCli(){
+  var t=document.getElementById('skillCfgCliToggle'); if(t) t.classList.toggle('on');
+}
+function selectSkillProvider(idx){ if(!_skillCfgCurrent) return; _skillCfgCurrent.providerIdx = idx; renderSkillConfigModal(_skillCfgCurrent.kind==='native'?_skillNative[_skillCfgCurrent.index]:_skillLocal[_skillCfgCurrent.index]); }
+function saveSkillConfig(){
+  if(!_skillCfgCurrent){ closeSkillConfigModal(); return; }
+  var values={}; var inputs=document.querySelectorAll('#skillCfgBody input[data-key]');
+  for(var i=0;i<inputs.length;i++){ values[inputs[i].getAttribute('data-key')] = inputs[i].value; }
+  var cliDisabled = document.getElementById('skillCfgCliToggle') && document.getElementById('skillCfgCliToggle').classList.contains('on');
+  var enabled = (_skillCfgCurrent.kind!=='local') ? (_skillNative && _skillNative[_skillCfgCurrent.index] ? !!_skillNative[_skillCfgCurrent.index].enabled : true) : !!_skillCfgCurrent.enabled;
+  var payload = { name:_skillCfgCurrent.name, config:values, cli_disabled:cliDisabled, enabled:enabled };
+  if(_skillCfgCurrent.providerIdx!=null) payload.provider_idx=_skillCfgCurrent.providerIdx;
+  // 本地落点（无论仪表盘是否成功都先记录，保证可持久化，决策 4）
+  if(!_cfg.extensions.skills_config) _cfg.extensions.skills_config={};
+  _cfg.extensions.skills_config[_skillCfgCurrent.name] = { config:values, cli_disabled:cliDisabled, enabled:enabled, provider_idx:_skillCfgCurrent.providerIdx };
+  fetch(apiUrl('/proxy/dashboard/api/skills/config'), { method:'PUT', headers:{'Content-Type':'application/json','X-Monitor-Token':monitorToken||''}, body:JSON.stringify(payload) })
+    .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+    .then(function(){ toast('技能配置已保存（仪表盘）'); closeSkillConfigModal(); renderSkills(_skillCfgCurrent.kind==='native'?'native':'local'); })
+    .catch(function(){
+      saveConfig();
+      toast('已保存到本地配置（若仪表盘支持在线配置，请确保 dashboard 已启动）');
+      closeSkillConfigModal();
+    });
+}
+function runSkillSetup(){
+  if(!_skillCfgCurrent) return;
+  var s = _skillCfgCurrent.kind==='native' ? _skillNative[_skillCfgCurrent.index] : _skillLocal[_skillCfgCurrent.index];
+  if(!s || !s.setup_command){ toast('该技能无需安装'); return; }
+  toast('正在执行安装：'+s.setup_command);
+  fetch(apiUrl('/proxy/dashboard/api/skills/setup'), { method:'POST', headers:{'Content-Type':'application/json','X-Monitor-Token':monitorToken||''}, body:JSON.stringify({name:s.name, command:s.setup_command}) })
+    .then(function(r){ return r.json(); }).then(function(d){ toast(d.message||'安装完成'); }).catch(function(){ toast('安装请求失败（请检查 dashboard 是否启动）'); });
+}
+function renderMemory(){
+  setToggle('memToggle', !!(_cfg.extensions.memory && _cfg.extensions.memory.enabled));
+  var r=document.getElementById('memLimit'); if(r && _cfg.extensions.memory) r.value=_cfg.extensions.memory.char_limit;
+  var v=document.getElementById('memLimitVal'); if(v && _cfg.extensions.memory) v.textContent=_cfg.extensions.memory.char_limit;
+}
+function toggleMemory(){
+  if(!_cfg.extensions.memory) _cfg.extensions.memory={enabled:true,char_limit:2200};
+  _cfg.extensions.memory.enabled = !_cfg.extensions.memory.enabled;
+  renderMemory(); saveConfig();
+}
+function updateMemLimit(val){
+  if(!_cfg.extensions.memory) _cfg.extensions.memory={enabled:true,char_limit:2200};
+  _cfg.extensions.memory.char_limit = parseInt(val)||2200;
+  var v=document.getElementById('memLimitVal'); if(v) v.textContent=val;
+  saveConfig();
+}
+function renderWorkflow(){
+  var wf = _cfg.extensions.workflow;
+  if(!wf || typeof wf!=='object') wf=_cfg.extensions.workflow={enabled:false,active:false,key:'',name:'',concurrency:2,category:'',inputs:[],steps:[]};
+  var on = !!(wf.enabled || (wf.steps && wf.steps.length));
+  setToggle('wfToggle', on);
+  var n=document.getElementById('wfNameInline'); if(n) n.value=wf.name||'';
+  var c=document.getElementById('wfConcInline'); if(c) c.value=(wf.concurrency||2);
+  renderWfSteps('Inline','wfStepsInline');
+  renderWorkflowPresets();
+}
+function renderWfSteps(token, cid){
+  var el=document.getElementById(cid); if(!el) return;
+  var wf=_cfg.extensions.workflow||{steps:[]};
+  var steps=wf.steps||[];
+  if(!steps.length){ el.innerHTML='<div class="conn-hint">暂无步骤，点击「+ 添加步骤」开始编排。</div>'; return; }
+  el.innerHTML = steps.map(function(s,i){
+    var depChecks = steps.map(function(o,j){
+      if(j===i) return '';
+      var checked=(s.depends_on||[]).indexOf(o.id)>=0 ? 'checked':'';
+      return '<label class="wf-dep"><input type="checkbox" id="wfStep_'+token+'_'+i+'_dep_'+j+'" '+checked+'> '+esc(o.id||('步骤'+j))+'</label>';
+    }).join('');
+    return '<div class="wf-step-card">'+
+      '<div class="wf-step-head"><span>步骤 '+(i+1)+'</span><button class="action sm danger" onclick="delWfStep('+i+',\''+token+'\')">删除</button></div>'+
+      '<div class="field"><label>步骤 ID</label><input id="wfStep_'+token+'_'+i+'_id" value="'+esc(s.id||'')+'"></div>'+
+      '<div class="field"><label>专家（agency id）</label><input id="wfStep_'+token+'_'+i+'_expert" value="'+esc(s.expert||s.role||'')+'" placeholder="agency_xxx"></div>'+
+      '<div class="field"><label>任务（支持 {{变量}}）</label><textarea id="wfStep_'+token+'_'+i+'_task" rows="2">'+esc(s.task||'')+'</textarea></div>'+
+      '<div class="field"><label>输出变量名</label><input id="wfStep_'+token+'_'+i+'_output" value="'+esc(s.output||'')+'"></div>'+
+      (depChecks?'<div class="field"><label>依赖步骤</label><div class="wf-dep-list">'+depChecks+'</div></div>':'')+
+      '<button class="action" style="margin-top:6px" onclick="saveWfStep('+i+',\''+token+'\')">保存步骤</button>'+
+      '</div>';
+  }).join('');
+}
+function refreshWfEditors(){
+  var mOpen = document.getElementById('workflowEditorModal') && document.getElementById('workflowEditorModal').style.display!=='none';
+  renderWfSteps('Inline','wfStepsInline');
+  if(mOpen) renderWfSteps('Modal','wfStepsModal');
+}
+function openWorkflowEditor(){
+  var wf=_cfg.extensions.workflow; if(!wf||typeof wf!=='object') wf=_cfg.extensions.workflow={enabled:false,active:false,key:'',name:'',concurrency:2,inputs:[],steps:[]};
+  var n=document.getElementById('wfNameModal'); if(n) n.value=wf.name||'';
+  var c=document.getElementById('wfConcModal'); if(c) c.value=(wf.concurrency||2);
+  renderWfSteps('Modal','wfStepsModal');
+  var wm=document.getElementById('workflowEditorModal');
+  if(wm && wm.parentElement !== document.body) document.body.appendChild(wm);
+  document.getElementById('workflowEditorModal').style.display='flex';
+}
+function closeWorkflowEditor(){ var m=document.getElementById('workflowEditorModal'); if(m) m.style.display='none'; }
+function syncWfMetaFrom(token){
+  var wf=_cfg.extensions.workflow; if(!wf||typeof wf!=='object') return;
+  var n=document.getElementById('wfName'+token); if(n) wf.name=n.value;
+  var c=document.getElementById('wfConc'+token); if(c) wf.concurrency=parseInt(c.value)||2;
+}
+function addWfStep(token){
+  if(!_cfg.extensions.workflow || typeof _cfg.extensions.workflow!=='object') _cfg.extensions.workflow={enabled:false,active:false,key:'',name:'',concurrency:2,inputs:[],steps:[]};
+  var wf=_cfg.extensions.workflow;
+  if(!wf.steps) wf.steps=[];
+  wf.steps.push(JSON.parse(JSON.stringify(PV.wfStepDefaults)));
+  saveConfig(); refreshWfEditors();
+}
+function saveWfStep(i, token){
+  var wf=_cfg.extensions.workflow; if(!wf) return;
+  var s=wf.steps[i]; if(!s) return;
+  s.id=document.getElementById('wfStep_'+token+'_'+i+'_id').value.trim()||('step_'+i);
+  s.expert=document.getElementById('wfStep_'+token+'_'+i+'_expert').value.trim();
+  s.task=document.getElementById('wfStep_'+token+'_'+i+'_task').value;
+  s.output=document.getElementById('wfStep_'+token+'_'+i+'_output').value.trim();
+  var deps=[];
+  wf.steps.forEach(function(o,j){ if(j!==i){ var cb=document.getElementById('wfStep_'+token+'_'+i+'_dep_'+j); if(cb&&cb.checked) deps.push(o.id); } });
+  s.depends_on=deps;
+  saveConfig(); toast('已保存步骤：'+s.id); refreshWfEditors();
+}
+function delWfStep(i, token){
+  var wf=_cfg.extensions.workflow; if(!wf) return;
+  wf.steps.splice(i,1);
+  saveConfig(); refreshWfEditors();
+}
+function setCurrentWorkflow(){
+  var wf=_cfg.extensions.workflow; if(!wf||typeof wf!=='object') wf=_cfg.extensions.workflow={enabled:false,active:false,key:'',name:'',concurrency:2,inputs:[],steps:[]};
+  syncWfMetaFrom('Inline'); syncWfMetaFrom('Modal');
+  wf.enabled=true; wf.active=true;
+  if(!_cfg.extensions.toolsets) _cfg.extensions.toolsets={};
+  _cfg.extensions.toolsets.delegation=true;
+  saveConfig(); closeWorkflowEditor(); renderWorkflow(); toast('已设为当前工作流');
+}
+function clearWorkflow(){
+  _cfg.extensions.workflow = { enabled:false, active:false, key:'', name:'', concurrency:2, category:'', inputs:[], steps:[] };
+  saveConfig(); renderWorkflow(); renderWorkflowBar(); toast('已清除工作流');
+}
+var _wfCat='';
+function renderWorkflowPresets(){
+  var grid=document.getElementById('wfGrid'); if(!grid) return;
+  var presets = window.AO_WORKFLOW_PRESETS || [];
+  var catLabels={
+    '':'全部','data':'数据','department-collab':'部门协作','design':'设计','dev':'开发',
+    'English':'英文','hr':'人力资源','legal':'法务','marketing':'营销','ops':'运维',
+    'strategy':'战略','一人公司':'一人公司',
+    'superpowers':'Superpowers 方法论','中国特色':'中国特色场景'
+  };
+  // 常见英文工作流名 → 中文
+  var nameLabels={
+    'Business Plan':'商业计划书','Code Architecture Review':'代码架构审查',
+    'Competitor Analysis Report':'竞品分析报告','Customer Discovery':'客户调研',
+    'Customer Persona':'用户画像','Daily Standup':'每日站会','Data Audit':'数据审计',
+    'Data Migration':'数据迁移','Decision Memo':'决策备忘','Design Review':'设计评审',
+    'Documentation Sprint':'文档冲刺','Feature Spec':'功能规格说明书',
+    'Go-to-Market Plan':'上市推广方案','Hiring Pipeline':'招聘流程',
+    'Incident Response':'事故应急响应','Launch Checklist':'上线检查清单',
+    'Marketing Campaign':'营销活动','Onboarding Plan':'入职培训计划',
+    'OKR Setting':'OKR 制定','Performance Review':'绩效评估',
+    'Postmortem':'事后复盘','Pricing Experiment':'定价实验',
+    'Quarterly Planning':'季度规划','Release Notes':'发布说明',
+    'Roadmap':'路线图','Sprint Planning':'Sprint 计划',
+    'Stakeholder Update':'利益相关方同步','Strategy Memo':'战略备忘',
+    'User Interview Synthesis':'用户访谈汇总','一人公司:全灵大会':'一人公司:全灵大会'
+  };
+  var cats=[{id:'',label:catLabels['']||'全部'}];
+  presets.forEach(function(p){ if(p.category && !cats.some(function(c){return c.id===p.category;})) cats.push({id:p.category,label:catLabels[p.category]||p.category}); });
+  var catSel=document.getElementById('wfCats');
+  if(catSel && catSel.tagName==='SELECT'){
+    catSel.innerHTML = cats.map(function(c){ return '<option value="'+esc(c.id)+'"'+(c.id===_wfCat?' selected':'')+'>'+esc(c.label)+'</option>'; }).join('');
+  }
+  var appliedKey = String((_cfg.extensions.workflow && _cfg.extensions.workflow.key) || '').replace(/\\/g,'/');
+  grid.innerHTML = presets.filter(function(p){ return !_wfCat || p.category===_wfCat; }).map(function(p){
+    var applied = (String(p.key).replace(/\\/g,'/')===appliedKey);
+    var catLabel = catLabels[p.category]||p.category||'通用';
+    var nameZh = nameLabels[p.name] || p.name;
+    return '<div class="ext-card'+(applied?' active':'')+'">'+
+      '<div class="top"><div class="icon">🎛️</div><div><div class="name">'+esc(nameZh)+'</div><div class="status">'+esc(catLabel)+(applied?' · 已应用':'')+'</div></div></div>'+
+      '<div class="conn-desc">'+esc(p.description||'')+'</div>'+
+      '<button class="action" data-wfkey="'+esc(p.key)+'" onclick="applyWorkflow(this.getAttribute(\'data-wfkey\'))">'+(applied?'重新应用':'应用')+'</button></div>';
+  }).join('') || '<div class="empty-state">暂无工作流模板。</div>';
+}
+function setWfCat(cat){ _wfCat=cat; renderWorkflowPresets(); }
+function applyWorkflow(key){
+  var nk=String(key||'').replace(/\\/g,'/');
+  var p=(window.AO_WORKFLOW_PRESETS||[]).find(function(x){ return String(x.key).replace(/\\/g,'/')===nk; });
+  if(!p){ toast('未找到工作流模板','error'); return; }
+  if(!p.steps || !p.steps.length){ toast('该工作流模板无步骤，不可用','error'); return; }
+  // 将不存在的专家 ID 映射为 auto（自动分配）
+  var validSteps = p.steps.map(function(s){
+    var step = Object.assign({}, s);
+    if(step.expert && step.expert !== 'auto'){
+      var exists = (_profiles||[]).some(function(pr){ return pr.id===step.expert; });
+      if(!exists) step.expert = 'auto';
+    }
+    return step;
+  });
+  _cfg.extensions.workflow = {
+    key:p.key, name:p.name, description:p.description,
+    enabled:true, active:true, concurrency:(p.concurrency||2), category:(p.category||''),
+    inputs:(p.inputs||[]), steps:validSteps
+  };
+  if(!_cfg.extensions.toolsets) _cfg.extensions.toolsets={};
+  _cfg.extensions.toolsets.delegation=true;
+  saveConfig(); renderWorkflow(); renderWorkflowBar(); toast('✅ 已应用工作流：'+p.name+'（发送消息即触发）');
+}
+function toggleWorkflow(){
+  var wf=_cfg.extensions.workflow;
+  if(!wf || typeof wf!=='object') wf=_cfg.extensions.workflow={ name:'我的工作流', concurrency:2, steps:[] };
+  wf.enabled = !wf.enabled;
+  _cfg.extensions.workflow = wf;
+  renderWorkflow(); saveConfig();
+}
+/* persona / profiles 系统（与 Hermes 官方 profiles 完全对齐） */
+/* 参考: hermesagent.org.cn/docs/user-guide/profiles */
+/* 每个 profile = 完全隔离的 Hermes 环境（独立 config.yaml、.env、SOUL.md、记忆、会话、技能、网关） */
+var _profiles = [];  // 从后端 /api/profiles 拉取
+var _profilesLoaded = false;
+function allPersonas(){
+  // 兼容层：将 profiles 转换为旧版 persona 格式（供 chat 系统使用）
+  var out={};
+  _profiles.forEach(function(p){ out[p.id] = { emoji:p.emoji, label:p.name, prompt:p.prompt }; });
+  if(!_profiles.length){
+    out['default']={emoji:'🤖',label:'默认助手',prompt:'你是用户的默认主力助手。'};
+  }
+  return out;
+}
+function fetchProfiles(cb){
+  apiGet('/api/profiles').then(function(res){
+    if(res && res.ok && res.profiles){ _profiles = res.profiles; _profilesLoaded = true; }
+    if(cb) cb();
+  }).catch(function(){ if(cb) cb(); });
+}
+// ── 预设智能体模板（内置，一键套用激活）────────────────────────────────────
+var PRESET_AGENT_TEMPLATES = [
+  { id:'fnos_operator', emoji:'🖥️', name:'飞牛操作员', desc:'NAS 运维专家：TRIM CLI、应用中心、存储/网络、容器、日志与备份恢复', prompt:'你是一位资深的飞牛 fnOS NAS 运维专家。精通 TRIM CLI（应用管理/日志/存储/网络/系统）、应用中心全流程（安装、升级、卸载、热补丁、回调脚本）、存储卷与共享文件夹、Docker 容器、系统日志排查、备份与恢复。回答时优先给出可直接执行的命令与步骤，注重数据安全并主动提示操作风险，遇到不确定的配置先说明风险再给方案。' },
+  { id:'coder', emoji:'💻', name:'程序员', desc:'全栈工程师：可运行代码优先，注重安全与可维护性', prompt:'你是一位资深全栈工程师。优先给出可直接运行的代码与命令，注重安全性、可维护性与生产实践；遇到模糊需求先给出最小可行方案再迭代。' },
+  { id:'researcher', emoji:'🔬', name:'研究员', desc:'严谨调研：基于证据、引用来源，区分事实与推测', prompt:'你是一位严谨的研究员。回答须基于证据、引用来源，并明确区分事实、推测与不确定信息；避免臆断。' },
+  { id:'writer', emoji:'✍️', name:'写作助手', desc:'专业写作：结构化中文表达，按场景调整语气篇幅', prompt:'你是一位专业的写作助手。擅长结构化、清晰、有感染力的中文表达，依据场景调整语气与篇幅。' },
+  { id:'analyst', emoji:'📊', name:'数据分析师', desc:'数据洞察：量化结论优先，给出可执行建议', prompt:'你是一位数据分析师。善于从数据 / 文件中提取洞察，优先给出量化结论与可执行建议。' }
+];
+function renderPresetAgents(){
+  var el=document.getElementById('presetAgentGrid'); if(!el) return;
+  el.innerHTML = PRESET_AGENT_TEMPLATES.map(function(t){
+    var exists = _profiles.some(function(p){ return p.id===t.id; });
+    var active = _profiles.some(function(p){ return p.id===t.id && (p.is_active || _persona===p.id); });
+    // 卡片用纵向 flex：描述区 flex:1 撑开、按钮区 margin-top:auto 贴底，保证各卡片按钮垂直位置一致
+    return '<div class="ext-card" style="border:1px solid var(--border);display:flex;flex-direction:column">'+
+      '<div class="top"><div class="icon" style="font-size:22px">'+t.emoji+'</div><div><div class="name">'+esc(t.name)+'</div><div class="status '+(active?'on':'off')+'">'+(exists?(active?'● 使用中':'已创建'):'未创建')+'</div></div></div>'+
+      '<div class="conn-desc" style="font-size:11px;opacity:.8;flex:1">'+esc(t.desc)+'</div>'+
+      '<div style="margin-top:10px"><button class="action sm primary" onclick="applyPresetAgent(\''+t.id+'\')">'+(active?'使用中':(exists?'一键激活':'一键创建并激活'))+'</button></div>'+
+      '</div>';
+  }).join('');
+}
+function applyPresetAgent(id){
+  var t = PRESET_AGENT_TEMPLATES.find(function(x){ return x.id===id; });
+  if(!t) return;
+  var existing = _profiles.find(function(p){ return p.id===t.id; });
+  if(existing){
+    selectPersona(t.id);
+    toast('已激活模板 Agent：'+t.name);
+    return;
+  }
+  toast('正在创建 Agent：'+t.name+'…');
+  apiPost('/api/profiles', { id:t.id, name:t.name, emoji:t.emoji, prompt:t.prompt }).then(function(r){
+    if(r && r.ok){
+      fetchProfiles(function(){ selectPersona(t.id); renderPresetAgents(); });
+      toast('模板已创建并激活：'+t.name+'（独立环境已就绪）');
+    } else toast('创建失败：'+(r&&r.error||'未知'));
+  }).catch(function(){ toast('创建失败：'+'网络错误'); });
+}
+/* ── 专家页（独立页，两页签：我的 / 内置，专家市场已并入内置）────────── */
+var EXPERT_SCENE={ mine:'all', builtin:'all' };
+var BUILTIN_EXPERTS=null;
+function _jsStr(s){ return String(s==null?'':s).replace(/'/g,"\\'"); }
+function _expertScene(e){ return e.scene||'通用'; }
+function _builtinExperts(){
+  if(BUILTIN_EXPERTS) return BUILTIN_EXPERTS;
+  // 内置专家：预设智能体模板（后续追加 Octop 转换的飞牛专家）
+  BUILTIN_EXPERTS = PRESET_AGENT_TEMPLATES.map(function(t){
+    return { id:t.id, emoji:t.emoji, name:t.name, desc:t.desc, prompt:t.prompt, scene:'通用', skills:[], quick_prompts:['你擅长什么？','帮我完成一项任务'] };
+  });
+  return BUILTIN_EXPERTS;
+}
+function expSwitchTab(el, key){
+  document.querySelectorAll('#expTabs .ch-filter').forEach(function(t){ t.classList.remove('active'); });
+  el.classList.add('active');
+  document.querySelectorAll('.exp-pane').forEach(function(p){ p.classList.remove('active'); });
+  var pane=document.getElementById('exp-'+key); if(pane) pane.classList.add('active');
+  if(key==='mine') renderMineExperts();
+  if(key==='builtin') renderBuiltinExperts();
+}
+function renderExpertsPage(){
+  fetchProfiles(function(){ renderMineExperts(); renderBuiltinExperts(); });
+}
+function refreshExperts(){
+  window.__builtinLoaded=false;
+  fetchProfiles(function(){ renderMineExperts(); renderBuiltinExperts(); });
+  toast('专家列表已刷新');
+}
+function openExpertCreate(){
+  var t=document.querySelector('#expTabs .ch-filter[onclick*="builtin"]'); if(t) expSwitchTab(t,'builtin');
+  toast('从下方「内置专家」卡片一键创建即可生成独立 Agent');
+}
+function _renderExpertList(key, fullList, opts){
+  opts=opts||{};
+  var gridId={mine:'expMineGrid',builtin:'expBuiltinGrid'}[key];
+  var scenesEl=document.getElementById({mine:'expMineScenes',builtin:'expBuiltinScenes'}[key]);
+  var searchEl=opts.searchId?document.getElementById(opts.searchId):null;
+  var grid=document.getElementById(gridId); if(!grid) return;
+  // 场景筛选 chips
+  var scenes={}; fullList.forEach(function(e){ var s=_expertScene(e); scenes[s]=(scenes[s]||0)+1; });
+  var chipsHtml='<button class="exp-scene-chip'+(EXPERT_SCENE[key]==='all'?' active':'')+'" onclick="setExpScene(\''+key+'\',\'all\')">全部</button>';
+  Object.keys(scenes).forEach(function(s){
+    chipsHtml+='<button class="exp-scene-chip'+(EXPERT_SCENE[key]===s?' active':'')+'" onclick="setExpScene(\''+key+'\',\''+_jsStr(s)+'\')">'+esc(s)+'</button>';
+  });
+  if(scenesEl) scenesEl.innerHTML=chipsHtml;
+  // 搜索 + 场景过滤
+  var q=(searchEl?searchEl.value:'').trim().toLowerCase();
+  var list=fullList.filter(function(e){
+    if(EXPERT_SCENE[key]!=='all' && _expertScene(e)!==EXPERT_SCENE[key]) return false;
+    if(!q) return true;
+    var hay=(e.name||'')+' '+(e.desc||e.description||'')+' '+(e.prompt||'')+' '+(e.id||'');
+    return hay.toLowerCase().indexOf(q)>=0;
+  });
+  if(!list.length){ grid.innerHTML='<div class="empty-state">'+(fullList.length?'没有匹配的专家':'暂无数据')+'</div>'; return; }
+  var kind=opts.kind||key;
+  grid.innerHTML=list.map(function(e){ return _expertCardHtml(e,kind); }).join('');
+}
+function _expertCardHtml(e, kind){
+  if(kind==='mine'){
+    var p=e, active=p.is_active||(_persona===p.id);
+    var modelTag=p.model?'<span class="exp-badge">'+esc(p.model)+'</span>':'';
+    var skillTag=(p.skills&&p.skills.length)?'<span class="exp-badge">🛠 '+p.skills.length+' 技能</span>':'';
+    return '<div class="exp-card'+(active?' active':'')+'">'+
+      '<div class="exp-card-head"><div class="exp-card-avatar">'+(p.emoji||'🤖')+'</div>'+
+      '<div><div class="exp-card-title">'+esc(p.name||p.id)+'</div>'+
+      '<div class="exp-card-scene">'+esc(_expertScene(p))+' · <span class="exp-status '+(active?'on':'off')+'">'+(active?'● 使用中':'未使用')+'</span></div></div></div>'+
+      '<div class="exp-card-desc">'+esc((p.prompt||'').slice(0,120))+'</div>'+
+      '<div class="exp-card-foot"><div style="display:flex;gap:6px;flex-wrap:wrap">'+modelTag+skillTag+'</div>'+
+      '<div class="exp-card-actions">'+
+        '<button class="action sm" onclick="openPersonaModal(\''+_jsStr(p.id)+'\')">编辑</button>'+
+        '<button class="action sm primary" onclick="selectPersona(\''+_jsStr(p.id)+'\')">'+(active?'使用中':'使用')+'</button>'+
+      '</div></div></div>';
+  }
+  var exists=_profiles.some(function(p){ return p.id===e.id; });
+  var active=exists && _profiles.some(function(p){ return p.id===e.id && (p.is_active||_persona===p.id); });
+  if(kind==='builtin'){
+    var sc=e.skill_count!=null?e.skill_count:(e.skills?e.skills.length:0);
+    return '<div class="exp-card'+(active?' active':'')+'">'+
+      '<div class="exp-card-head"><div class="exp-card-avatar">'+(e.emoji||'🧠')+'</div>'+
+      '<div><div class="exp-card-title">'+esc(e.name)+'</div>'+
+      '<div class="exp-card-scene">'+esc(_expertScene(e))+' · <span class="exp-status '+(active?'on':'off')+'">'+(active?'● 使用中':(exists?'已创建':'未创建'))+'</span></div></div></div>'+
+      '<div class="exp-card-desc">'+esc(e.desc||'')+'</div>'+
+      '<div class="exp-card-foot">'+
+        ((e.skills&&e.skills.length)?'<span class="exp-badge">🛠 '+sc+' 技能</span>':'<span></span>')+
+        (e.source?'<span class="exp-badge">'+esc(e.source)+'</span>':'')+
+        '<div class="exp-card-actions"><button class="action sm primary" onclick="openExpertCreateForm(\''+_jsStr(e.slug||e.id)+'\')">'+(active?'使用中':(exists?'激活':'以此创建'))+'</button></div></div></div>';
+  }
+  return '<div class="empty-state">未知专家类型</div>';
+}
+function renderMineExperts(){
+  var grid=document.getElementById('expMineGrid'); if(!grid) return;
+  if(!_profilesLoaded){ grid.innerHTML='<div class="empty-state">加载中…</div>'; return; }
+  _renderExpertList('mine', _profiles, { kind:'mine', searchId:'expMineSearch' });
+}
+function renderBuiltinExperts(){
+  var grid=document.getElementById('expBuiltinGrid'); if(!grid) return;
+  if(!_profilesLoaded){ fetchProfiles(function(){ renderBuiltinExperts(); }); grid.innerHTML='<div class="empty-state">加载中…</div>'; return; }
+  if(!window.__builtinLoaded){
+    grid.innerHTML='<div class="empty-state">加载中…</div>';
+    apiGet('/api/experts?scope=builtin').then(function(r){
+      window.__builtinLoaded=true;
+      window.BUILTIN_EXPERTS_ARR=(r&&Array.isArray(r.experts))?r.experts:_builtinExperts();
+      _renderExpertList('builtin', window.BUILTIN_EXPERTS_ARR, { kind:'builtin', searchId:'expBuiltinSearch' });
+    }).catch(function(){
+      window.__builtinLoaded=true;
+      window.BUILTIN_EXPERTS_ARR=_builtinExperts();
+      _renderExpertList('builtin', window.BUILTIN_EXPERTS_ARR, { kind:'builtin', searchId:'expBuiltinSearch' });
+    });
+    return;
+  }
+  _renderExpertList('builtin', window.BUILTIN_EXPERTS_ARR||_builtinExperts(), { kind:'builtin', searchId:'expBuiltinSearch' });
+}
+function openExpertCreateForm(slug){
+  var e=(window.BUILTIN_EXPERTS_ARR||_builtinExperts()).find(function(x){ return (x.id||x.slug)===slug; });
+  if(!e){ toast('未找到该专家模板'); return; }
+  var pid=e.slug||e.id;
+  var existing=_profiles.find(function(p){ return p.id===pid; });
+  if(existing){ selectPersona(existing.id); toast('已激活专家：'+(e.name||existing.name||existing.id)); return; }
+  // Octop 风格：以模板预填创建表单，可调整名称/头像/场景/技能/快捷提问后再创建
+  openPersonaModal('', {
+    name: e.name||'',
+    emoji: e.emoji||'🤖',
+    prompt: e.prompt||'',
+    scene: e.scene||'通用',
+    skills: Array.isArray(e.skills)?e.skills.slice():[],
+    quick_prompts: Array.isArray(e.quick_prompts)?e.quick_prompts.slice():[]
+  });
+  toast('已载入「'+(e.name||slug)+'」模板，调整后点击创建即可生成并激活');
+}
+function renderPersonas(){
+  var el=document.getElementById('personaGrid'); if(!el) return;
+  if(!_profilesLoaded){ fetchProfiles(function(){ renderPersonas(); }); el.innerHTML='<div class="empty-state">加载中…</div>'; return; }
+  renderPresetAgents();
+  el.innerHTML = _profiles.map(function(p){
+    var active = p.is_active || (_persona===p.id);
+    var canDelete = !p.is_default;
+    var modelTag = p.model ? '<span class="badge" style="font-size:10px;background:var(--accent);color:#fff;margin-left:6px;padding:1px 5px;border-radius:3px">'+esc(p.model)+'</span>' : '';
+    var skillsCount = (p.skills && p.skills.length) ? p.skills.length : 0;
+    var infoTags = '<div style="display:flex;gap:6px;margin-top:4px;flex-wrap:wrap">';
+    if(p.is_default) infoTags += '<span style="font-size:10px;padding:1px 5px;border-radius:3px;background:var(--border);color:var(--muted)">主目录</span>';
+    infoTags += '<span style="font-size:10px;padding:1px 5px;border-radius:3px;background:var(--border);color:var(--muted);cursor:pointer" title="点击配置该 Agent 的专属 API 密钥" onclick="event.stopPropagation();openPersonaEnvEditor(\''+esc(p.id)+'\',\''+esc(p.name||p.id)+'\')">'+(p.has_api_key?'✅ API已配置':'⚠️ 未配置API')+'</span>';
+    if(skillsCount) infoTags += '<span style="font-size:10px;padding:1px 5px;border-radius:3px;background:var(--border);color:var(--muted)">🛠 '+skillsCount+' 技能</span>';
+    infoTags += '</div>';
+    return '<div class="ext-card" style="border:'+(active?'1px solid var(--accent)':'1px solid var(--border)')+'">'+
+      '<div class="top"><div class="icon" style="font-size:24px">'+(p.emoji||'🤖')+'</div><div><div class="name">'+esc(p.name||p.id)+modelTag+'</div><div class="status '+(active?'on':'off')+'">'+(active?'● 当前活跃 Agent':'点击切换')+'</div></div></div>'+
+      '<div class="conn-desc" style="font-size:11px;opacity:.8">'+esc((p.prompt||'').slice(0,80))+'</div>'+
+      infoTags+
+      '<div class="persona-actions" style="margin-top:8px">'+
+        '<button class="action sm" data-persona-action="edit" data-id="'+esc(p.id)+'">编辑</button>'+
+        (canDelete?'<button class="action sm danger" data-persona-action="delete" data-id="'+esc(p.id)+'">删除</button>':'')+
+        '<button class="action sm primary" data-persona-action="select" data-id="'+esc(p.id)+'">'+(active?'已选择':'选择')+'</button>'+
+      '</div></div>';
+  }).join('') + '<div class="ext-card add-card" onclick="openPersonaModal(\'\')" style="cursor:pointer;display:flex;align-items:center;justify-content:center;min-height:120px;border:1px dashed var(--border)"><span style="font-size:28px;opacity:.6">+</span><span style="margin-left:8px;opacity:.7">创建 Agent (Profile)</span></div>';
+  if (!el._personaDelegated) {
+    el._personaDelegated = true;
+    el.addEventListener('click', function(ev){
+      var btn = ev.target.closest('button[data-persona-action]');
+      if (!btn || !el.contains(btn)) return;
+      var id = btn.getAttribute('data-id');
+      var action = btn.getAttribute('data-persona-action');
+      if (action === 'edit') openPersonaModal(id);
+      else if (action === 'delete') deletePersona(id);
+      else if (action === 'select') selectPersona(id);
+    });
+  }
+}
+function openPersonaModal(id, prefill){
+  try {
+    prefill = prefill||{};
+    var m=document.getElementById('personaModal'); if(!m){ toast('模态未就绪'); return; }
+    if (m.parentElement !== document.body) document.body.appendChild(m);
+    m.style.display='flex';
+    document.getElementById('personaEditId').value = id||'';
+    document.getElementById('personaModalTitle').textContent = id? '编辑 Agent (Profile)' : '创建 Agent (Profile)';
+    var p = id ? _profiles.find(function(x){ return x.id===id; }) : null;
+    document.getElementById('personaEmoji').value = p?(p.emoji||''):(prefill.emoji||'🤖');
+    document.getElementById('personaLabel').value = p?(p.name||''):(prefill.name||'');
+    document.getElementById('personaPrompt').value = p?(p.prompt||''):(prefill.prompt||'');
+    document.getElementById('personaDeleteBtn').style.display = (id && p && !p.is_default) ? 'inline-block' : 'none';
+    // 动态插入模型字段和克隆选项（如果尚未插入）
+    var promptEl = document.getElementById('personaPrompt');
+    var extraWrap = document.getElementById('personaExtraFields');
+    if(!extraWrap){
+      extraWrap = document.createElement('div');
+      extraWrap.id = 'personaExtraFields';
+      promptEl.parentElement.after(extraWrap);
+    }
+    var extraHtml = '<div class="field" style="margin-top:10px"><label>模型（留空=跟随默认配置）</label>'+
+      '<select id="personaModel" style="width:100%;padding:8px;border-radius:6px;background:var(--bg1);color:var(--text);border:1px solid var(--border)">'+buildModelOptionsHtml(p?(p.model||''):'', '跟随默认配置')+'</select></div>';
+    if(!id){
+      // 新建时提供克隆选项
+      extraHtml += '<div class="field" style="margin-top:10px"><label>创建方式</label>'+
+        '<select id="personaCloneMode" style="width:100%;padding:8px;border-radius:6px;background:var(--card);color:var(--text);border:1px solid var(--border)">'+
+          '<option value="blank">空白创建（预置技能）</option>'+
+          '<option value="clone">克隆配置（继承 API 密钥 + 模型 + SOUL.md）</option>'+
+          '<option value="clone_all">完整克隆（配置 + 记忆 + 会话 + 技能）</option>'+
+        '</select><div style="font-size:11px;color:var(--muted);margin-top:4px">克隆从当前默认 profile 复制配置，新 Agent 的会话和记忆独立</div></div>';
+    }
+    // 技能目录多选（编辑或新建时可用；default 主目录除外）
+    if(!p || !p.is_default){
+      var curScene=(p&&p.scene)||prefill.scene||'通用';
+      var curQp=(p&&Array.isArray(p.quick_prompts)&&p.quick_prompts.length)?p.quick_prompts.slice():(Array.isArray(prefill.quick_prompts)?prefill.quick_prompts.slice():[]);
+      extraHtml += '<div class="field" style="margin-top:10px"><label>场景（用于分类筛选）</label>'+
+        '<input id="personaScene" value="'+esc(curScene)+'" placeholder="通用" style="width:100%;padding:8px;border-radius:6px;background:var(--bg1);color:var(--text);border:1px solid var(--border)">'+
+        '<div style="font-size:11px;color:var(--muted);margin-top:4px">可选：通用/开发/写作/运营/效率/金融/生活/学习/安全/运维</div></div>'+
+        '<div class="field" style="margin-top:10px"><label>快捷提问（每行一条，展示在对话欢迎页，最多 12 条）</label>'+
+        '<textarea id="personaQuickPrompts" rows="3" placeholder="例如：&#10;帮我总结这篇文档&#10;写一封工作邮件" style="width:100%;padding:8px;border-radius:6px;background:var(--bg1);color:var(--text);border:1px solid var(--border);resize:vertical">'+esc(curQp.join('\n'))+'</textarea></div>';
+      _personaSkillsSel = (p && p.skills && p.skills.length) ? p.skills.slice() : ((prefill.skills||[]).slice());
+      extraHtml += '<div class="field" style="margin-top:10px"><label>技能目录（点击选择该 Agent 使用的技能）</label>'+
+        '<div id="personaSkillsChips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;max-height:130px;overflow:auto"></div>'+
+        '<div id="personaSkillsHint" style="font-size:11px;color:var(--muted);margin-top:4px"></div></div>';
+    }
+    if(id && p && !p.is_default){
+      // 编辑时显示环境信息
+      extraHtml += '<div class="field" style="margin-top:8px"><label>环境状态</label><div style="font-size:11px;color:var(--muted);margin-top:4px">'+
+        'API 密钥：'+(p.has_api_key?'<span style="color:#4caf50">已配置</span>':'<span style="color:#ff9800">未配置</span>')+
+        (p.env_keys && p.env_keys.length ? ' · 环境变量：'+p.env_keys.length+' 个' : '')+
+        ' <button class="action sm" onclick="openPersonaEnvEditor(\''+esc(id)+'\',\''+esc(p.name||'')+'\')" style="margin-left:6px">'+(p.has_api_key?'修改':'配置')+' API 密钥</button>'+
+        '<div style="margin-top:4px;line-height:1.5">每个 Agent 是独立环境，可配置专属密钥；留空则回落到全局默认 .env 的密钥。</div>'+
+        '</div></div>';
+    }
+    extraWrap.innerHTML = extraHtml;
+    if(!p || !p.is_default) loadPersonaSkills(false);
+  } catch(e){ toast('打开角色编辑失败：'+e.message); }
+}
+// ── 技能目录多选：从已安装技能中选择（数据源 /proxy/dashboard/api/skills）─
+var _personaSkillsSel=[];
+var _personaAllSkills=null; // [{name,description,enabled}] 已安装技能缓存
+function loadPersonaSkills(force){
+  if(_personaAllSkills && !force){ _renderPersonaSkillsChips(); return; }
+  var box=document.getElementById('personaSkillsChips');
+  if(!box) return;
+  box.innerHTML='<span style="font-size:11px;color:var(--muted)">加载已安装技能…</span>';
+  fetch(apiUrl('/proxy/dashboard/api/skills'), { cache:'no-store', headers: monitorToken?{'X-Monitor-Token':monitorToken}:{} })
+    .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+    .then(function(list){
+      _personaAllSkills=Array.isArray(list)?list:[];
+      _renderPersonaSkillsChips();
+    })
+    .catch(function(){ _personaAllSkills=[]; _renderPersonaSkillsChips(); });
+}
+function _personaSkillName(s){ return (typeof s==='string')?s:(s&&s.name?String(s.name):''); }
+function _renderPersonaSkillsChips(){
+  var box=document.getElementById('personaSkillsChips'); if(!box) return;
+  var hint=document.getElementById('personaSkillsHint');
+  var avail={};
+  (_personaAllSkills||[]).forEach(function(s){ var n=_personaSkillName(s); if(n) avail[n]=s; });
+  var names=Object.keys(avail);
+  if(!names.length && !_personaSkillsSel.length){
+    if(hint) hint.textContent='未能获取已安装技能（请先启动仪表盘），可手动添加。';
+    box.innerHTML='<button class="action sm" onclick="addPersonaSkillPrompt()">+ 手动添加技能</button>';
+    return;
+  }
+  if(hint) hint.textContent='已选 '+_personaSkillsSel.length+' 个技能；不选则继承预置。';
+  var html='';
+  _personaSkillsSel.forEach(function(n){
+    if(avail[n]) return;
+    html+='<span class="ps-chip sel" title="已选（未在安装列表）" onclick="togglePersonaSkill(\''+_jsStr(n)+'\')">'+esc(n)+' ✕</span>';
+  });
+  names.forEach(function(n){
+    var on=_personaSkillsSel.indexOf(n)>=0;
+    var desc=String(avail[n].description||'').replace(/"/g,'&quot;').slice(0,60);
+    html+='<span class="ps-chip'+(on?' sel':'')+'" title="'+desc+'" onclick="togglePersonaSkill(\''+_jsStr(n)+'\')">'+esc(n)+(on?' ✓':'')+'</span>';
+  });
+  html+='<span style="align-self:center"><button class="action sm" onclick="addPersonaSkillPrompt()">+ 手动添加</button></span>';
+  box.innerHTML=html;
+}
+function togglePersonaSkill(n){
+  var i=_personaSkillsSel.indexOf(n);
+  if(i>=0) _personaSkillsSel.splice(i,1); else _personaSkillsSel.push(n);
+  _renderPersonaSkillsChips();
+}
+function addPersonaSkillPrompt(){
+  var n=prompt('输入技能名（与技能目录/市场中的名称一致，如 web_search）：');
+  if(!n) return;
+  n=n.trim();
+  if(!n) return;
+  if(_personaSkillsSel.indexOf(n)<0) _personaSkillsSel.push(n);
+  _renderPersonaSkillsChips();
+}
+function closePersonaModal(){ var m=document.getElementById('personaModal'); if(m) m.style.display='none'; }
+function savePersona(){
+  var id=document.getElementById('personaEditId').value;
+  var emoji=document.getElementById('personaEmoji').value.trim()||'🤖';
+  var label=document.getElementById('personaLabel').value.trim();
+  var prompt=document.getElementById('personaPrompt').value;
+  var modelEl=document.getElementById('personaModel');
+  var model=modelEl?modelEl.value.trim():'';
+  var sceneEl=document.getElementById('personaScene');
+  var scene=sceneEl?sceneEl.value.trim():'';
+  var qpEl=document.getElementById('personaQuickPrompts');
+  var qp=(qpEl?qpEl.value:'').split('\n').map(function(s){ return s.trim(); }).filter(Boolean).slice(0,12);
+  if(!label){ toast('请填写 Agent 名称'); return; }
+  if(id){
+    // 更新已有 profile（SOUL.md + config + metadata）
+    var payload = { name:label, emoji:emoji, prompt:prompt, scene: scene||'通用' };
+    if(model) payload.model = model;
+    if(qp.length) payload.quick_prompts = qp; else payload.quick_prompts = [];
+    if(_personaSkillsSel && _personaSkillsSel.length) payload.skills = _personaSkillsSel.slice();
+    api('/api/profiles/'+encodeURIComponent(id), 'PUT', payload).then(function(r){
+      if(r&&r.ok){ toast('已保存 Agent：'+label); closePersonaModal(); fetchProfiles(function(){ renderPersonas(); renderMineExperts(); }); }
+      else toast('保存失败：'+(r&&r.error||'未知'));
+    }).catch(function(){ toast('保存失败'); });
+  } else {
+    // 创建新 profile（调用 hermes profile create）
+    var newId = label.toLowerCase().replace(/[^a-z0-9_-]/g,'_').slice(0,24) || ('agent_'+Date.now());
+    var cloneEl=document.getElementById('personaCloneMode');
+    var cloneMode=cloneEl?cloneEl.value:'blank';
+    var payload = { id:newId, name:label, emoji:emoji, prompt:prompt };
+    if(model) payload.model = model;
+    if(scene) payload.scene = scene;
+    if(qp.length) payload.quick_prompts = qp;
+    if(_personaSkillsSel && _personaSkillsSel.length) payload.skills = _personaSkillsSel.slice();
+    if(cloneMode==='clone') payload.clone = true;
+    if(cloneMode==='clone_all') payload.clone_all = true;
+    toast('正在创建 Agent…（hermes profile create）');
+    apiPost('/api/profiles', payload).then(function(r){
+      if(r&&r.ok){ toast('已创建 Agent：'+label+'，正在激活…'); closePersonaModal(); fetchProfiles(function(){ renderPersonas(); renderMineExperts(); selectPersona(newId); }); }
+      else toast('创建失败：'+(r&&r.error||'未知'));
+    });
+  }
+}
+function deletePersona(id){
+  if(!id) id = document.getElementById('personaEditId').value;
+  if(!id) return;
+  if(!confirm('确定删除该 Agent？\n\n这将停止其网关、移除服务、删除命令别名和所有配置数据。\n此操作不可恢复！')) return;
+  fetch(apiUrl('/api/profiles/'+encodeURIComponent(id)), { method:'DELETE', headers: monitorToken?{'X-Monitor-Token':monitorToken}:{} })
+    .then(function(r){ return r.json(); })
+    .then(function(r){
+      if(r&&r.ok){ toast('已删除 Agent（hermes profile delete）'); closePersonaModal(); if(_persona===id){ _persona='default'; _personaPrompt=''; } fetchProfiles(function(){ renderPersonas(); }); }
+      else toast('删除失败：'+(r&&r.error||'未知'));
+    }).catch(function(){ toast('删除失败'); });
+}
+// ── 每个 Agent 的专属 API 密钥配置（独立 .env）──────────────────────────
+var _envProfileId = null;
+var _envProfileName = '';
+// 模型名 → 推荐 API 密钥（按前缀匹配，供 API 密钥面板联动提示）
+var MODEL_KEY_RULES = [
+  { re: /deepseek/i, key: 'DEEPSEEK_API_KEY', label: 'DeepSeek' },
+  { re: /glm|zhipu|chatglm/i, key: 'GLM_API_KEY', label: '智谱 GLM' },
+  { re: /moonshot|kimi/i, key: 'MOONSHOT_API_KEY', label: 'Moonshot Kimi' },
+  { re: /minimax/i, key: 'MINIMAX_API_KEY', label: 'MiniMax' },
+  { re: /qwen/i, key: 'QWEN_API_KEY', label: '通义千问 Qwen' },
+  { re: /gpt|openai|o[0-9]/i, key: 'OPENAI_API_KEY', label: 'OpenAI' },
+  { re: /claude|anthropic/i, key: 'ANTHROPIC_API_KEY', label: 'Anthropic Claude' },
+  { re: /gemini/i, key: 'GEMINI_API_KEY', label: 'Google Gemini' },
+  { re: /grok|xai/i, key: 'XAI_API_KEY', label: 'xAI Grok' },
+  { re: /sensenova|sensen|sense/i, key: 'SENSENOVA_API_KEY', label: '商汤 SenseNova' },
+  { re: /ollama/i, key: 'OLLAMA_BASE_URL', label: 'Ollama' },
+];
+function modelKeyRule(modelId){
+  var m = String(modelId||'');
+  for(var i=0;i<MODEL_KEY_RULES.length;i++){
+    if(MODEL_KEY_RULES[i].re.test(m)) return MODEL_KEY_RULES[i];
+  }
+  return null;
+}
+function openPersonaEnvEditor(id, name){
+  _envProfileId = id; _envProfileName = name || id;
+  var prof = null;
+  try { prof = _profiles.find(function(x){ return x.id===id; }); } catch(e){}
+  var curModel = (prof && prof.model) ? String(prof.model).trim() : '';
+  var rule = modelKeyRule(curModel);
+  var m = document.getElementById('personaEnvModal');
+  if(!m){
+    m = document.createElement('div');
+    m.id = 'personaEnvModal';
+    m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:9999';
+    m.innerHTML = '<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;width:min(560px,92vw);max-height:84vh;display:flex;flex-direction:column">'+
+      '<div id="envModalTitle" style="padding:14px 16px;font-weight:600;border-bottom:1px solid var(--border)">🔑 配置 API 密钥</div>'+
+      '<div id="envModalBody" style="padding:14px 16px;overflow:auto;flex:1"></div>'+
+      '<div id="envModalFoot" style="padding:12px 16px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end">'+
+        '<button class="action" onclick="closePersonaEnvEditor()">取消</button>'+
+        '<button class="action primary" onclick="savePersonaEnv()">保存并重启网关</button>'+
+      '</div></div>';
+    document.body.appendChild(m);
+  }
+  document.getElementById('envModalTitle').textContent = '🔑 '+name+' 的 API 密钥';
+  var body = document.getElementById('envModalBody');
+  body.innerHTML = '<div class="conn-hint" style="font-size:12px;margin-bottom:10px;line-height:1.6">每个 Agent 是独立环境，可配置专属密钥（写入该 Agent 的 .env，保存后网关自动重启生效）。<br>已有密钥仅显示前 4 位；输入新值覆盖，清空输入框并保存 = 删除该密钥（留空密钥时回落到全局默认 .env）。</div>';
+  // 当前模型联动提示：直接定位该模型所需的 API 密钥
+  if(curModel){
+    body.innerHTML += '<div style="font-size:11px;margin-bottom:10px;padding:7px 9px;border-radius:6px;background:'+(rule?'var(--accent-bg)':'var(--bg1)')+';border:1px solid '+(rule?'var(--accent)':'var(--border)')+';line-height:1.6">'+
+      '当前模型：<b>'+esc(curModel)+'</b>'+(rule ? ' → 对应密钥 <b style="color:var(--accent)">'+esc(rule.key)+'</b>（下方 ★ 高亮行，填入该服务商密钥即可）' : '，未匹配到常用密钥，请在下方「自定义变量」添加对应服务商密钥')+'</div>';
+  }
+  body.innerHTML += '<div style="font-size:12px;font-weight:600;margin-bottom:6px">常用密钥</div>';
+  var commonKeys = ['OPENAI_API_KEY','ANTHROPIC_API_KEY','KIMI_API_KEY','MOONSHOT_API_KEY','MINIMAX_API_KEY','QWEN_API_KEY','DEEPSEEK_API_KEY','GLM_API_KEY','ZHIPU_API_KEY','XAI_API_KEY','SENSENOVA_API_KEY','GEMINI_API_KEY','OLLAMA_BASE_URL'];
+  var known = {}; commonKeys.forEach(function(k){ known[k]=1; });
+  body.innerHTML += '<div id="envCommonWrap" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px">'+commonKeys.map(function(k){ return envKeyRowHtml(k, '', rule && rule.key===k); }).join('')+'</div>';
+  body.innerHTML += '<div style="font-size:12px;font-weight:600;margin-bottom:6px">自定义变量 <button class="action sm" onclick="addEnvCustomRow()">+ 添加</button></div>';
+  body.innerHTML += '<div id="envCustomWrap" style="display:flex;flex-direction:column;gap:8px"></div>';
+  // 读取当前值（脱敏）填入 placeholder
+  apiGet('/api/profiles/'+encodeURIComponent(id)+'/env').then(function(res){
+    if(!res || res.error) return;
+    Object.keys(res.env||{}).forEach(function(k){
+      if(!/^[A-Za-z_][A-Za-z0-9_]*$/.test(k)) return; // 过滤非法键名（如误入的 "model: xxx"），避免假键混入
+      var inp = document.getElementById('env_inp_'+k);
+      if(inp){ inp.placeholder = res.env[k]; }
+      else {
+        // 自定义键已有值：追加一行
+        addEnvCustomRow(k, res.env[k]);
+      }
+    });
+  }).catch(function(){});
+  m.style.display = 'flex';
+}
+function envKeyRowHtml(key, placeholder, hl){
+  var border = hl ? 'border:1.5px solid var(--accent);background:var(--accent-bg)' : 'border:1px solid var(--border);background:var(--bg1)';
+  return '<div style="display:flex;gap:8px;align-items:center'+(hl?';background:var(--accent-bg);border-radius:6px;padding:4px 6px;margin:-4px -6px':'')+'">'+
+    '<label style="width:180px;font-size:11px;color:'+(hl?'var(--accent)':'var(--muted)')+';flex-shrink:0;font-weight:'+(hl?'600':'400')+'">'+esc(key)+(hl?' ★':'')+'</label>'+
+    '<input type="password" id="env_inp_'+esc(key)+'" class="env-inp" placeholder="'+(placeholder||'未配置')+'" style="flex:1;padding:7px 10px;border-radius:6px;color:var(--text);'+border+'"></div>';
+}
+function addEnvCustomRow(key, placeholder){
+  var wrap = document.getElementById('envCustomWrap'); if(!wrap) return;
+  var k = key || ''; var ph = placeholder || '';
+  var row = document.createElement('div');
+  row.style.cssText = 'display:flex;gap:8px;align-items:center';
+  row.innerHTML = '<input type="text" class="env-custom-key" placeholder="变量名（如 MY_API_KEY）" value="'+esc(k)+'" style="width:180px;padding:7px 10px;border-radius:6px;background:var(--bg1);color:var(--text);border:1px solid var(--border);flex-shrink:0;font-size:12px">'+
+    '<input type="password" class="env-inp" placeholder="'+(ph||'值')+'" style="flex:1;padding:7px 10px;border-radius:6px;background:var(--bg1);color:var(--text);border:1px solid var(--border);font-size:12px">'+
+    '<button class="action sm danger" onclick="this.parentElement.remove()" style="flex-shrink:0">✕</button>';
+  wrap.appendChild(row);
+}
+function closePersonaEnvEditor(){ var m=document.getElementById('personaEnvModal'); if(m) m.style.display='none'; }
+function savePersonaEnv(){
+  var env = {};
+  var skipped = 0;
+  // 常用键区
+  document.querySelectorAll('#envCommonWrap .env-inp').forEach(function(inp){
+    var key = inp.id.replace('env_inp_','');
+    var val = inp.value.trim();
+    if(!val){ if(inp.placeholder && inp.placeholder !== '未配置' && inp.placeholder !== '值') env[key] = ''; else skipped++; return; }
+    if(val === inp.placeholder) { skipped++; return; } // 未修改
+    env[key] = val;
+  });
+  // 自定义键区：仅提交键名非空的行；值空且 placeholder 有原值 → 删除
+  document.querySelectorAll('#envCustomWrap .env-custom-key').forEach(function(kInp, i){
+    var key = kInp.value.trim();
+    if(!key) return;
+    var vInp = kInp.parentElement.querySelector('.env-inp');
+    var val = vInp ? vInp.value.trim() : '';
+    if(val){ env[key] = val; }
+    else if(vInp && vInp.placeholder && vInp.placeholder !== '值'){ env[key] = ''; }
+  });
+  var keys = Object.keys(env);
+  if(!keys.length){ toast('没有需要保存的变更'); return; }
+  toast('正在保存 '+keys.length+' 个密钥…');
+  api('/api/profiles/'+encodeURIComponent(_envProfileId)+'/env', 'PUT', { env: env }).then(function(r){
+    if(r && r.ok){
+      toast('已保存，网关正在重启生效');
+      closePersonaEnvEditor();
+      fetchProfiles(function(){ renderPersonas(); });
+    } else toast('保存失败：'+(r&&r.error||'未知'));
+  }).catch(function(){ toast('保存失败：网络错误'); });
+}
+function selectPersona(id){
+  _persona = id;
+  var p = _profiles.find(function(x){ return x.id===id; });
+  _personaPrompt = (p && p.prompt) ? p.prompt : '';
+  _cfg.extensions.persona = id;
+  if(window.chatState) chatState.persona = id;
+  try { localStorage.setItem('hermes_persona', id); } catch(e){}
+  // 切换 Agent 后若对话区为空，立即重渲染个性化欢迎页（快捷提问随专家变化）
+  var chatBody=document.getElementById('chatBody');
+  if(chatBody && !chatBody.querySelector('.msg')){ try{ chatBody.innerHTML = welcomeHTML(); }catch(e){} }
+  _selectedExpert = null;
+  try { localStorage.removeItem('hermes_selected_expert'); } catch(e){}
+  renderSelectedExpertBar();
+  // 调用后端激活 profile（hermes profile use + 触发网关重载配置）
+  toast('正在切换 Agent…（hermes profile use '+id+'）');
+  apiPost('/api/profiles/'+encodeURIComponent(id)+'/activate', {}).then(function(r){
+    if(r&&r.ok) toast('已切换到 Agent：'+(p?p.name:id)+'（网关将重载配置）');
+  });
+  fetchProfiles(function(){ renderPersonas(); });
+  saveConfig();
+}
+var _expFilter=''; var _expDept='';
+function renderExperts(){
+  var el=document.getElementById('expertGrid'); if(!el) return;
+  // 兜底（Issue #1）：若专家库尚未加载，轮询强制重新拉取（带缓存破坏），最多 5 次；避免一直停留 8 个样例
+  if(!(window.AGENCY_PERSONAS && window.AGENCY_PERSONAS.length)){
+    if(!window.__personasRetry){
+      window.__personasRetry = true;
+      var tries = 0;
+      (function poll(){
+        ensurePersonasLibrary(function(){
+          tries++;
+          if(window.AGENCY_PERSONAS && window.AGENCY_PERSONAS.length){
+            renderExperts();
+          } else if(tries < 5){
+            setTimeout(poll, 600);
+          } else {
+            renderExperts(); // 最终以 PV.experts(8 个) 兜底，并保留重试标记以便下次进入时再试
+          }
+        });
+      })();
+    }
+  }
+  window.__expRendered = true;
+  var list = expertsList();
+  var cnt=document.getElementById('expCount');
+  if(cnt){ cnt.textContent = (window.AGENCY_PERSONAS && window.AGENCY_PERSONAS.length) ? ('共 '+list.length+' 位专家') : '专家库加载中…'; }
+  var deptWrap=document.getElementById('expDepts');
+  var depts = (window.AGENCY_DEPTS && window.AGENCY_DEPTS.length) ? window.AGENCY_DEPTS : [];
+  if(deptWrap){
+    var dhtml='<div class="exp-dept'+(!_expDept?' active':'')+'" onclick="filterDept(this,\'\')">全部 <span class="cnt">'+list.length+'</span></div>';
+    depts.forEach(function(d){ dhtml+='<div class="exp-dept'+(d.id===_expDept?' active':'')+'" onclick="filterDept(this,\''+esc(d.id)+'\')">'+esc(d.label||d.id)+' <span class="cnt">'+esc(d.count||'')+'</span></div>'; });
+    deptWrap.innerHTML=dhtml;
+  }
+  var term=(document.getElementById('expSearch')?document.getElementById('expSearch').value:'').toLowerCase();
+  var team=_cfg.extensions.team||[];
+  var favs=_cfg.extensions.expert_favorites||[];
+  el.innerHTML = list.filter(function(e){
+    return (!_expDept || (e.deptId||'')===_expDept) && (!term || (e.name||'').toLowerCase().indexOf(term)>=0);
+  }).map(function(e){
+    var inTeam = team.some(function(m){ return m.id===e.id; });
+    var isFav = favs.indexOf(e.id)>=0;
+    return '<div class="ext-card">'+
+      '<div class="top"><div class="icon">'+(e.icon||'🎯')+'</div><div><div class="name">'+esc(e.name)+'</div><div class="status">'+esc(e.dept||'')+'</div></div></div>'+
+      '<div class="actions">'+
+        '<button class="action" onclick="useExpert(\''+esc(e.id)+'\')">使用</button>'+
+        '<button class="action secondary" onclick="favExpert(\''+esc(e.id)+'\')">'+(isFav?'已收藏':'收藏')+'</button>'+
+        '<button class="action '+(inTeam?'danger':'')+'" onclick="toggleTeamMember(\''+esc(e.id)+'\')">'+(inTeam?'移出团队':'加入团队')+'</button>'+
+      '</div></div>';
+  }).join('') || '<div class="empty-state">没有匹配的专家。</div>';
+  renderSelectedExpertBar();
+}
+function filterDept(el, dept){
+  _expDept=dept;
+  document.querySelectorAll('.exp-dept').forEach(function(d){ d.classList.remove('active'); });
+  el.classList.add('active');
+  renderExperts();
+}
+function useExpert(id){
+  var list=expertsList(); var e=list.find(function(x){ return x.id===id; });
+  if(!e) return;
+  // 复用工具栏专家选择器逻辑：为专家创建独立会话分组（Issue #6）
+  pickItemExpert(id, null);
+}
+function favExpert(id){
+  if(!_cfg.extensions.expert_favorites) _cfg.extensions.expert_favorites=[];
+  var arr=_cfg.extensions.expert_favorites;
+  var idx=arr.indexOf(id);
+  if(idx>=0) arr.splice(idx,1); else arr.push(id);
+  saveConfig(); renderExperts();
+  toast(idx>=0?'已取消收藏':'已收藏该专家');
+}
+function toggleTeamMember(id){
+  var list=expertsList(); var e=list.find(function(x){ return x.id===id; }); if(!e) return;
+  var team=_cfg.extensions.team||[];
+  var idx=-1;
+  for(var k=0;k<team.length;k++){ if(team[k].id===id){ idx=k; break; } }
+  if(idx>=0) team.splice(idx,1); else team.push({ id:e.id, name:e.name, dept:e.dept, icon:e.icon });
+  _cfg.extensions.team=team;
+  renderExperts(); renderTeam(); saveConfig();
+}
+function clearSelectedExpert(){
+  _selectedExpert=null; renderSelectedExpertBar(); toast('已清除选用的专家');
+}
+function renderSelectedExpertBar(){
+  var bar=document.getElementById('selectedExpertBar'); if(!bar) return;
+  if(_selectedExpert){
+    bar.style.display='flex';
+    bar.innerHTML='<span class="seb-label">当前已选用：</span><strong>'+esc(_selectedExpert.name||'')+'</strong><button class="action sm" onclick="clearSelectedExpert()">清除</button>';
+  } else {
+    bar.style.display='none'; bar.innerHTML='';
+  }
+}
+function renderTeam(){
+  var el=document.getElementById('teamGrid'); if(!el) return;
+  var inp=document.getElementById('teamName'); if(inp) inp.value=_cfg.extensions.team_name||'我的团队';
+  setToggle('teamEnabledToggle', !!_cfg.extensions.team_enabled);
+  var team=_cfg.extensions.team||[];
+  el.innerHTML = team.map(function(m){
+    return '<div class="ext-card">'+
+      '<div class="top"><div class="icon">'+(m.icon||'🎯')+'</div><div><div class="name">'+esc(m.name||'')+'</div><div class="status">'+esc(m.dept||'')+'</div></div></div>'+
+      '<div class="actions"><button class="action" onclick="removeTeamMember(\''+esc(m.id)+'\')">移除</button></div>'+
+      '</div>';
+  }).join('') || '<div class="empty-state">团队为空，从「专家」页添加成员。</div>';
+}
+function buildAndUseTeam(){
+  // 直接采用当前已选成员（用户在「专家」页手动添加、或「🎲 随机组建」后的结果）并启用，
+  // 不在此处重新随机，避免覆盖用户手动挑选的专家团（修复：手动选好后点确认被随机刷掉）。
+  _cfg.extensions.team_name = (document.getElementById('teamName').value)||'我的团队';
+  if(!_cfg.extensions.team || !_cfg.extensions.team.length){
+    toast('团队为空：请先从「专家」页添加成员，或点击「🎲 随机组建」');
+    return;
+  }
+  _cfg.extensions.team_enabled=true;
+  if(!_cfg.extensions.toolsets) _cfg.extensions.toolsets={};
+  _cfg.extensions.toolsets.delegation=true;
+  // 互斥：停用工作流
+  if(_cfg.extensions.workflow&&_cfg.extensions.workflow.enabled){ _cfg.extensions.workflow.enabled=false; _cfg.extensions.workflow.active=false; renderWorkflowBar(); }
+  setToggle('teamEnabledToggle', true);
+  saveConfig(); renderTeam(); renderTeamBar();
+  enterTeamSession();
+  toast('已组建并启用专家团（'+_cfg.extensions.team.length+' 人）');
+}
+function toggleTeam(){
+  if(_cfg.extensions.team_enabled===undefined) _cfg.extensions.team_enabled=false;
+  _cfg.extensions.team_enabled=!_cfg.extensions.team_enabled;
+  if(_cfg.extensions.team_enabled){
+    if(!_cfg.extensions.toolsets)_cfg.extensions.toolsets={}; _cfg.extensions.toolsets.delegation=true;
+    // 互斥：停用工作流
+    if(_cfg.extensions.workflow&&_cfg.extensions.workflow.enabled){ _cfg.extensions.workflow.enabled=false; _cfg.extensions.workflow.active=false; renderWorkflowBar(); }
+  }
+  setToggle('teamEnabledToggle', _cfg.extensions.team_enabled);
+  saveConfig(); renderTeam(); renderTeamBar();
+  if(_cfg.extensions.team_enabled) enterTeamSession();
+  toast(_cfg.extensions.team_enabled?'已启用专家团（已自动开启任务委派）':'已关闭专家团');
+}
+function _shuffleArr(a){ a=a.slice(); for(var i=a.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=a[i]; a[i]=a[j]; a[j]=t; } return a; }
+function buildTeam(){
+  _cfg.extensions.team_name = (document.getElementById('teamName').value)||'我的团队';
+  var members;
+  if(window.AGENCY_PERSONAS && window.AGENCY_PERSONAS.length){
+    // 每次点击随机挑选不同行业（部门），每个行业随机抽一位专家
+    var byDept={};
+    window.AGENCY_PERSONAS.forEach(function(p){ var d=p.dept||'其他'; if(!byDept[d]) byDept[d]=[]; byDept[d].push(p); });
+    var depts=_shuffleArr(Object.keys(byDept)).slice(0,6);
+    members=depts.map(function(d){ var arr=byDept[d]; return arr[Math.floor(Math.random()*arr.length)]; });
+  } else {
+    members=_shuffleArr(PV.experts.slice()).slice(0,3);
+  }
+  _cfg.extensions.team = members.map(function(p){ return { id:p.id, name:(p.label||p.name), dept:(p.dept_label||p.dept), icon:(p.emoji||p.icon) }; });
+  renderTeam(); saveConfig(); toast('已随机组建 '+_cfg.extensions.team.length+' 人团队（每次行业不同），确认后点「🚀 组建并使用专家团」启用');
+}
+function clearTeam(){ _cfg.extensions.team=[]; renderTeam(); renderTeamBar(); saveConfig(); }
+function removeTeamMember(id){ _cfg.extensions.team=(_cfg.extensions.team||[]).filter(function(x){ return x.id!==id; }); renderTeam(); renderTeamBar(); saveConfig(); }
+
+/* ============================ MCP 服务器管理 ============================ */
+var _mcpServers = [];
+function renderMcpServers(){
+  var el = document.getElementById('mcpServerList'); if(!el) return;
+  apiGet('/api/mcp-servers').then(function(res){
+    if(!res || !res.ok){ el.innerHTML='<div class="empty-state">加载失败</div>'; return; }
+    _mcpServers = res.servers || [];
+    if(!_mcpServers.length){ el.innerHTML='<div class="empty-state">尚未配置 MCP 服务器。点右上角「+ 添加服务器」开始配置。</div>'; return; }
+    el.innerHTML = _mcpServers.map(function(s){
+      var typeLabel = s.type==='http' ? '🌐 HTTP' : '⚙️ Stdio';
+      var statusDot = s.enabled ? '<span style="color:#22c55e">●</span> 已启用' : '<span style="color:#ef4444">●</span> 已禁用';
+      var detail = s.type==='http' ? esc(s.url) : esc(s.command + ' ' + (s.args||[]).join(' '));
+      var toolsInfo = '';
+      if(s.tools_include && s.tools_include.length) toolsInfo = '白名单: '+s.tools_include.join(', ');
+      else if(s.tools_exclude && s.tools_exclude.length) toolsInfo = '黑名单: '+s.tools_exclude.join(', ');
+      return '<div class="mcp-card'+(s.enabled?'':' disabled')+'">' +
+        '<div class="mcp-card-head">' +
+          '<div class="mcp-name">'+esc(s.name)+'</div>' +
+          '<div class="mcp-badges"><span class="mcp-type">'+typeLabel+'</span><span class="mcp-status">'+statusDot+'</span></div>' +
+        '</div>' +
+        '<div class="mcp-detail">'+detail+'</div>' +
+        (toolsInfo ? '<div class="mcp-tools-info">🔧 '+esc(toolsInfo)+'</div>' : '') +
+        '<div class="mcp-actions">' +
+          '<button class="ov-actbtn" onclick="openMcpModal(\''+esc(s.name)+'\')">编辑</button>' +
+          '<button class="ov-actbtn" onclick="toggleMcpServer(\''+esc(s.name)+'\')">'+(s.enabled?'禁用':'启用')+'</button>' +
+          '<button class="ov-actbtn stop" onclick="deleteMcpServer(\''+esc(s.name)+'\')">删除</button>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+  }).catch(function(){ el.innerHTML='<div class="empty-state">加载失败</div>'; });
+}
+function openMcpModal(editName){
+  var s = null;
+  if(editName){ s = _mcpServers.find(function(x){ return x.name===editName; }); }
+  var isEdit = !!s;
+  var type = s ? s.type : 'stdio';
+  var html = '<div class="modal-overlay" id="mcpModalOverlay" onclick="if(event.target===this)closeMcpModal()">' +
+    '<div class="modal" style="max-width:560px;max-height:85vh;overflow-y:auto">' +
+    '<div class="modal-head"><h3>'+(isEdit?'编辑 MCP 服务器':'添加 MCP 服务器')+'</h3><button class="modal-close" onclick="closeMcpModal()">×</button></div>' +
+    '<div class="modal-body">' +
+      '<div class="field"><label>服务器名称</label><input type="text" id="mcpName" value="'+esc(s?s.name:'')+'" placeholder="例如 github、filesystem" '+(isEdit?'disabled style="opacity:.6"':'')+'></div>' +
+      '<div class="field"><label>类型</label><select id="mcpType" onchange="onMcpTypeChange()"><option value="stdio"'+(type==='stdio'?' selected':'')+'>Stdio（本地子进程）</option><option value="http"'+(type==='http'?' selected':'')+'>HTTP（远程端点）</option></select></div>' +
+      '<div id="mcpStdioFields" style="display:'+(type==='stdio'?'block':'none')+'">' +
+        '<div class="field"><label>Command</label><input type="text" id="mcpCommand" value="'+esc(s?s.command:'')+'" placeholder="例如 npx、node、python"></div>' +
+        '<div class="field"><label>Args（每行一个参数）</label><textarea id="mcpArgs" rows="3" placeholder="-y\n@modelcontextprotocol/server-github">'+esc(s?(s.args||[]).join('\n'):'')+'</textarea></div>' +
+        '<div class="field"><label>Env（每行 KEY=VALUE）</label><textarea id="mcpEnv" rows="3" placeholder="GITHUB_PERSONAL_ACCESS_TOKEN=***">'+esc(s?Object.entries(s.env||{}).map(function(e){return e[0]+'='+e[1];}).join('\n'):'')+'</textarea></div>' +
+      '</div>' +
+      '<div id="mcpHttpFields" style="display:'+(type==='http'?'block':'none')+'">' +
+        '<div class="field"><label>URL</label><input type="text" id="mcpUrl" value="'+esc(s?s.url:'')+'" placeholder="https://mcp.example.com/mcp"></div>' +
+        '<div class="field"><label>Headers（每行 Key: Value）</label><textarea id="mcpHeaders" rows="3" placeholder="Authorization: Bearer ***">'+esc(s?Object.entries(s.headers||{}).map(function(e){return e[0]+': '+e[1];}).join('\n'):'')+'</textarea></div>' +
+      '</div>' +
+      '<div class="field"><label>工具白名单（逗号分隔，留空=全部）</label><input type="text" id="mcpInclude" value="'+esc(s?(s.tools_include||[]).join(', '):'')+'" placeholder="create_issue, list_issues"></div>' +
+      '<div class="field"><label>工具黑名单（逗号分隔）</label><input type="text" id="mcpExclude" value="'+esc(s?(s.tools_exclude||[]).join(', '):'')+'" placeholder="delete_customer"></div>' +
+      '<div class="field"><label>超时（秒，可选）</label><input type="number" id="mcpTimeout" value="'+esc(s?s.timeout:'')+'" placeholder="30"></div>' +
+    '</div>' +
+    '<div class="modal-foot"><button class="action" onclick="closeMcpModal()">取消</button><button class="action primary" onclick="saveMcpServer('+(isEdit?"'"+esc(s.name)+"'":'null')+')">保存</button></div>' +
+    '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function closeMcpModal(){ var o=document.getElementById('mcpModalOverlay'); if(o) o.remove(); }
+function onMcpTypeChange(){
+  var t = document.getElementById('mcpType').value;
+  document.getElementById('mcpStdioFields').style.display = t==='stdio'?'block':'none';
+  document.getElementById('mcpHttpFields').style.display = t==='http'?'block':'none';
+}
+function saveMcpServer(editName){
+  var name = document.getElementById('mcpName').value.trim();
+  if(!name){ toast('请输入服务器名称','error'); return; }
+  var type = document.getElementById('mcpType').value;
+  var payload = { name: name, type: type };
+  if(type==='stdio'){
+    payload.command = document.getElementById('mcpCommand').value.trim();
+    if(!payload.command){ toast('请输入 Command','error'); return; }
+    var argsRaw = document.getElementById('mcpArgs').value.trim();
+    payload.args = argsRaw ? argsRaw.split('\n').map(function(s){return s.trim();}).filter(Boolean) : [];
+    var envRaw = document.getElementById('mcpEnv').value.trim();
+    if(envRaw){ payload.env={}; envRaw.split('\n').forEach(function(line){ var idx=line.indexOf('='); if(idx>0) payload.env[line.slice(0,idx).trim()]=line.slice(idx+1).trim(); }); }
+  } else {
+    payload.url = document.getElementById('mcpUrl').value.trim();
+    if(!payload.url){ toast('请输入 URL','error'); return; }
+    var hdrRaw = document.getElementById('mcpHeaders').value.trim();
+    if(hdrRaw){ payload.headers={}; hdrRaw.split('\n').forEach(function(line){ var idx=line.indexOf(':'); if(idx>0) payload.headers[line.slice(0,idx).trim()]=line.slice(idx+1).trim(); }); }
+  }
+  var inc = document.getElementById('mcpInclude').value.trim();
+  if(inc) payload.tools_include = inc.split(',').map(function(s){return s.trim();}).filter(Boolean);
+  var exc = document.getElementById('mcpExclude').value.trim();
+  if(exc) payload.tools_exclude = exc.split(',').map(function(s){return s.trim();}).filter(Boolean);
+  var timeout = document.getElementById('mcpTimeout').value.trim();
+  if(timeout) payload.timeout = timeout;
+  var url = editName ? '/api/mcp-servers/'+encodeURIComponent(editName) : '/api/mcp-servers';
+  var method = editName ? 'PUT' : 'POST';
+  fetch(apiUrl(url), { method: method, headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) })
+    .then(function(r){ return r.json(); })
+    .then(function(res){
+      if(res.ok){ toast('✅ MCP 服务器已保存，网关将自动重启生效'); closeMcpModal(); renderMcpServers(); }
+      else toast(res.error||'保存失败','error');
+    }).catch(function(e){ toast('网络错误: '+e.message,'error'); });
+}
+function toggleMcpServer(name){
+  fetch(apiUrl('/api/mcp-servers/'+encodeURIComponent(name)+'/toggle'), { method:'POST' })
+    .then(function(r){ return r.json(); })
+    .then(function(res){ if(res.ok){ toast(res.enabled?'✅ 已启用 '+name:'⛔ 已禁用 '+name); renderMcpServers(); } else toast(res.error||'操作失败','error'); })
+    .catch(function(e){ toast('网络错误','error'); });
+}
+function deleteMcpServer(name){
+  if(!confirm('确定删除 MCP 服务器「'+name+'」？\n删除后网关将自动重启。')) return;
+  fetch(apiUrl('/api/mcp-servers/'+encodeURIComponent(name)), { method:'DELETE' })
+    .then(function(r){ return r.json(); })
+    .then(function(res){ if(res.ok){ toast('🗑 已删除 '+name); renderMcpServers(); } else toast(res.error||'删除失败','error'); })
+    .catch(function(e){ toast('网络错误','error'); });
+}
+
+/* ============================ 定时任务管理 ============================ */
+var _cronJobs = [];
+function renderCronJobs(){
+  var el = document.getElementById('cronJobList'); if(!el) return;
+  apiGet('/api/cron-jobs').then(function(res){
+    if(!res || !res.ok){ el.innerHTML='<div class="empty-state">加载失败</div>'; return; }
+    _cronJobs = res.jobs || [];
+    var cronWebhooks = res.webhooks || {};
+    if(!_cronJobs.length){ el.innerHTML='<div class="empty-state">尚无定时任务。点右上角「+ 创建任务」开始配置。</div>'; return; }
+    var delIcons = { local:'💾', origin:'💬', weixin:'💬', telegram:'✈️', discord:'🎮', feishu:'📘', dingtalk:'📱', wecom:'💼' };
+    el.innerHTML = _cronJobs.map(function(j){
+      var id = j.id || j.job_id || '';
+      var name = j.name || j.prompt || '未命名任务';
+      if(name.length > 60) name = name.slice(0,60) + '…';
+      var schedule = j.schedule || j.cron || '';
+      var paused = j.paused || j.status === 'paused';
+      var skills = j.skills || j.attached_skills || [];
+      var deliver = j.deliver_to || j.delivery || 'local';
+      var nextRun = j.next_run_at ? new Date(j.next_run_at).toLocaleString('zh-CN') : '';
+      var lastRun = j.last_run_at ? new Date(j.last_run_at).toLocaleString('zh-CN') : '';
+      var lastStatus = j.last_status || '';
+      var lastError = j.last_error || '';
+      var accent = paused ? '#f59e0b' : '#22c55e';
+      // 状态 pill（参考 Octop CronJobCard：圆点 + 状态色）
+      var statusPill = '<span style="display:inline-flex;align-items:center;gap:5px;font-size:10px;padding:2px 9px;border-radius:10px;color:'+accent+';background:'+accent+'1a;font-weight:600;letter-spacing:.2px">'+
+        '<span style="width:6px;height:6px;border-radius:50%;background:'+accent+'"></span>'+(paused?'已暂停':'活跃')+'</span>';
+      // Webhook 投递通道状态（monitor 轮询转发）
+      var hooks = (cronWebhooks[id] || []).filter(function(h){ return h && h.url; });
+      var hookHtml = '';
+      if(hooks.length){
+        hookHtml = hooks.map(function(h){
+          var hok = h.last_status === 'ok', herr = h.last_status === 'error';
+          var color = herr ? '#ef4444' : (hok ? '#22c55e' : 'var(--text3)');
+          var state = herr ? '失败' : (hok ? '已投递' : '等待');
+          return '<span style="font-size:11px;color:var(--text3)">🔗 '+esc(h.label || 'Webhook')+' <b style="color:'+color+'">'+state+'</b>'+
+            (herr && h.last_error ? ' <span title="'+esc(h.last_error)+'" style="cursor:help;color:#ef4444">⚠️</span>' : '')+'</span>';
+        }).join('<span style="color:var(--border)">|</span>');
+      }
+      return '<div class="mcp-card'+(paused?' disabled':'')+'" style="border-left:3px solid '+accent+'">' +
+        '<div class="mcp-card-head"><div class="mcp-name">⏰ '+esc(name)+'</div><div class="mcp-badges">'+statusPill+'</div></div>' +
+        '<div class="mcp-detail" style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-top:6px">'+
+          '<code style="font-size:11px;background:var(--bg1);border:1px solid var(--border);border-radius:4px;padding:2px 7px;font-family:monospace">'+esc(schedule)+'</code>'+
+          '<span style="font-size:11px;color:var(--text3)">'+(delIcons[deliver]||'📨')+' 投递: '+esc(deliver)+'</span>'+
+        '</div>' +
+        (skills.length ? '<div class="mcp-tools-info" style="margin-top:4px">📚 技能: '+esc(skills.join(', '))+'</div>' : '') +
+        (hookHtml ? '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:4px">'+hookHtml+'</div>' : '') +
+        '<div style="font-size:11px;color:var(--text3);display:flex;gap:14px;flex-wrap:wrap;margin-top:4px">' +
+          (nextRun ? '<span>⏭ 下次: '+esc(nextRun)+'</span>' : '') +
+          (lastRun ? '<span>⏮ 上次: '+esc(lastRun)+'</span>' : '') +
+          (lastStatus ? '<span>结果: <b style="color:'+(lastStatus==='ok'?'#22c55e':(lastStatus==='error'?'#ef4444':'var(--text3)'))+'">'+esc(lastStatus)+'</b></span>' : '') +
+        '</div>' +
+        (lastStatus==='error' && lastError ? '<div style="font-size:11px;color:#ef4444;background:#ef44441a;border-radius:6px;padding:5px 9px;margin-top:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(lastError)+'">⚠️ '+esc(lastError)+'</div>' : '') +
+        '<div class="mcp-actions" style="margin-top:8px">' +
+          (paused ? '<button class="ov-actbtn start" onclick="cronAction(\''+esc(id)+'\',\'resume\')">恢复</button>' : '<button class="ov-actbtn" onclick="cronAction(\''+esc(id)+'\',\'pause\')">暂停</button>') +
+          '<button class="ov-actbtn" onclick="cronAction(\''+esc(id)+'\',\'run\')">立即执行</button>' +
+          '<button class="ov-actbtn stop" onclick="cronAction(\''+esc(id)+'\',\'remove\')">删除</button>' +
+        '</div></div>';
+    }).join('');
+  }).catch(function(){ el.innerHTML='<div class="empty-state">加载失败</div>'; });
+}
+function cronAction(jobId, action){
+  if(action==='remove' && !confirm('确定删除该定时任务？')) return;
+  fetch(apiUrl('/api/cron-jobs/'+encodeURIComponent(jobId)+'/action'), {
+    method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({action:action})
+  }).then(function(r){ return r.json(); }).then(function(res){
+    if(res.ok){ toast('✅ 操作成功: '+action); renderCronJobs(); } else toast(res.error||'操作失败','error');
+  }).catch(function(e){ toast('网络错误','error'); });
+}
+function openCronModal(){
+  _cronSched = null; _cronSchedTab = 'period'; // 每次打开重置调度器状态
+  window._cronDeliverList = [{channel:'local',url:'',message:''}];
+  var templates = [
+    {icon:'📰', name:'每日 AI 新闻推送', desc:'科技/AI/财经要闻摘要', schedule:'0 8 * * *', prompt:'搜索今日科技、AI、财经领域的重要新闻，生成一份简洁的每日新闻摘要（5-10条），包含标题、一句话摘要和重要性评级。', deliver:['weixin']},
+    {icon:'📖', name:'每日 5 个英语单词', desc:'单词+释义+例句推送', schedule:'0 7 * * *', prompt:'挑选 5 个适合日常交流的英语单词，每个给出音标、中文释义、2 个实用例句，并生成一段用这 5 个词写的小短文。', deliver:[{channel:'webhook', url:'', message:'{output}'}]},
+    {icon:'🌙', name:'每日儿童睡前故事', desc:'生成温馨童话故事', schedule:'0 20 * * *', prompt:'写一个适合 3-8 岁儿童的睡前故事（600字以内），主题积极温暖，结尾附一句晚安祝福。', deliver:['weixin']},
+    {icon:'📋', name:'每周工作周报', desc:'回顾本周工作输出', schedule:'0 17 * * 5', prompt:'回顾本周所有会话记录，总结本周完成的主要工作、遇到的问题和下周计划，生成结构化周报。', deliver:['local']},
+    {icon:'🖥️', name:'NAS 健康检查', desc:'磁盘/内存/服务状态', schedule:'every 6h', prompt:'检查 NAS 系统状态：磁盘使用率、内存占用、CPU 温度、关键服务运行状态。如有异常立即告警。', deliver:['local']},
+    {icon:'🐙', name:'GitHub 仓库监控', desc:'Release/Issue/PR 动态', schedule:'every 2h', prompt:'检查关注的 GitHub 仓库是否有新的 Release、重要 Issue 或 PR。如有新动态生成摘要报告。', deliver:['telegram']},
+    {icon:'📄', name:'每日 AI 论文精选', desc:'arXiv 论文中文解读', schedule:'0 9 * * *', prompt:'搜索 arXiv 上最新的 AI/LLM 相关论文，筛选出 3-5 篇最有价值的，生成中文解读摘要。', deliver:['weixin']},
+    {icon:'🏛️', name:'历史上的今天', desc:'历史事件时间线推送', schedule:'0 8 * * *', prompt:'查询今天在历史上发生的重要事件（至少 5 条，覆盖科技、文化、社会），按时间线整理成简短的推送文案。', deliver:[{channel:'webhook', url:'', message:'{output}'}]},
+    {icon:'💾', name:'定时数据备份提醒', desc:'检查备份完成情况', schedule:'0 2 * * 0', prompt:'检查本周是否已完成重要数据备份，如未完成则生成备份操作指南并提醒用户执行。', deliver:['local']},
+    {icon:'📊', name:'竞品动态监控', desc:'竞品更新与分析简报', schedule:'0 10 * * 1,3,5', prompt:'搜索并分析主要竞品（AI Agent、NAS 应用）的最新动态、产品更新和市场变化，生成竞品分析简报。', deliver:['feishu']},
+    {icon:'🧾', name:'每月账单汇总', desc:'API 用量与费用估算', schedule:'0 10 1 * *', prompt:'汇总上个月的 API 调用量、Token 消耗、各模型使用占比，生成月度用量报告和费用估算。', deliver:['weixin']},
+    {icon:'🔐', name:'服务器安全扫描', desc:'异常登录/端口/证书', schedule:'0 3 * * *', prompt:'执行基础安全检查：异常登录记录、开放端口扫描、过期证书检查、系统更新状态。生成安全报告。', deliver:['local']}
+  ];
+  var tplHtml = templates.map(function(t,i){
+    return '<div class="cron-tpl-card" onclick="applyCronTemplate('+i+')">' +
+      '<div class="cron-tpl-icon">'+t.icon+'</div>' +
+      '<div class="cron-tpl-name">'+esc(t.name)+'</div>' +
+      '<div class="cron-tpl-desc">'+esc(t.desc)+'</div>' +
+      '<div class="cron-tpl-sched">'+esc(t.schedule)+'</div>' +
+    '</div>';
+  }).join('');
+  window._cronTemplates = templates;
+  var html = '<div class="modal-overlay" id="cronModalOverlay" onclick="if(event.target===this)closeCronModal()">' +
+    '<div class="modal" style="max-width:660px;max-height:88vh;overflow-y:auto">' +
+    '<div class="modal-head"><h3>添加自动化任务</h3><button class="modal-close" onclick="closeCronModal()">×</button></div>' +
+    '<div class="modal-body">' +
+      '<div style="background:var(--accent-bg);color:var(--accent);border-radius:8px;padding:8px 12px;font-size:12px;line-height:1.7;margin-bottom:12px">🧩 支持<b>多通道投递</b>：可同时推送到微信 / Telegram / 钉钉 / 企业微信等多个通道，每个通道独立定制消息；还支持 <b>Webhook POST</b>（企业微信机器人、钉钉机器人），消息模板用 <code>{output}</code> 引用任务输出。</div>' +
+      '<div class="field"><label>📌 模板（点击一键填充）</label><div class="cron-tpl-grid">'+tplHtml+'</div></div>' +
+      '<div class="field cron-form-group"><label>任务名称（可选）</label><input type="text" id="cronName" placeholder="例如：每日 AI 新闻推送"></div>' +
+      '<div class="field cron-form-group"><label>执行频率 *</label><div id="cronSchedWrap"></div></div>' +
+      '<div class="field cron-form-group"><label>提示词 *</label><textarea id="cronPrompt" rows="4" placeholder="代理每次运行时应执行什么操作？"></textarea></div>' +
+      '<div class="field cron-form-group"><label>投递到（可添加多个通道，每个通道独立消息）</label><div id="cronDeliverWrap"></div><button type="button" class="action sm" onclick="cronAddDeliver()">＋ 添加投递通道</button></div>' +
+      '<div class="field cron-form-group"><label>技能（可选，逗号分隔）</label><input type="text" id="cronSkills" placeholder="例如 blogwatcher, find-nearby"></div>' +
+      '<div class="field cron-form-group"><label>重复次数（可选，留空=无限）</label><input type="number" id="cronRepeat" placeholder="留空表示无限重复" min="1"></div>' +
+    '</div>' +
+    '<div class="modal-foot"><button class="action" onclick="closeCronModal()">取消</button><button class="action primary" onclick="createCronJob()">创建任务</button></div>' +
+    '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+  renderCronSched();
+  renderCronDelivers();
+}
+// ── 可视化调度构建器（WorkBuddy 风格：频率 Tab = 周期 / 按间隔 / 单次 + 实时预览）──
+var _cronSched = null;
+var _cronSchedTab = 'period';
+function cronSchedState(){
+  if(!_cronSched) _cronSched = { mode:'interval', intervalValue:2, intervalUnit:'hours', timeOfDay:'09:00', weekdays:[1,2,3,4,5], dayOfMonth:1, onceAt:'', custom:'' };
+  return _cronSched;
+}
+function buildScheduleString(){
+  var s = cronSchedState();
+  if(s.mode==='interval'){
+    var um = { minutes:'m', hours:'h', days:'d' };
+    return 'every ' + s.intervalValue + (um[s.intervalUnit]||'h');
+  }
+  var hm = (s.timeOfDay||'09:00').split(':');
+  var hh = parseInt(hm[0])||0, mm = parseInt(hm[1])||0;
+  if(s.mode==='daily') return mm + ' ' + hh + ' * * *';
+  if(s.mode==='weekly') return mm + ' ' + hh + ' * * ' + (s.weekdays.length ? s.weekdays.join(',') : '*');
+  if(s.mode==='monthly') return mm + ' ' + hh + ' ' + s.dayOfMonth + ' * *';
+  if(s.mode==='once') return s.onceAt;
+  return s.custom;
+}
+function cronSchedPreview(){
+  var s = cronSchedState();
+  if(s.mode==='interval') return '每 '+s.intervalValue+' '+({minutes:'分钟',hours:'小时',days:'天'}[s.intervalUnit]||s.intervalUnit)+'执行一次';
+  if(s.mode==='daily') return '每天 '+s.timeOfDay+' 执行';
+  if(s.mode==='weekly') return '每周 '+(s.weekdays.length ? s.weekdays.map(function(d){ return ['日','一','二','三','四','五','六'][d]; }).join('、') : '（未选，视为每天）')+' '+s.timeOfDay+' 执行';
+  if(s.mode==='monthly') return '每月 '+s.dayOfMonth+' 日 '+s.timeOfDay+' 执行';
+  if(s.mode==='once') return '一次性：'+(s.onceAt||'（请选择时间）');
+  return '自定义：'+(s.custom||'（未填写）');
+}
+function cronSchedTabOf(mode){ return (mode==='interval')?'interval':(mode==='once')?'once':'period'; }
+function cronSchedTab(tab){
+  var s = cronSchedState();
+  if(tab==='interval') s.mode='interval';
+  else if(tab==='once') s.mode='once';
+  else if(s.mode==='interval'||s.mode==='once') s.mode='daily';
+  renderCronSched();
+}
+function renderCronSched(){
+  var wrap = document.getElementById('cronSchedWrap'); if(!wrap) return;
+  var s = cronSchedState();
+  _cronSchedTab = cronSchedTabOf(s.mode);
+  var html = '<div class="cron-tabs">' +
+    [['period','🔄 周期'],['interval','⏱ 按间隔'],['once','🎯 单次']].map(function(t){
+      return '<button type="button" class="cron-tab'+(t[0]===_cronSchedTab?' active':'')+'" onclick="cronSchedTab(\''+t[0]+'\')">'+t[1]+'</button>';
+    }).join('') + '</div>';
+  if(_cronSchedTab==='interval'){
+    html += '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">每 <input type="number" id="cronIvVal" min="1" max="9999" value="'+s.intervalValue+'" style="width:70px" onchange="cronSchedPatch({intervalValue:parseInt(this.value)||1})"> '+
+      '<select id="cronIvUnit" onchange="cronSchedPatch({intervalUnit:this.value})" style="padding:6px;border-radius:6px;background:var(--card);color:var(--text);border:1px solid var(--border)">'+
+      '<option value="minutes"'+(s.intervalUnit==='minutes'?' selected':'')+'>分钟</option>'+
+      '<option value="hours"'+(s.intervalUnit==='hours'?' selected':'')+'>小时</option>'+
+      '<option value="days"'+(s.intervalUnit==='days'?' selected':'')+'>天</option>'+
+      '</select> 执行一次</div>';
+  } else if(_cronSchedTab==='once'){
+    html += '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">执行时间 <input type="datetime-local" id="cronOnceAt" value="'+s.onceAt+'" onchange="cronSchedPatch({onceAt:this.value})" style="padding:6px;border-radius:6px;background:var(--card);color:var(--text);border:1px solid var(--border)"></div>';
+  } else {
+    html += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">';
+    [['daily','📅 每天'],['weekly','🗓 每周'],['monthly','📆 每月'],['custom','✍️ 自定义']].forEach(function(m){
+      html += '<button type="button" class="action sm '+(s.mode===m[0]?'primary':'')+'" onclick="cronSchedMode(\''+m[0]+'\')">'+m[1]+'</button>';
+    });
+    html += '</div>';
+    if(s.mode==='daily'){
+      html += '<div style="display:flex;gap:8px;align-items:center">每天 <input type="time" id="cronTime" value="'+s.timeOfDay+'" onchange="cronSchedPatch({timeOfDay:this.value||\'09:00\'})" style="padding:6px;border-radius:6px;background:var(--card);color:var(--text);border:1px solid var(--border)"> 执行</div>';
+    } else if(s.mode==='weekly'){
+      html += '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px">';
+      ['日','一','二','三','四','五','六'].forEach(function(dn,i){
+        var on = s.weekdays.indexOf(i)>=0;
+        html += '<button type="button" class="action sm '+(on?'primary':'')+'" style="min-width:34px" onclick="cronSchedToggleWeekday('+i+')">'+dn+'</button>';
+      });
+      html += '</div><div style="display:flex;gap:8px;align-items:center">时间 <input type="time" id="cronTime" value="'+s.timeOfDay+'" onchange="cronSchedPatch({timeOfDay:this.value||\'09:00\'})" style="padding:6px;border-radius:6px;background:var(--card);color:var(--text);border:1px solid var(--border)"></div>';
+    } else if(s.mode==='monthly'){
+      html += '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">每月 <input type="number" id="cronDom" min="1" max="31" value="'+s.dayOfMonth+'" style="width:70px" onchange="cronSchedPatch({dayOfMonth:parseInt(this.value)||1})"> 日 <input type="time" id="cronTime" value="'+s.timeOfDay+'" onchange="cronSchedPatch({timeOfDay:this.value||\'09:00\'})" style="padding:6px;border-radius:6px;background:var(--card);color:var(--text);border:1px solid var(--border)"> 执行</div>';
+    } else {
+      html += '<input type="text" id="cronCustom" value="'+esc(s.custom)+'" placeholder="例如 0 9 * * *、every 30m、2026-08-05T10:00" onchange="cronSchedPatch({custom:this.value})" style="width:100%;padding:8px;border-radius:6px;background:var(--card);color:var(--text);border:1px solid var(--border)">';
+    }
+  }
+  html += '<div style="margin-top:8px;font-size:12px;color:var(--accent);background:var(--accent-bg);border-radius:6px;padding:6px 10px;line-height:1.5">'+cronSchedPreview()+'<br><code style="font-size:11px;opacity:.8">'+esc(buildScheduleString())+'</code></div>';
+  wrap.innerHTML = html;
+}
+function cronSchedMode(mode){ var s=cronSchedState(); s.mode = mode; _cronSchedTab = cronSchedTabOf(mode); renderCronSched(); }
+function cronSchedPatch(patch){ var s = cronSchedState(); for(var k in patch) s[k] = patch[k]; renderCronSched(); }
+function cronSchedToggleWeekday(d){ var s = cronSchedState(); var i = s.weekdays.indexOf(d); if(i>=0) s.weekdays.splice(i,1); else s.weekdays.push(d); renderCronSched(); }
+function cronSchedFromString(str){
+  // 从已有调度字符串解析出构建器状态（模板点击时调用）
+  var s = cronSchedState(); str = (str||'').trim(); s.custom = str;
+  var m = str.match(/^every\s+(\d+)\s*([mhd])$/i);
+  if(m){ s.mode='interval'; s.intervalValue=parseInt(m[1])||1; s.intervalUnit=({m:'minutes',h:'hours',d:'days'}[m[2].toLowerCase()]||'hours'); return; }
+  if(str.indexOf('T')>=0 || /^\d{4}-\d{2}-\d{2}/.test(str)){ s.mode='once'; s.onceAt=str.length>=16?str.slice(0,16):str; return; }
+  var parts = str.split(/\s+/);
+  if(parts.length>=5 && parts.slice(0,5).every(function(p){ return /^[\d\*\-,/]+$/.test(p); })){
+    // cron → 尝试识别为 daily/weekly/monthly
+    var mm=parts[0], hh=parts[1], dom=parts[2], mon=parts[3], dow=parts[4];
+    if(dom==='*' && mon==='*' && dow==='*' && /^\d+$/.test(hh) && /^\d+$/.test(mm)){
+      s.mode='daily'; s.timeOfDay=(hh.length<2?'0':'')+hh+':'+(mm.length<2?'0':'')+mm;
+    } else if(dom==='*' && mon==='*' && /^[\d,]+$/.test(dow) && !dow.includes('-')){
+      s.mode='weekly'; s.timeOfDay=(hh.length<2?'0':'')+hh+':'+(mm.length<2?'0':'')+mm;
+      s.weekdays = dow.split(',').map(function(x){return parseInt(x);}).filter(function(x){return x>=0&&x<=6;});
+    } else if(dow==='*' && mon==='*' && /^\d+$/.test(dom)){
+      s.mode='monthly'; s.timeOfDay=(hh.length<2?'0':'')+hh+':'+(mm.length<2?'0':'')+mm; s.dayOfMonth=parseInt(dom)||1;
+    } else { s.mode='custom'; }
+    return;
+  }
+  s.mode='custom';
+}
+// ── 多通道投递（内置通道 + Webhook 机器人：企业微信/钉钉）──
+var CRON_DELIVER_CHANNELS = [
+  { id:'local',    label:'本地保存',       icon:'💾' },
+  { id:'origin',   label:'原始会话',       icon:'💬' },
+  { id:'weixin',   label:'微信',           icon:'💚' },
+  { id:'telegram', label:'Telegram',       icon:'✈️' },
+  { id:'dingtalk', label:'钉钉',           icon:'🐜' },
+  { id:'wecom',    label:'企业微信',       icon:'🏢' },
+  { id:'feishu',   label:'飞书',           icon:'📘' },
+  { id:'discord',  label:'Discord',        icon:'🎮' },
+  { id:'webhook',  label:'Webhook 机器人', icon:'🔗' }
+];
+function cronDeliverRowHTML(row, i){
+  var opts = CRON_DELIVER_CHANNELS.map(function(c){
+    return '<option value="'+c.id+'"'+(row.channel===c.id?' selected':'')+'>'+c.icon+' '+esc(c.label)+'</option>';
+  }).join('');
+  var h = '<div class="cron-deliver-row">' +
+    '<select onchange="cronDeliverChanged('+i+')">'+opts+'</select>';
+  if(row.channel==='webhook'){
+    h += '<input type="text" style="flex:1;min-width:200px" placeholder="Webhook 地址（企业微信机器人 / 钉钉机器人，以 http(s):// 开头）" value="'+esc(row.url||'')+'" oninput="cronDeliverInput('+i+',\'url\',this.value)">' +
+      '<input type="text" class="cron-deliver-msg" placeholder="消息模板：{output} = 任务输出全文（留空默认输出全文）" value="'+esc(row.message||'')+'" oninput="cronDeliverInput('+i+',\'message\',this.value)">';
+  }
+  h += '<button type="button" class="cron-deliver-del" title="移除该通道" onclick="cronDeliverRemove('+i+')">×</button></div>';
+  return h;
+}
+function renderCronDelivers(){
+  var wrap = document.getElementById('cronDeliverWrap'); if(!wrap) return;
+  if(!window._cronDeliverList) window._cronDeliverList = [{channel:'local',url:'',message:''}];
+  wrap.innerHTML = window._cronDeliverList.map(cronDeliverRowHTML).join('');
+}
+function cronAddDeliver(){
+  if(!window._cronDeliverList) window._cronDeliverList = [];
+  window._cronDeliverList.push({channel:'local',url:'',message:''});
+  renderCronDelivers();
+}
+function cronDeliverRemove(i){
+  var list = window._cronDeliverList || [];
+  list.splice(i,1);
+  if(!list.length) list.push({channel:'local',url:'',message:''});
+  renderCronDelivers();
+}
+function cronDeliverChanged(i){
+  var list = window._cronDeliverList || [];
+  var rows = document.querySelectorAll('#cronDeliverWrap .cron-deliver-row');
+  if(rows[i]){
+    list[i].channel = rows[i].querySelector('select').value;
+    var inputs = rows[i].querySelectorAll('input');
+    if(inputs.length>=1) list[i].url = inputs[0].value;
+    if(inputs.length>=2) list[i].message = inputs[1].value;
+  }
+  renderCronDelivers();
+}
+function cronDeliverInput(i, field, val){
+  var list = window._cronDeliverList || [];
+  if(list[i]) list[i][field] = val;
+}
+function applyCronTemplate(i){
+  var t = window._cronTemplates[i]; if(!t) return;
+  document.getElementById('cronName').value = t.name;
+  document.getElementById('cronPrompt').value = t.prompt;
+  window._cronDeliverList = (t.deliver||['local']).map(function(d){
+    if(typeof d === 'string') return { channel:d, url:'', message:'' };
+    return { channel:d.channel||'local', url:d.url||'', message:d.message||'' };
+  });
+  renderCronDelivers();
+  cronSchedFromString(t.schedule);
+  renderCronSched();
+  toast('✅ 已填充模板：'+t.name);
+}
+function closeCronModal(){ var o=document.getElementById('cronModalOverlay'); if(o) o.remove(); }
+function createCronJob(){
+  var prompt = document.getElementById('cronPrompt').value.trim();
+  var schedule = buildScheduleString().trim();
+  if(!prompt){ toast('请输入提示词','error'); return; }
+  if(!schedule){ toast('请输入调度方式','error'); return; }
+  if(_cronSched && _cronSched.mode==='once' && !_cronSched.onceAt){ toast('请选择一次性执行的时间','error'); return; }
+  var payload = { prompt: prompt, schedule: schedule };
+  var name = document.getElementById('cronName').value.trim();
+  if(name) payload.name = name;
+  // 多通道投递：内置通道 + Webhook（企微/钉钉机器人，独立消息模板）
+  var deliveries = [], firstBuiltin = null, errMsg = null;
+  var rows = document.querySelectorAll('#cronDeliverWrap .cron-deliver-row');
+  for(var ri=0;ri<rows.length;ri++){
+    var row = rows[ri];
+    var sel = row.querySelector('select'); if(!sel) continue;
+    var ch = sel.value;
+    if(ch==='webhook'){
+      var inputs = row.querySelectorAll('input');
+      var url = (inputs[0]?inputs[0].value:'').trim();
+      if(!/^https?:\/\//i.test(url)){ errMsg = 'Webhook 投递需填写以 http(s):// 开头的机器人地址'; break; }
+      var msg = (inputs[1]?inputs[1].value:'').trim();
+      deliveries.push({ channel:'webhook', url:url, message:msg||'{output}', label:url.replace(/^https?:\/\//i,'').slice(0,40) });
+    } else {
+      if(!firstBuiltin) firstBuiltin = ch;
+      deliveries.push({ channel:ch });
+    }
+  }
+  if(errMsg){ toast(errMsg,'error'); return; }
+  if(!deliveries.length) deliveries.push({ channel:'local' });
+  payload.deliveries = deliveries;
+  payload.deliver_to = firstBuiltin || 'local';
+  var skillsRaw = document.getElementById('cronSkills').value.trim();
+  if(skillsRaw) payload.skills = skillsRaw.split(',').map(function(s){return s.trim();}).filter(Boolean);
+  var repeat = document.getElementById('cronRepeat').value.trim();
+  if(repeat) payload.repeat = parseInt(repeat);
+  fetch(apiUrl('/api/cron-jobs'), { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) })
+    .then(function(r){ return r.json(); })
+    .then(function(res){
+      if(res.ok){ toast('✅ 定时任务已创建'+(res.webhooks_attached?('，已关联 '+res.webhooks_attached+' 个 Webhook 投递'):'')); closeCronModal(); renderCronJobs(); }
+      else toast(res.error||'创建失败','error');
+    }).catch(function(e){ toast('网络错误: '+e.message,'error'); });
+}
+
+/* ============================ 记忆页面 ============================ */
+var _memData = { soul:'', memory:'', notes:'' };
+function renderMemoryPage(){
+  apiGet('/api/memory').then(function(res){
+    if(!res || !res.ok){ toast('加载记忆失败','error'); return; }
+    _memData = { soul: res.soul||'', memory: res.memory||'', notes: res.notes||'' };
+    var el;
+    el=document.getElementById('memSoul'); if(el) el.value=_memData.soul;
+    el=document.getElementById('memMemory'); if(el) el.value=_memData.memory;
+    el=document.getElementById('memNotes'); if(el) el.value=_memData.notes;
+  }).catch(function(e){ toast('网络错误','error'); });
+}
+function saveMemoryField(field){
+  var elId = field==='soul'?'memSoul':field==='memory'?'memMemory':'memNotes';
+  var el = document.getElementById(elId); if(!el) return;
+  var payload = {}; payload[field] = el.value;
+  fetch(apiUrl('/api/memory'), { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) })
+    .then(function(r){ return r.json(); })
+    .then(function(res){ if(res.ok) toast('✅ '+field+' 已保存'); else toast(res.error||'保存失败','error'); })
+    .catch(function(e){ toast('网络错误','error'); });
+}
+function saveAllMemory(){
+  var payload = {
+    soul: (document.getElementById('memSoul')||{}).value||'',
+    memory: (document.getElementById('memMemory')||{}).value||'',
+    notes: (document.getElementById('memNotes')||{}).value||''
+  };
+  fetch(apiUrl('/api/memory'), { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) })
+    .then(function(r){ return r.json(); })
+    .then(function(res){ if(res.ok) toast('✅ 全部记忆已保存'); else toast(res.error||'保存失败','error'); })
+    .catch(function(e){ toast('网络错误','error'); });
+}
+
+/* ============================ Token 用量 ============================ */
+function renderUsageCard(){
+  apiGet('/api/usage').then(function(res){
+    if(!res || !res.ok || !res.usage){ return; }
+    var u = res.usage;
+    var el;
+    el=document.getElementById('usageSessions'); if(el) el.textContent = u.total_sessions||0;
+    el=document.getElementById('usageMessages'); if(el) el.textContent = u.total_messages||0;
+    var models = u.by_model ? Object.keys(u.by_model) : [];
+    el=document.getElementById('usageModels'); if(el) el.textContent = models.length;
+    el=document.getElementById('usageByModel');
+    if(el && models.length){
+      el.innerHTML = models.map(function(m){
+        var info = u.by_model[m];
+        return '<div style="display:flex;justify-content:space-between;padding:2px 0"><span>'+esc(m)+'</span><span>'+info.sessions+'会话 / '+info.messages+'消息</span></div>';
+      }).join('');
+    }
+  }).catch(function(){});
+}
+
+/* ============================ 用量统计页 ============================ */
+function renderUsagePage(){
+  var cardsEl = document.getElementById('usageSummaryCards');
+  var modelSection = document.getElementById('usageByModelSection');
+  var modelList = document.getElementById('usageByModelList');
+  var dailySection = document.getElementById('usageDailySection');
+  var dailyBody = document.getElementById('usageDailyBody');
+  var emptyEl = document.getElementById('usageEmpty');
+  
+  cardsEl.innerHTML = '<div class="usage-card"><div class="usage-card-label">加载中...</div></div>';
+  modelSection.style.display = 'none';
+  dailySection.style.display = 'none';
+  emptyEl.style.display = 'none';
+  
+  apiGet('/api/usage').then(function(res){
+    if(!res || !res.ok || !res.usage){
+      cardsEl.innerHTML = '';
+      emptyEl.style.display = '';
+      return;
+    }
+    var u = res.usage;
+    var totalSessions = u.total_sessions || 0;
+    var totalMessages = u.total_messages || 0;
+    var models = u.by_model ? Object.keys(u.by_model) : [];
+    
+    // 汇总卡片
+    cardsEl.innerHTML = 
+      '<div class="usage-card"><div class="usage-card-label">总会话数</div><div class="usage-card-value">'+totalSessions+'</div></div>' +
+      '<div class="usage-card"><div class="usage-card-label">总消息数</div><div class="usage-card-value">'+totalMessages+'</div></div>' +
+      '<div class="usage-card"><div class="usage-card-label">使用模型数</div><div class="usage-card-value">'+models.length+'</div></div>' +
+      '<div class="usage-card"><div class="usage-card-label">Dashboard 状态</div><div class="usage-card-value" style="font-size:16px">'+(res.note||'已连接')+'</div></div>';
+    
+    // 模型分布
+    if(models.length){
+      var maxSessions = 0;
+      models.forEach(function(m){ if(u.by_model[m].sessions > maxSessions) maxSessions = u.by_model[m].sessions; });
+      modelList.innerHTML = models.map(function(m){
+        var info = u.by_model[m];
+        var pct = maxSessions > 0 ? Math.round(info.sessions / maxSessions * 100) : 0;
+        return '<div class="usage-model-row">' +
+          '<div class="usage-model-name">'+esc(m)+'</div>' +
+          '<div class="usage-model-bar"><div class="usage-model-bar-fill" style="width:'+pct+'%"></div></div>' +
+          '<div class="usage-model-stats">'+info.sessions+' 会话 · '+info.messages+' 消息</div>' +
+          '</div>';
+      }).join('');
+      modelSection.style.display = '';
+    }
+    
+    // 每日用量（从会话数据推算）
+    if(u.daily && u.daily.length){
+      dailyBody.innerHTML = u.daily.map(function(d){
+        return '<tr><td>'+esc(d.date)+'</td><td>'+d.sessions+'</td><td>'+d.messages+'</td><td>'+esc(d.models||'-')+'</td></tr>';
+      }).join('');
+      dailySection.style.display = '';
+    }
+  }).catch(function(){
+    cardsEl.innerHTML = '';
+    emptyEl.style.display = '';
+  });
+}
+
+/* ============================ 学习轨迹 ============================ */
+var LEARN_COLORS = { skills:'#f59e0b', 'software-development':'#3b82f6', media:'#8b5cf6', creative:'#ec4899', devops:'#10b981', productivity:'#06b6d4', memory:'#6366f1', other:'#6b7280' };
+var LEARN_EXTRA_COLORS = ['#ef4444','#14b8a6','#f97316','#a3e635','#d946ef','#0ea5e9','#84cc16','#f43f5e'];
+function _ensureCatColor(cat){
+  if(!LEARN_COLORS[cat]){
+    var h=0; for(var i=0;i<cat.length;i++) h=(h*31+cat.charCodeAt(i))>>>0;
+    LEARN_COLORS[cat]=LEARN_EXTRA_COLORS[h%LEARN_EXTRA_COLORS.length];
+  }
+  return LEARN_COLORS[cat];
+}
+var LEARN_CAT_LABELS = { skills:'技能', 'software-development':'软件开发', media:'媒体', creative:'创意', devops:'DevOps', productivity:'效率', memory:'记忆', other:'其他' };
+var _learnCatFilter = null;
+var _learnRaf = 0;
+var _learnState = null; // { nodes, nodeMap, edges, els }
+function _learnColor(cat){ return LEARN_COLORS[cat] || LEARN_COLORS.other; }
+function _shadeHex(hex, amt){
+  var n = parseInt(hex.slice(1),16), r=n>>16, g=(n>>8)&255, b=n&255;
+  function f(v){ v = amt>0 ? v+(255-v)*amt : v*(1+amt); return Math.round(Math.max(0,Math.min(255,v))); }
+  return 'rgb('+f(r)+','+f(g)+','+f(b)+')';
+}
+function renderLearning(){
+  var statsEl = document.getElementById('learnStats');
+  var graphEl = document.getElementById('learnGraph');
+  if(!graphEl) return;
+  _learnCatFilter = null;
+  if(_learnRaf){ cancelAnimationFrame(_learnRaf); _learnRaf=0; }
+  graphEl.innerHTML = '<div class="empty-state">加载中…</div>';
+  apiGet('/api/learning-trajectory').then(function(res){
+    if(!res || !res.ok){ graphEl.innerHTML='<div class="empty-state">加载失败</div>'; return; }
+    var skills = res.skills || [];
+    var relations = res.relations || [];
+    skills.forEach(function(s){ _ensureCatColor(s.category||'other'); });
+    var totalUsage = skills.reduce(function(a,s){ return a+(s.usage_count||0); },0);
+    // 统计栏（分类徽章可点击筛选）
+    if(statsEl){
+      var cats = {};
+      skills.forEach(function(s){ var c=s.category||'other'; if(!cats[c]) cats[c]={count:0,usage:0}; cats[c].count++; cats[c].usage+=(s.usage_count||0); });
+      var catHtml = '<span class="learn-cat-badge on" data-cat="" onclick="setLearnFilter(\'\')"><span class="learn-cat-dot" style="background:var(--text3)"></span>全部 '+skills.length+'</span>';
+      catHtml += Object.keys(cats).sort(function(a,b){ return cats[b].usage-cats[a].usage; }).map(function(c){
+        var pct = totalUsage ? Math.round(cats[c].usage/totalUsage*100) : 0;
+        return '<span class="learn-cat-badge" data-cat="'+esc(c)+'" onclick="setLearnFilter(\''+esc(c).replace(/'/g,"\\'")+'\')"><span class="learn-cat-dot" style="background:'+_learnColor(c)+'"></span>'+esc(LEARN_CAT_LABELS[c]||c)+' '+cats[c].count+' / '+pct+'%</span>';
+      }).join('');
+      statsEl.innerHTML = '<div class="learn-summary"><strong>'+skills.length+'</strong> 技能 · <strong>'+relations.length+'</strong> 关系 · <strong>'+totalUsage+'</strong> 次使用</div><div class="learn-cats">'+catHtml+'</div>';
+    }
+    if(!skills.length){ graphEl.innerHTML='<div class="empty-state">尚无技能数据</div>'; return; }
+    renderSkillGraph(graphEl, skills, relations);
+  }).catch(function(e){ graphEl.innerHTML='<div class="empty-state">网络错误</div>'; });
+}
+function setLearnFilter(cat){
+  _learnCatFilter = (cat && cat!==_learnCatFilter) ? cat : null;
+  document.querySelectorAll('.learn-cat-badge').forEach(function(b){
+    b.classList.toggle('on', (b.getAttribute('data-cat')||'')===(_learnCatFilter||''));
+  });
+  applyLearnFilter();
+}
+function applyLearnFilter(){
+  var st=_learnState; if(!st) return;
+  var f=_learnCatFilter;
+  st.nodes.forEach(function(n){
+    var dim = f && n.category!==f;
+    n.el.style.opacity = dim ? '0.14' : '1';
+    n.el.style.pointerEvents = dim ? 'none' : '';
+  });
+  st.edges.forEach(function(e){
+    var dim = f && (e.a.category!==f && e.b.category!==f);
+    e.el.setAttribute('opacity', dim ? '0.05' : '0.5');
+  });
+}
+function renderSkillGraph(container, skills, relations){
+  var W=900, H=560, NS='http://www.w3.org/2000/svg';
+  var maxUsage = Math.max.apply(null, skills.map(function(s){ return s.usage_count||1; }));
+  // 初始位置：按分类分簇 + 抖动，收敛更快
+  var catIndex = {};
+  skills.forEach(function(s){ var c=s.category||'other'; catIndex[c]=(catIndex[c]||[]); catIndex[c].push(s); });
+  var catKeys = Object.keys(catIndex);
+  var nodes = [];
+  catKeys.forEach(function(c, ci){
+    var ang = (2*Math.PI*ci)/Math.max(1,catKeys.length) - Math.PI/2;
+    var bcx = W/2 + Math.cos(ang)*Math.min(W,H)*0.28, bcy = H/2 + Math.sin(ang)*Math.min(W,H)*0.28;
+    catIndex[c].forEach(function(s, i){
+      var radius = 3 + Math.sqrt((s.usage_count||1)/maxUsage)*3;
+      nodes.push({ id:s.id, name:s.name||s.id, category:s.category||'other', usage:s.usage_count||0, skill:s,
+        x: bcx + (Math.random()-0.5)*50, y: bcy + (Math.random()-0.5)*50, vx:0, vy:0, fx:null, fy:null, r:radius });
+    });
+  });
+  var nodeMap = {}; nodes.forEach(function(n){ nodeMap[n.id]=n; });
+  var edges = [];
+  relations.forEach(function(rel){
+    var a=nodeMap[rel.from], b=nodeMap[rel.to];
+    if(a && b && a!==b) edges.push({ a:a, b:b });
+  });
+
+  var svg = document.createElementNS(NS,'svg');
+  svg.setAttribute('viewBox','0 0 '+W+' '+H);
+  svg.setAttribute('preserveAspectRatio','xMidYMid meet');
+  svg.style.width='100%'; svg.style.height='100%'; svg.style.display='block';
+  // 渐变 defs（3D 球体感）
+  var defs = document.createElementNS(NS,'defs');
+  Object.keys(LEARN_COLORS).forEach(function(c){
+    var col = LEARN_COLORS[c];
+    var g = document.createElementNS(NS,'radialGradient');
+    g.setAttribute('id','lg-'+c); g.setAttribute('cx','35%'); g.setAttribute('cy','28%'); g.setAttribute('r','80%');
+    var s1=document.createElementNS(NS,'stop'); s1.setAttribute('offset','0%'); s1.setAttribute('stop-color',_shadeHex(col,0.55));
+    var s2=document.createElementNS(NS,'stop'); s2.setAttribute('offset','45%'); s2.setAttribute('stop-color',col);
+    var s3=document.createElementNS(NS,'stop'); s3.setAttribute('offset','100%'); s3.setAttribute('stop-color',_shadeHex(col,-0.35));
+    g.appendChild(s1); g.appendChild(s2); g.appendChild(s3); defs.appendChild(g);
+  });
+  svg.appendChild(defs);
+  var edgeLayer = document.createElementNS(NS,'g'); svg.appendChild(edgeLayer);
+  var nodeLayer = document.createElementNS(NS,'g'); svg.appendChild(nodeLayer);
+  edges.forEach(function(e){
+    var ln=document.createElementNS(NS,'line');
+    ln.setAttribute('stroke','var(--border2)'); ln.setAttribute('stroke-width','1'); ln.setAttribute('opacity','0.5');
+    edgeLayer.appendChild(ln); e.el=ln;
+  });
+  nodes.forEach(function(n){
+    var g=document.createElementNS(NS,'g'); g.setAttribute('class','learn-node'); g.setAttribute('data-id',n.id);
+    var shadow=document.createElementNS(NS,'ellipse');
+    shadow.setAttribute('rx',n.r*0.8); shadow.setAttribute('ry',n.r*0.3); shadow.setAttribute('fill','rgba(0,0,0,.12)');
+    shadow.setAttribute('cx','0'); shadow.setAttribute('cy',String(n.r+3));
+    var c=document.createElementNS(NS,'circle');
+    c.setAttribute('r',n.r); c.setAttribute('fill','url(#lg-'+n.category+')');
+    c.setAttribute('stroke',_shadeHex(_learnColor(n.category),-0.25)); c.setAttribute('stroke-width','0.5');
+    g.appendChild(shadow); g.appendChild(c);
+    if(n.r>=4){
+      var t=document.createElementNS(NS,'text');
+      t.setAttribute('text-anchor','middle'); t.setAttribute('y',String(n.r+10));
+      t.setAttribute('font-size','11'); t.setAttribute('fill','var(--text2)');
+      t.textContent = n.name.length>12 ? n.name.slice(0,12)+'…' : n.name;
+      g.appendChild(t);
+    }
+    nodeLayer.appendChild(g); n.el=g;
+  });
+  container.innerHTML='';
+  container.appendChild(svg);
+  // 图例
+  var legend=document.createElement('div'); legend.className='learn-legend';
+  legend.innerHTML = catKeys.slice(0,6).map(function(c){ return '<span><span class="lg-dot" style="background:'+_learnColor(c)+'"></span>'+esc(LEARN_CAT_LABELS[c]||c)+'</span>'; }).join('');
+  container.appendChild(legend);
+
+  _learnState = { nodes:nodes, nodeMap:nodeMap, edges:edges };
+  applyLearnFilter();
+
+  // 力导向模拟
+  var alpha = 1;
+  function simTick(){
+    var i, j, a, b, dx, dy, d2, d, f;
+    // 库仑排斥
+    for(i=0;i<nodes.length;i++){
+      for(j=i+1;j<nodes.length;j++){
+        a=nodes[i]; b=nodes[j];
+        dx=b.x-a.x; dy=b.y-a.y; d2=dx*dx+dy*dy;
+        if(d2<1){ dx=(Math.random()-0.5); dy=(Math.random()-0.5); d2=1; }
+        d=Math.sqrt(d2);
+        f = 600/d2 * alpha;
+        var fx=dx/d*f, fy=dy/d*f;
+        a.vx-=fx; a.vy-=fy; b.vx+=fx; b.vy+=fy;
+      }
+    }
+    // 连线弹簧
+    edges.forEach(function(e){
+      dx=e.b.x-e.a.x; dy=e.b.y-e.a.y; d=Math.sqrt(dx*dx+dy*dy)||1;
+      var rest = 30 + e.a.r + e.b.r;
+      f = (d-rest)*0.015*alpha;
+      e.a.vx += dx/d*f; e.a.vy += dy/d*f;
+      e.b.vx -= dx/d*f; e.b.vy -= dy/d*f;
+    });
+    // 向心 + 积分
+    nodes.forEach(function(n){
+      n.vx += (W/2-n.x)*0.0016*alpha;
+      n.vy += (H/2-n.y)*0.0016*alpha;
+      if(n.fx!=null){ n.x=n.fx; n.y=n.fy; n.vx=0; n.vy=0; return; }
+      n.vx*=0.82; n.vy*=0.82;
+      n.x+=n.vx; n.y+=n.vy;
+      var m=n.r+4;
+      if(n.x<m){n.x=m;n.vx=0;} if(n.x>W-m){n.x=W-m;n.vx=0;}
+      if(n.y<m){n.y=m;n.vy=0;} if(n.y>H-m){n.y=H-m;n.vy=0;}
+    });
+  }
+  function draw(){
+    nodes.forEach(function(n){ n.el.setAttribute('transform','translate('+n.x.toFixed(1)+','+n.y.toFixed(1)+')'); });
+    edges.forEach(function(e){
+      e.el.setAttribute('x1',e.a.x); e.el.setAttribute('y1',e.a.y);
+      e.el.setAttribute('x2',e.b.x); e.el.setAttribute('y2',e.b.y);
+    });
+  }
+  function loop(){
+    if(alpha>0.02){ simTick(); alpha*=0.985; draw(); _learnRaf=requestAnimationFrame(loop); }
+    else { _learnRaf=0; draw(); }
+  }
+  function reheat(v){ if(alpha<v) alpha=v; if(!_learnRaf) _learnRaf=requestAnimationFrame(loop); }
+  draw();
+  _learnRaf=requestAnimationFrame(loop);
+
+  // 拖拽 + 点击（pointer events，坐标换算到 viewBox）
+  function svgPoint(evt){
+    var pt=svg.createSVGPoint(); pt.x=evt.clientX; pt.y=evt.clientY;
+    var m=svg.getScreenCTM(); if(!m) return {x:0,y:0};
+    var p=pt.matrixTransform(m.inverse()); return {x:p.x, y:p.y};
+  }
+  nodes.forEach(function(n){
+    var dragging=false, moved=0, sx=0, sy=0;
+    n.el.addEventListener('pointerdown', function(evt){
+      evt.preventDefault();
+      dragging=true; moved=0; var p=svgPoint(evt); sx=p.x; sy=p.y;
+      n.fx=n.x; n.fy=n.y;
+      try{ n.el.setPointerCapture(evt.pointerId); }catch(e){}
+    });
+    n.el.addEventListener('pointermove', function(evt){
+      if(!dragging) return;
+      var p=svgPoint(evt);
+      moved += Math.abs(p.x-sx)+Math.abs(p.y-sy); sx=p.x; sy=p.y;
+      n.fx=p.x; n.fy=p.y; reheat(0.25);
+    });
+    n.el.addEventListener('pointerup', function(){
+      if(!dragging) return;
+      dragging=false;
+      if(moved<5){ n.fx=null; n.fy=null; showSkillDetail(n.skill); }
+      // 拖拽后钉住位置，保持用户布局
+    });
+  });
+}
+function showSkillDetail(skill){
+  var el=document.getElementById('learnDetail'); if(!el) return;
+  var cat=skill.category||'other';
+  el.style.display='';
+  el.innerHTML = '<div class="mem-card"><div class="mem-card-head"><span class="mem-icon">📌</span><span class="mem-title">'+esc(skill.name||skill.id)+'</span><button class="modal-close" onclick="document.getElementById(\'learnDetail\').style.display=\'none\'">\u00d7</button></div>' +
+    '<div style="padding:12px;font-size:13px">' +
+    '<div><strong>ID:</strong> '+esc(skill.id)+'</div>' +
+    '<div><strong>分类:</strong> <span class="learn-cat-badge" style="cursor:default;padding:1px 8px"><span class="learn-cat-dot" style="background:'+_learnColor(cat)+'"></span>'+esc(LEARN_CAT_LABELS[cat]||cat)+'</span></div>' +
+    '<div><strong>使用次数:</strong> '+(skill.usage_count||0)+'</div>' +
+    '<div><strong>来源:</strong> '+esc(skill.source||'-')+'</div>' +
+    '<div><strong>创建时间:</strong> '+(skill.created_at?new Date(skill.created_at).toLocaleString():'-')+'</div>' +
+    (skill.description?'<div style="margin-top:6px;color:var(--text2)">'+esc(skill.description)+'</div>':'') +
+    '</div></div>';
+}
+
+/* 保存扩展/设置相关配置 */
+function saveConfig(){
+  var payload = JSON.parse(JSON.stringify(_cfg));
+  // 默认仅 Hermes Gateway 激活时，GET 不返回 hermes provider（被前端过滤），
+  // 但后端 POST 要求 active_provider 命中 providers 中某一项，否则 400「no active provider」。
+  // 补回 hermes 内部 provider 占位，使后端 active_provider 校验通过
+  // （hermes 不会被写入 providers 段，model.provider 仍指向 hermes）。
+  var hasActive = payload.active_provider && payload.providers && payload.providers.some(function(p){ return p && p.name===payload.active_provider; });
+  if(!hasActive){
+    payload.providers = payload.providers || [];
+    var hasHermes = payload.providers.some(function(p){ return p && p.id==='hermes'; });
+    if(!hasHermes){
+      payload.providers.push({ id:'hermes', name:'Hermes Gateway', type:'openai-compatible', base_url:'LOCAL', model:'auto', temperature:0.7, max_tokens:4096, api_key_configured:false });
+    }
+    if(!payload.active_provider) payload.active_provider = 'Hermes Gateway';
+  }
+  return apiPost('/api/config', payload).then(function(r){
+    if(r && r.error) toast('保存配置失败：'+r.error);
+    // 工具集有新增（如启用专家团开启 delegation）时后端会重启网关以加载新工具，
+    // 给用户明确反馈，避免网关重启的几秒内发消息失败造成困惑
+    else if(r && r.gateway_restarting) toast('正在重启网关以加载新工具（如任务委派），请稍候几秒再发送');
+  }).catch(function(e){ toast('保存配置失败：'+e.message); });
+}
+
+/* ============================ 连接器（OCTOP） ============================ */
+var _connFilter='all';
+function renderConnectors(){
+  var el=document.getElementById('connectorGrid'); if(!el) return;
+  apiGet('/api/connectors').then(function(d){
+    var list = (d && d.connectors) || [];
+    _connState.list = list;
+    var metaMap = {};
+    PV.octopConnectors.forEach(function(c){ metaMap[c.kind]=c; });
+    var items = PV.octopConnectors.filter(function(c){
+      var cfg = list.find(function(x){ return x.kind===c.kind; });
+      var configured = !!(cfg && cfg.configured);
+      if(_connFilter==='configured' && !configured) return false;
+      if(_connFilter==='unconfigured' && configured) return false;
+      return true;
+    });
+    el.innerHTML = items.map(function(c){
+      var cfg = list.find(function(x){ return x.kind===c.kind; });
+      var configured = !!(cfg && cfg.configured);
+      return '<div class="connector-card" onclick="openConnectorModal(\''+c.kind+'\')">'+
+        '<div class="top"><div class="icon" style="color:'+esc(c.color)+'">'+c.icon+'</div><div><div class="name">'+esc(c.name)+'<span class="badge">'+esc(c.mcp_mode)+'</span></div><div class="status">'+esc(c.description)+'</div></div></div>'+
+        '<button class="action" onclick="event.stopPropagation();openConnectorModal(\''+c.kind+'\')">'+(configured?'管理':'去配置')+'</button></div>';
+    }).join('') || '<div class="empty-state">该筛选下暂无连接器。</div>';
+  }).catch(function(){ toast('加载连接器失败'); });
+}
+function setConnFilter(el, filter){
+  _connFilter=filter;
+  document.querySelectorAll('#page-connectors .ch-filter').forEach(function(b){ b.classList.remove('active'); });
+  el.classList.add('active');
+  renderConnectors();
+}
+var _currentConnKind=null;
+function openConnectorModal(kind){
+  _currentConnKind=kind;
+  var c=PV.octopConnectors.find(function(x){ return x.kind===kind; });
+  var m=document.getElementById('connectorModal'); if(!m) return;
+  if (m.parentElement !== document.body) document.body.appendChild(m);
+  m.style.display='flex';
+  document.getElementById('connModalTitle').innerHTML=esc(c.name)+' <span class="conn-badge" style="background:'+esc(c.color)+'20;color:'+esc(c.color)+';border-color:'+esc(c.color)+'40">'+esc(c.mcp_mode)+'</span>';
+  apiGet('/api/connectors/'+encodeURIComponent(kind)).then(function(d){
+    var creds=(d && d.creds_set) || {};
+    renderConnectorDetail(c, creds, d);
+  }).catch(function(){
+    renderConnectorDetail(c, {}, null);
+  });
+}
+function renderConnectorDetail(c, creds, d){
+  creds = creds || {};
+  var body='<div class="conn-desc">'+esc(c.description)+'</div>';
+  body+='<a class="conn-doc" href="'+esc(c.doc_url)+'" target="_blank">📄 查看官方文档 →</a>';
+  body+='<div class="conn-hint">💡 '+esc(c.auth_hint)+'</div>';
+  body+='<div class="conn-section-title">凭证</div><div class="conn-fields">';
+  c.fields.forEach(function(f){
+    // creds_set 是「是否已设置」的布尔标志（后端出于安全不回显真实密钥），
+    // 绝不能当作输入框的值回填（否则 Client ID 会变成 "true" 并在保存时覆盖真实凭证）。
+    var isSet=!!creds[f.key];
+    var ph=f.placeholder||'';
+    if(isSet) ph='已设置，留空则保留原值'+(ph?'（'+ph+'）':'');
+    body+='<div class="field"><label>'+esc(f.label)+(isSet?' <span style="color:var(--success);font-size:11px">✓ 已设置</span>':'')+'</label><input type="'+(f.secret?'password':'text')+'" id="connField_'+f.key+'" value="" placeholder="'+esc(ph)+'"></div>';
+  });
+  body+='</div>';
+  body+='<div class="conn-section-title">工具列表</div><div class="conn-tools">';
+  if(c.mcp_mode==='remote'){
+    body+='<div class="conn-tool remote">远程 MCP：保存后将注册为 MCP 服务器，由对话中的智能体调用。</div>';
+  } else {
+    c.tools.forEach(function(t){
+      body+='<div class="conn-tool"><div class="tool-name">'+esc(t.name)+'</div><div class="tool-desc">'+esc(t.description)+'</div></div>';
+    });
+  }
+  body+='</div>';
+  if(c.mcp_mode==='gateway'){
+    body+='<div class="conn-section-title">调用工具</div><div class="conn-invoke">';
+    body+='<div class="field"><label>选择工具</label><select id="connToolSelect" onchange="onConnToolChange()">';
+    c.tools.forEach(function(t,i){ body+='<option value="'+i+'">'+esc(t.name)+'</option>'; });
+    body+='</select></div><div id="connToolArgs"></div>';
+    body+='<button class="action primary" style="margin-top:10px" onclick="invokeConnectorTool()">调用工具</button>';
+    body+='<pre id="connToolResult" class="conn-result" style="display:none"></pre></div>';
+  }
+  document.getElementById('connModalBody').innerHTML=body;
+  if(c.mcp_mode==='gateway') onConnToolChange();
+  var foot=document.getElementById('connModalFoot');
+  if(foot) foot.innerHTML='<button class="action" onclick="testConnector()">测试连接</button><button class="action primary" onclick="saveConnector()">保存</button>';
+}
+function onConnToolChange(){
+  var c=PV.octopConnectors.find(function(x){ return x.kind===_currentConnKind }); if(!c) return;
+  var idx=parseInt(document.getElementById('connToolSelect').value,10);
+  var tool=c.tools[idx]; if(!tool) return;
+  var html='';
+  tool.args.forEach(function(a){
+    html+='<div class="field"><label>'+esc(a.label)+(a.required?'<span style="color:#ef4444">*</span>':'')+'</label>'+(a.textarea?'<textarea id="connArg_'+a.key+'" rows="3" placeholder="'+esc(a.placeholder||'')+'"></textarea>':'<input type="text" id="connArg_'+a.key+'" placeholder="'+esc(a.placeholder||'')+'">')+'</div>';
+  });
+  document.getElementById('connToolArgs').innerHTML=html;
+}
+function getConnFields(){
+  var c=PV.octopConnectors.find(function(x){ return x.kind===_currentConnKind }); if(!c) return {};
+  var fields={};
+  c.fields.forEach(function(f){ var el=document.getElementById('connField_'+f.key); if(el) fields[f.key]=el.value.trim(); });
+  return fields;
+}
+function closeConnectorModal(){ var m=document.getElementById('connectorModal'); if(m) m.style.display='none'; _currentConnKind=null; }
+function testConnector(){
+  var c=PV.octopConnectors.find(function(x){ return x.kind===_currentConnKind });
+  if(c && c.mcp_mode==='remote'){ toast('远程 MCP 连接器无需测试，保存后由网关注册为 MCP 服务器。'); return; }
+  var fields=getConnFields();
+  apiPost('/api/connectors/'+encodeURIComponent(_currentConnKind), fields).then(function(r){
+    if(r && r.ok) toast('连接测试成功');
+    else if(r && r.error) toast('测试失败：'+r.error);
+    else toast('已提交（部署后生效）');
+  }).catch(function(e){ toast('测试请求失败：'+e.message); });
+}
+function saveConnector(){
+  var fields=getConnFields();
+  apiPost('/api/connectors/'+encodeURIComponent(_currentConnKind), fields).then(function(r){
+    if(r && r.error) toast('保存失败：'+r.error);
+    else { toast('已保存连接器凭证'); closeConnectorModal(); renderConnectors(); }
+  }).catch(function(e){ toast('保存失败：'+e.message); });
+}
+function invokeConnectorTool(){
+  var c=PV.octopConnectors.find(function(x){ return x.kind===_currentConnKind });
+  var idx=parseInt(document.getElementById('connToolSelect').value,10);
+  var tool=c.tools[idx];
+  var args={}; var missing=false;
+  tool.args.forEach(function(a){
+    var el=document.getElementById('connArg_'+a.key);
+    var v=el?el.value.trim():'';
+    if(a.required && !v) missing=true;
+    if(v) args[a.key]=v;
+  });
+  if(missing){ toast('请填写必填参数'); return; }
+  var res=document.getElementById('connToolResult'); res.style.display='block'; res.textContent='调用中…';
+  apiPost('/api/connectors/'+encodeURIComponent(_currentConnKind)+'/call', { tool:tool.name, args:args }).then(function(r){
+    if(r && r.ok){ try { res.textContent = typeof r.result==='string' ? r.result : JSON.stringify(r.result,null,2); } catch(e){ res.textContent=String(r.result); } }
+    else if(r && r.error){ res.textContent='调用失败：'+r.error; }
+    else res.textContent='调用完成（无返回）';
+  }).catch(function(e){ res.textContent='调用失败：'+e.message; });
+}
+
+/* ============================ 通讯 / 渠道 ============================ */
+var _chFilter='all';
+function renderChannels(){
+  var el=document.getElementById('channelGrid'); if(!el) return;
+  apiGet('/api/channels').then(function(res){
+    if(!res || res.error){ el.innerHTML='<div class="empty-state" style="color:var(--red)">加载频道失败：'+(res&&res.error||'未知')+'</div>'; return; }
+    _chState.defs = res.defs || {};
+    _chState.channels = res.channels || {};
+    var defs=_chState.defs, ch=_chState.channels;
+    var ids=Object.keys(defs);
+    if(_chFilter==='configured') ids=ids.filter(function(id){ return !!((ch[id]||{}).configured); });
+    else if(_chFilter==='unconfigured') ids=ids.filter(function(id){ return !((ch[id]||{}).configured); });
+    ids.sort(function(a,b){ return ((ch[b]||{}).configured?1:0) - ((ch[a]||{}).configured?1:0); });
+    el.innerHTML = ids.map(function(id){
+      var def=defs[id]; var c=ch[id]||{}; var configured=!!c.configured;
+      var badge=configured?'<span class="badge on">已配置</span>':'<span class="badge off">未配置</span>';
+      var action=def.qrLogin?'<button class="action" onclick="event.stopPropagation();openChannelModal(\''+id+'\')">扫码登录</button>':'<button class="action" onclick="event.stopPropagation();openChannelModal(\''+id+'\')">配置</button>';
+      var svgIcon = (window.PV && PV.ICONS && PV.ICONS[id]) ? PV.ICONS[id] : null;
+      var iconHtml = svgIcon ? '<div class="icon svg-icon">'+svgIcon+'</div>' : '<div class="icon">'+(def.icon||'🔌')+'</div>';
+      return '<div class="connector-card" onclick="openChannelModal(\''+id+'\')">'+
+        '<div class="top">'+iconHtml+'<div><div class="name">'+esc(def.name)+' '+badge+'</div><div class="status">'+(def.note||'配置后可在该平台收发消息')+'</div></div></div>'+
+        action+'</div>';
+    }).join('') || '<div class="empty-state">该筛选下暂无频道。</div>';
+  }).catch(function(){ toast('加载频道失败'); });
+}
+function setChFilter(el, filter){
+  _chFilter=filter;
+  document.querySelectorAll('#page-comm .ch-filter').forEach(function(b){ b.classList.remove('active'); });
+  el.classList.add('active');
+  renderChannels();
+}
+var _currentChId=null;
+function openChannelModal(id){
+  _chQrSeq++; // 打开新弹窗：终止上一个渠道残留的 QR 轮询链
+  _currentChId=id;
+  var def=_chState.defs[id];
+  var c=_chState.channels[id]||{};
+  if(!def) return;
+  var m=document.getElementById('channelModal'); if(!m) return;
+  if (m.parentElement !== document.body) document.body.appendChild(m);
+  m.style.display='flex';
+  document.getElementById('chModalTitle').textContent='配置 '+def.name;
+  var html='';
+  (def.fields||[]).forEach(function(f){
+    if(!f.env) return;
+    var val=(c.credentials||[]).filter(function(x){ return x.env===f.env; })[0];
+    var cur=val?val.value:'';
+    html+='<div class="field"><label>'+esc(f.label)+(f.secret?'（保密）':'')+'</label><input type="'+(f.secret?'password':'text')+'" id="chf_'+esc(f.env)+'" value="'+esc(cur)+'" placeholder="'+esc(f.placeholder||'')+'"></div>';
+  });
+  (def.toggles||[]).forEach(function(t){
+    var cur=(c.config && (c.config[t.path]===true||c.config[t.path]==='true'))?true:false;
+    html+='<div class="toggle-row"><label class="toggle '+(cur?'on':'')+'" id="cht_'+esc(t.path)+'" onclick="chToggle(\''+esc(t.path)+'\')"><span class="toggle-switch"></span></label><span class="toggle-lbl">'+esc(t.label)+'</span></div>';
+  });
+  (def.behavior||[]).forEach(function(b){
+    var bid='chb_'+b.path.replace(/\./g,'_');
+    var cur=(c.config && c.config[b.path]!=null)?String(c.config[b.path]):'';
+    html+='<div class="field"><label>'+esc(b.label)+'</label><input type="'+(b.type==='password'?'password':'text')+'" id="'+bid+'" value="'+esc(cur)+'" placeholder="'+esc(b.placeholder||'')+'"></div>';
+  });
+  if(def.note && (!def.fields||!def.fields.length) && (!def.toggles||!def.toggles.length)){
+    html+='<div class="conn-hint">'+esc(def.note)+'</div>';
+  }
+  // Octop 风格通用行为开关（显示思考过程 / 工具调用提示）
+  var behaviorToggles=[
+    {key:'show_thinking', label:'显示思考过程'},
+    {key:'show_tool_hints', label:'显示工具调用提示'}
+  ];
+  behaviorToggles.forEach(function(bt){
+    var cur=(c.config && (c.config[bt.key]===true||c.config[bt.key]==='true'))?true:false;
+    html+='<div class="toggle-row"><label class="toggle '+(cur?'on':'')+'" id="cht_'+esc(bt.key)+'" onclick="chToggle(\''+esc(bt.key)+'\')"><span class="toggle-switch"></span></label><span class="toggle-lbl">'+esc(bt.label)+'</span></div>';
+  });
+  // ── Octop 风格增强配置：绑定角色 / 模型 / 技能 ──
+  html += '<div style="margin-top:16px;border-top:1px solid var(--border);padding-top:12px">';
+  html += '<div style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--accent)">🎭 角色与能力配置</div>';
+  // 绑定 Profile：按 id 去重（防同一角色重复出现），打开弹窗时异步刷新一次
+  // 保证新建的 Agent（如预设模板创建的 coder/fnos_operator）能出现在下拉里
+  var curProfile = (c.config && c.config.profile) || 'default';
+  var profList = (_profiles.length ? _profiles : [{id:'default',name:'默认助手'}]);
+  var seenProf = {}; profList = profList.filter(function(p){ if(seenProf[p.id]) return false; seenProf[p.id]=true; return true; });
+  if(!profList.some(function(p){ return p.id==='default'; })) profList.unshift({id:'default',name:'默认助手',emoji:'🤖'});
+  html += '<div class="field"><label>绑定角色 (Profile)</label><select id="ch_profile" style="width:100%;padding:8px;border-radius:6px;background:var(--card);color:var(--text);border:1px solid var(--border)">';
+  profList.forEach(function(p){
+    html += '<option value="'+esc(p.id)+'"'+(curProfile===p.id?' selected':'')+'>'+esc(p.emoji||'')+' '+esc(p.name||p.id)+'</option>';
+  });
+  html += '</select><div class="conn-hint" style="font-size:11px;margin-top:4px">该通道收到的消息将使用此角色的系统提示和配置</div></div>';
+  // 异步刷新 profiles 并重建下拉（保留当前选中值，去重）
+  apiGet('/api/profiles').then(function(res){
+    if(res && res.ok && res.profiles){
+      _profiles = res.profiles; _profilesLoaded = true;
+      renderPersonas(); renderPresetAgents();
+      var sel = document.getElementById('ch_profile');
+      if(!sel) return;
+      var keep = sel.value || curProfile;
+      var pl = res.profiles.length ? res.profiles : [{id:'default',name:'默认助手'}];
+      var sp = {}; pl = pl.filter(function(p){ if(sp[p.id]) return false; sp[p.id]=true; return true; });
+      if(!pl.some(function(p){ return p.id==='default'; })) pl.unshift({id:'default',name:'默认助手',emoji:'🤖'});
+      sel.innerHTML = pl.map(function(p){ return '<option value="'+esc(p.id)+'">'+esc(p.emoji||'')+' '+esc(p.name||p.id)+'</option>'; }).join('');
+      sel.value = pl.some(function(p){ return p.id===keep; }) ? keep : 'default';
+    }
+  }).catch(function(){});
+  // 模型选择
+  var curModel = (c.config && c.config.model) || '';
+  html += '<div class="field"><label>模型选择（留空=跟随角色配置）</label><select id="ch_model" style="width:100%;padding:8px;border-radius:6px;background:var(--bg1);color:var(--text);border:1px solid var(--border)">'+buildModelOptionsHtml(curModel, '跟随角色配置')+'</select></div>';
+  // 技能多选
+  var curSkills = (c.config && c.config.skills) || [];
+  if(typeof curSkills === 'string') curSkills = curSkills ? curSkills.split(',') : [];
+  if(!Array.isArray(curSkills)) curSkills = [];
+  html += '<div class="field"><label>启用技能（多选，留空=全部）</label><div id="ch_skills_wrap" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px">';
+  var knownSkills = ['web_search','code_execution','file_manager','terminal','browser','vision','memory','delegation'];
+  knownSkills.forEach(function(sk){
+    var checked = curSkills.indexOf(sk) >= 0;
+    html += '<label style="display:inline-flex;align-items:center;gap:4px;font-size:12px;padding:4px 8px;border-radius:4px;background:var(--card);border:1px solid var(--border);cursor:pointer"><input type="checkbox" class="ch-skill-cb" value="'+sk+'"'+(checked?' checked':'')+' style="accent-color:var(--accent)">'+sk+'</label>';
+  });
+  html += '</div></div>';
+  // 系统提示覆盖
+  var curSysPrompt = (c.config && c.config.system_prompt) || '';
+  html += '<div class="field"><label>系统提示覆盖（可选，优先级高于角色 SOUL.md）</label><textarea id="ch_system_prompt" rows="3" placeholder="留空则使用绑定角色的 SOUL.md" style="width:100%;padding:8px;border-radius:6px;background:var(--card);color:var(--text);border:1px solid var(--border);resize:vertical">'+esc(curSysPrompt)+'</textarea></div>';
+  html += '</div>';
+  // 二维码登录类渠道：不直接弹出二维码，改为「扫码 / 手动输入」选择视图
+  if(def.qrLogin){
+    var qrFn = id==='telegram' ? 'chStartTelegramQr()' : (id==='whatsapp' ? 'chStartWhatsAppQr()' : (id==='weixin' ? 'chStartWeixinQr()' : (id==='wecom' ? 'chStartWecomQr()' : '')));
+    var choice = '<div class="qr-choice">'+
+      '<div class="conn-hint" style="margin-bottom:12px">该渠道支持扫码登录或手动填写 Token，请选择一种方式：</div>'+
+      '<div class="qr-choice-row">'+
+        '<button class="qr-choice-btn" onclick="'+qrFn+'"><div class="qr-choice-ico">📷</div><div><div class="qr-choice-t">扫码登录 / 创建</div><div class="qr-choice-s">用 App 扫码，自动获取凭证</div></div></button>'+
+        '<button class="qr-choice-btn" onclick="chShowManualFields()"><div class="qr-choice-ico">🔑</div><div><div class="qr-choice-t">手动输入 Token</div><div class="qr-choice-s">粘贴 Bot Token / 凭证</div></div></button>'+
+      '</div>'+
+      '<div id="chManualWrap" style="display:none">'+html+'</div>'+
+      '</div>';
+    document.getElementById('chModalBody').innerHTML=choice;
+  } else {
+    document.getElementById('chModalBody').innerHTML=html;
+  }
+  var foot=document.getElementById('chModalFoot');
+  var hasConfig = !!(c && (c.configured || (c.credentials||[]).some(function(x){ return x.value; })));
+  if(foot) foot.innerHTML='<button class="ov-actbtn danger" id="chClearBtn" onclick="clearChannel()" style="'+(hasConfig?'':'display:none')+'">清空配置</button><button class="ov-actbtn" onclick="testChannel()">测试</button><button class="ov-actbtn start" onclick="saveChannel()">保存</button>';
+}
+function clearChannel(){
+  var id=_currentChId; var def=_chState.defs[id]; if(!id||!def) return;
+  if(!confirm('确定清空「'+def.name+'」的全部配置？\n\n将删除已保存的凭证、账号信息和通道设置（含角色绑定、模型、技能、系统提示），网关将自动重启。\n清空后可重新扫码或手动配置。')) return;
+  apiPost('/api/channels/'+id+'/clear', {}).then(function(r){
+    if(r && r.error){ toast('清空失败：'+r.error); return; }
+    apiGet('/api/channels').then(function(res2){
+      _chState.channels = (res2 && res2.channels) || _chState.channels;
+      renderChannels(); closeChannelModal();
+      toast('已清空 '+def.name+' 配置，网关正在重启生效。');
+    });
+  }).catch(function(e){ toast('清空失败：'+e.message); });
+}
+function chShowManualFields(){
+  var wrap=document.getElementById('chManualWrap'); if(wrap) wrap.style.display='block';
+  var row=document.querySelector('#chModalBody .qr-choice-row'); if(row) row.style.display='none';
+  var hint=document.querySelector('#chModalBody .qr-choice > .conn-hint'); if(hint) hint.style.display='none';
+}
+function chToggle(path){ var el=document.getElementById('cht_'+path); if(el) el.classList.toggle('on'); }
+function closeChannelModal(){ _chQrSeq++; var m=document.getElementById('channelModal'); if(m) m.style.display='none'; _currentChId=null; }
+function testChannel(){
+  var id=_currentChId; if(!id){ toast('请先打开一个渠道'); return; }
+  var def=_chState.defs[id]; if(!def){ toast('无渠道定义'); return; }
+  var credentials={};
+  (def.fields||[]).forEach(function(f){ if(!f.env) return; var el=document.getElementById('chf_'+f.env); credentials[f.env]=el?el.value:''; });
+  var toggles={};
+  (def.toggles||[]).forEach(function(t){ var el=document.getElementById('cht_'+t.path); toggles[t.path]=!!(el&&el.classList.contains('on')); });
+  var config={};
+  (def.behavior||[]).forEach(function(b){ var bid='chb_'+b.path.replace(/\./g,'_'); var el=document.getElementById(bid); var v=el?el.value:''; if(v&&v.trim()!=='') config[b.path]=b.list?v.split(',').map(function(s){return s.trim();}).filter(Boolean):v.trim(); });
+  ['show_thinking','show_tool_hints'].forEach(function(key){ var el=document.getElementById('cht_'+key); config[key]=!!(el&&el.classList.contains('on')); });
+  var payload={ kind:id, config:config, credentials:credentials, toggles:toggles };
+  toast('正在测试 '+def.name+' 连接…');
+  apiPost('/api/channels/'+id+'/test', payload).then(function(r){
+    if(r && r.error){
+      if(/404/.test(r.error)){ toast('该渠道暂不支持在线测试，保存后重启网关即可生效'); }
+      else { toast('连接失败：'+r.error); }
+      return;
+    }
+    toast('连接正常：'+(r&&r.message? r.message : def.name+' 配置有效'));
+  });
+}
+function saveChannel(){
+  var id=_currentChId; var def=_chState.defs[id]; if(!def) return;
+  var credentials={};
+  (def.fields||[]).forEach(function(f){ if(!f.env) return; var el=document.getElementById('chf_'+f.env); credentials[f.env]=el?el.value:''; });
+  var toggles={};
+  (def.toggles||[]).forEach(function(t){ var el=document.getElementById('cht_'+t.path); toggles[t.path]=!!(el&&el.classList.contains('on')); });
+  var config={};
+  (def.behavior||[]).forEach(function(b){ var bid='chb_'+b.path.replace(/\./g,'_'); var el=document.getElementById(bid); var v=el?el.value:''; if(v&&v.trim()!=='') config[b.path]=b.list?v.split(',').map(function(s){return s.trim();}).filter(Boolean):v.trim(); });
+  // Octop 风格通用行为开关
+  ['show_thinking','show_tool_hints'].forEach(function(key){ var el=document.getElementById('cht_'+key); config[key]=!!(el&&el.classList.contains('on')); });
+  // Octop 增强：角色/模型/技能/系统提示（始终发送，空值=清空覆盖）
+  var chProfile=document.getElementById('ch_profile'); if(chProfile) config.profile=chProfile.value;
+  var chModel=document.getElementById('ch_model'); config.model=chModel?chModel.value.trim():'';
+  var skillCbs=document.querySelectorAll('.ch-skill-cb:checked'); config.skills=Array.from(skillCbs).map(function(cb){ return cb.value; });
+  var chSysPrompt=document.getElementById('ch_system_prompt'); config.system_prompt=chSysPrompt?chSysPrompt.value.trim():'';
+  apiPost('/api/channels/'+id, { credentials:credentials, toggles:toggles, config:config }).then(function(r){
+    if(r && r.error){ toast('保存失败：'+r.error); return; }
+    apiGet('/api/channels').then(function(res2){
+      _chState.channels = (res2 && res2.channels) || _chState.channels;
+      renderChannels(); closeChannelModal();
+      toast('已保存 '+def.name+' 配置，网关正在重启生效。');
+    });
+  }).catch(function(e){ toast('保存失败：'+e.message); });
+}
+/* 渠道二维码（使用 window.QRCode） */
+/* 用 Node `qrcode` 库（window.QRCode.toCanvas）把文本画到 canvas 元素上。
+   注意：打包内置的是 node-qrcode，不是 davidshimjs/qrcodejs，没有 `new QRCode(el,{text})` 构造器，
+   必须用 QRCode.toCanvas(canvasEl, text, opts, cb)。 */
+function drawQR(canvasEl, text){
+  return new Promise(function(resolve){
+    try {
+      if(window.QRCode && typeof window.QRCode.toCanvas === 'function'){
+        window.QRCode.toCanvas(canvasEl, String(text||''), { errorCorrectionLevel:'M', margin:1, width:220, color:{ dark:'#000000', light:'#ffffff' } }, function(err){ resolve(!err); });
+        return;
+      }
+    } catch(e){}
+    resolve(false);
+  });
+}
+/* 把二维码渲染进 modal 中的 canvas；若库不可用则退化为可复制的链接，避免空白 */
+function chRenderQr(deep, canvasId){
+  var cv=document.getElementById(canvasId);
+  if(!cv) return;
+  if(!deep){ var w0=cv.parentNode; if(w0) w0.innerHTML='<div class="conn-hint" style="color:var(--red)">无法生成二维码</div>'; return; }
+  drawQR(cv, deep).then(function(ok){
+    if(!ok){
+      var wrap=cv.parentNode;
+      if(wrap){ wrap.innerHTML='<div class="conn-hint" style="color:var(--red)">当前环境无法渲染二维码，请复制以下链接在手机浏览器打开完成授权：</div><div style="word-break:break-all;font-size:12px;background:#f3f4f6;padding:8px;border-radius:var(--radius-sm);margin-top:6px">'+esc(deep)+'</div>'; }
+    }
+  });
+}
+function chShowQrSuccess(name){
+  var body=document.getElementById('chModalBody'); var foot=document.getElementById('chModalFoot');
+  if(foot) foot.innerHTML='';
+  if(body) body.innerHTML='<div style="text-align:center;padding:18px 8px"><div style="font-size:42px;line-height:1">✅</div><div style="font-weight:600;margin-top:8px">'+esc(name)+' 已成功关联</div><div class="conn-hint" style="margin-top:8px">凭证已写入本机，网关正在自动重启生效（约 10 秒后可用）。</div><button class="action primary" style="margin-top:14px" onclick="closeChannelModal()">完成</button></div>';
+}
+function chStartTelegramQr(){
+  var seq=++_chQrSeq;
+  var body=document.getElementById('chModalBody'); body.innerHTML='<div class="conn-hint">正在生成 Telegram 配对二维码…</div>';
+  apiGet('/api/channels/telegram/qr').then(function(res){
+    if(seq!==_chQrSeq) return;
+    if(!res || res.error) throw new Error(res&&res.error||'获取二维码失败');
+    var deep=res.qr_payload||res.deep_link||'';
+    if(!deep){ body.innerHTML='<div class="conn-hint" style="color:var(--red)">无法生成二维码</div>'; return; }
+    body.innerHTML='<div class="conn-hint">用 Telegram 扫描下方二维码创建机器人。</div><div style="display:flex;justify-content:center;padding:12px"><canvas id="tgQR" width="220" height="220" style="width:220px;height:220px;background:#fff;border-radius:var(--radius-md)"></canvas></div><div id="tgQrStatus" style="text-align:center;font-size:13px;color:var(--text3)">等待扫码创建…</div><div id="tgAllowWrap" style="display:none;margin-top:12px"><input id="tgAllowed" type="text" placeholder="允许的 Telegram 用户 ID（逗号分隔）" style="width:100%"></div>';
+    chRenderQr(deep, 'tgQR');
+    chPollTelegramQr(res.pairing_id, seq);
+  }).catch(function(e){ if(seq!==_chQrSeq) return; body.innerHTML='<div class="conn-hint" style="color:var(--red)">无法获取二维码：'+(e.message||e)+'</div>'; });
+}
+function chPollTelegramQr(pid, seq){
+  if(seq===undefined) seq=_chQrSeq;
+  api('/api/channels/telegram/qr/status?pairing_id='+encodeURIComponent(pid),'GET').then(function(res){
+    if(seq!==_chQrSeq) return;
+    var stEl=document.getElementById('tgQrStatus');
+    if(!res || res.error){ if(stEl) stEl.textContent=(res&&res.error)||'轮询失败'; return; }
+    var st=res.status;
+    if(st==='waiting'){ if(stEl) stEl.textContent='等待在 Telegram 中点击「Create Bot」…'; setTimeout(function(){ if(seq===_chQrSeq) chPollTelegramQr(pid, seq); }, 2500); }
+    else if(st==='ready'){ if(stEl) stEl.textContent='✅ 机器人已创建：'+(res.bot_username||'')+'，请填写允许的用户 ID 后点击「完成」。'; var w=document.getElementById('tgAllowWrap'); if(w) w.style.display='block'; var inp=document.getElementById('tgAllowed'); if(inp&&res.owner_user_id) inp.value=res.owner_user_id; var foot=document.getElementById('chModalFoot'); if(foot) foot.innerHTML='<div style="margin-right:auto;font-size:11px;color:var(--text3)">凭证仅保存在本机</div><button class="action primary" onclick="chApplyTelegramQr(\''+esc(pid)+'\')">完成</button>'; }
+    else if(st==='confirmed'){ chShowQrSuccess('Telegram'); }
+  }).catch(function(e){ var stEl=document.getElementById('tgQrStatus'); if(stEl) stEl.textContent='轮询出错：'+(e.message||e); });
+}
+function chApplyTelegramQr(pid){
+  var el=document.getElementById('tgAllowed'); var allowed=el?el.value:'';
+  apiPost('/api/channels/telegram/qr/apply', { pairing_id:pid, allowed_user_ids:allowed }).then(function(res){
+    if(res && res.error) throw new Error(res.error);
+    apiGet('/api/channels').then(function(r2){ _chState.channels=(r2&&r2.channels)||_chState.channels; renderChannels(); chShowQrSuccess('Telegram'); });
+  }).catch(function(e){ alert('保存失败：'+(e.message||e)); });
+}
+function chStartWhatsAppQr(){
+  var seq=++_chQrSeq;
+  var body=document.getElementById('chModalBody');
+  body.innerHTML='<div class="conn-hint">WhatsApp 通过本地桥接扫码配对，消息在本地处理。</div><div id="waQrZone" style="text-align:center;margin-top:8px"><div class="conn-hint">正在启动桥接并生成二维码…</div></div>';
+  api('/api/channels/whatsapp/qr?mode=self-chat','GET').then(function(res){
+    if(seq!==_chQrSeq) return;
+    if(!res || res.error) throw new Error(res.error||'启动失败');
+    if(res.status==='connected'){ chApplyWhatsAppQr(res.pairing_id); return; }
+    var waDeep=res.qr_payload||res.deep_link||'';
+    if(!waDeep){ body.innerHTML='<div class="conn-hint" style="color:var(--red)">二维码生成失败</div>'; return; }
+    body.innerHTML='<div class="conn-hint">用 WhatsApp 扫描上方二维码 → 设置 → 关联设备。</div><div style="display:flex;justify-content:center;padding:8px"><canvas id="waQR" width="240" height="240" style="width:240px;height:240px;background:#fff;border-radius:var(--radius-md)"></canvas></div><div id="waQrStatus" style="font-size:13px;color:var(--text3)">等待在 WhatsApp 中确认…</div>';
+    chRenderQr(waDeep, 'waQR');
+    chPollWhatsAppQr(res.pairing_id, seq);
+  }).catch(function(e){ if(seq!==_chQrSeq) return; body.innerHTML='<div class="conn-hint" style="color:var(--red)">启动失败：'+(e.message||e)+'</div>'; });
+}
+function chPollWhatsAppQr(pid, seq){
+  if(seq===undefined) seq=_chQrSeq;
+  api('/api/channels/whatsapp/qr/status?pairing_id='+encodeURIComponent(pid),'GET').then(function(res){
+    if(seq!==_chQrSeq) return;
+    if(!res || res.error){ var z=document.getElementById('waQrZone'); if(z) z.innerHTML='<div class="conn-hint" style="color:var(--red)">'+(res&&res.error||'配对失败')+'</div>'; return; }
+    var st=res.status; var stEl=document.getElementById('waQrStatus');
+    if(st==='starting'||st==='waiting'){ if(stEl) stEl.textContent=(st==='starting')?'正在等待二维码…':'等待在 WhatsApp 中确认…'; var newQr=res.qr_payload||res.deep_link||''; if(newQr&&st==='waiting'){ var c=document.getElementById('waQR'); if(c) drawQR(c, newQr); } setTimeout(function(){ if(seq===_chQrSeq) chPollWhatsAppQr(pid, seq); }, 2000); }
+    else if(st==='connected'){ if(stEl) stEl.textContent='✅ 已连接：'+(res.account_name||'')+'，正在保存…'; chApplyWhatsAppQr(pid); }
+    else if(st==='expired'||st==='error'){ var z2=document.getElementById('waQrZone'); if(z2) z2.innerHTML='<div class="conn-hint" style="color:var(--red)">'+(res.error||'配对失败或二维码已过期。')+'</div><button class="action" style="margin-top:10px" onclick="chStartWhatsAppQr()">重新获取二维码</button>'; }
+  }).catch(function(e){ var stEl=document.getElementById('waQrStatus'); if(stEl) stEl.textContent='轮询出错：'+(e.message||e); });
+}
+function chApplyWhatsAppQr(pid){
+  apiPost('/api/channels/whatsapp/qr/apply', { pairing_id:pid, allowed_users:'' }).then(function(res){
+    if(res && res.error) throw new Error(res.error);
+    apiGet('/api/channels').then(function(r2){ _chState.channels=(r2&&r2.channels)||_chState.channels; renderChannels(); chShowQrSuccess('WhatsApp'); });
+  }).catch(function(e){ alert('保存失败：'+(e.message||e)); });
+}
+function chStartWeixinQr(){
+  var seq=++_chQrSeq;
+  var body=document.getElementById('chModalBody'); body.innerHTML='<div class="conn-hint">正在获取微信登录二维码…</div>';
+  apiGet('/api/channels/weixin/qr').then(function(res){
+    if(seq!==_chQrSeq) return;
+    if(!res || res.error) throw new Error(res.error||'获取二维码失败');
+    var deep=res.qrcode_url||res.qrcode_img||'';
+    if(!deep && res.qrcode) deep='https://ilinkai.weixin.qq.com/ilink/bot/scan?qrcode='+encodeURIComponent(res.qrcode);
+    if(!deep){ body.innerHTML='<div class="conn-hint" style="color:var(--red)">二维码生成失败</div>'; return; }
+    body.innerHTML='<div class="conn-hint">请用微信扫描下方二维码完成登录（腾讯 iLink 官方接口）。</div><div style="display:flex;justify-content:center;padding:12px"><canvas id="wxQR" width="200" height="200" style="width:200px;height:200px;background:#fff;border-radius:var(--radius-md)"></canvas></div><div id="wxQrStatus" style="text-align:center;font-size:13px;color:var(--text3)">等待扫码…</div>';
+    chRenderQr(deep, 'wxQR');
+    chPollWeixinQr(res.qrcode, seq);
+  }).catch(function(e){ if(seq!==_chQrSeq) return; body.innerHTML='<div class="conn-hint" style="color:var(--red)">无法获取二维码：'+(e.message||e)+'</div>'; });
+}
+function chPollWeixinQr(qrcode, seq){
+  if(seq===undefined) seq=_chQrSeq;
+  api('/api/channels/weixin/qr/status?qrcode='+encodeURIComponent(qrcode),'GET').then(function(res){
+    if(seq!==_chQrSeq) return;
+    if(!res || res.error) throw new Error(res.error||'poll failed');
+    var st=res.status;
+    var stEl=document.getElementById('wxQrStatus');
+    if(st==='wait'){ setTimeout(function(){ if(seq===_chQrSeq) chPollWeixinQr(qrcode, seq); }, 3000); }
+    else if(st==='scaned'){ if(stEl) stEl.textContent='已扫码，请在微信中确认登录…'; setTimeout(function(){ if(seq===_chQrSeq) chPollWeixinQr(qrcode, seq); }, 3000); }
+    else if(st==='expired'){ var body=document.getElementById('chModalBody'); if(body) body.innerHTML='<div class="conn-hint">二维码已过期，请重新获取。</div><button class="action" style="margin-top:10px" onclick="chStartWeixinQr()">重新获取二维码</button>'; }
+    else if(st==='confirmed'){ if(stEl) stEl.textContent='登录成功，正在保存凭证…'; apiPost('/api/channels/weixin',{ credentials:{ WEIXIN_TOKEN:res.token||'', WEIXIN_ACCOUNT_ID:res.account_id||'', WEIXIN_BASE_URL:res.base_url||'' } }).then(function(){ apiGet('/api/channels').then(function(r2){ _chState.channels=(r2&&r2.channels)||_chState.channels; renderChannels(); chShowQrSuccess('微信'); }); }); }
+  }).catch(function(e){ var stEl=document.getElementById('wxQrStatus'); if(stEl) stEl.textContent='轮询出错：'+(e.message||e); });
+}
+/* 企业微信扫码登录：腾讯官方 AI 机器人扫码接口（与 Octop 一致），
+   无需预先填写 Corp ID——扫码授权后由服务端获取 bot_id + secret 自动保存。 */
+function chStartWecomQr(){
+  var seq=++_chQrSeq;
+  var body=document.getElementById('chModalBody'); body.innerHTML='<div class="conn-hint">正在生成企业微信授权二维码…</div>';
+  apiGet('/api/channels/wecom/qr').then(function(res){
+    if(seq!==_chQrSeq) return;
+    if(!res || res.error) throw new Error(res.error||'获取二维码失败');
+    var authUrl=res.qr_payload||res.qr_url||res.deep_link||'';
+    if(!authUrl){ body.innerHTML='<div class="conn-hint" style="color:var(--red)">无法生成二维码</div>'; return; }
+    body.innerHTML='<div class="conn-hint">用企业微信「扫一扫」扫描下方二维码，在手机端确认创建 AI 机器人。</div><div style="display:flex;justify-content:center;padding:12px"><canvas id="wcQR" width="220" height="220" style="width:220px;height:220px;background:#fff;border-radius:var(--radius-md)"></canvas></div><div id="wcQrStatus" style="text-align:center;font-size:13px;color:var(--text3)">等待扫码授权…</div>';
+    chRenderQr(authUrl, 'wcQR');
+    chPollWecomQr(res.scode, seq);
+  }).catch(function(e){ if(seq!==_chQrSeq) return; body.innerHTML='<div class="conn-hint" style="color:var(--red)">无法获取二维码：'+(e.message||e)+'</div>'; });
+}
+function chPollWecomQr(scode, seq){
+  if(seq===undefined) seq=_chQrSeq;
+  api('/api/channels/wecom/qr/status?scode='+encodeURIComponent(scode),'GET').then(function(res){
+    if(seq!==_chQrSeq) return;
+    var stEl=document.getElementById('wcQrStatus');
+    if(!res || res.error){ if(stEl) stEl.textContent='轮询失败：'+((res&&res.error)||'未知错误'); return; }
+    var st=res.status;
+    if(st==='waiting'){ if(stEl) stEl.textContent='等待扫码确认…'; setTimeout(function(){ if(seq===_chQrSeq) chPollWecomQr(scode, seq); }, 3000); }
+    else if(st==='ready'){ if(stEl) stEl.textContent='✅ 授权成功：Bot '+(res.bot_id||'')+'，点击「完成」启用。'; var foot=document.getElementById('chModalFoot'); if(foot) foot.innerHTML='<div style="margin-right:auto;font-size:11px;color:var(--text3)">凭证仅保存在本机</div><button class="action primary" onclick="chApplyWecomQr(\''+esc(scode)+'\')">完成</button>'; }
+    else if(st==='expired'||st==='error'){ var z=document.getElementById('chModalBody'); if(z) z.innerHTML='<div class="conn-hint" style="color:var(--red)">'+(res.error||'扫码失败或二维码已过期。')+'</div><button class="action" style="margin-top:10px" onclick="chStartWecomQr()">重新获取二维码</button>'; }
+  }).catch(function(e){ if(seq!==_chQrSeq) return; var stEl=document.getElementById('wcQrStatus'); if(stEl) stEl.textContent='轮询出错：'+(e.message||e); });
+}
+function chApplyWecomQr(scode){
+  apiPost('/api/channels/wecom/qr/apply', { scode: scode }).then(function(res){
+    if(res && res.error) throw new Error(res.error);
+    apiGet('/api/channels').then(function(r2){ _chState.channels=(r2&&r2.channels)||_chState.channels; renderChannels(); chShowQrSuccess('企业微信'); });
+  }).catch(function(e){ alert('保存失败：'+(e.message||e)); });
+}
+/* ============================ 更新 ============================ */
+// 注意：btn 只接受显式传入的 event；切勿读全局 event —— switchPage('updates') 自动调用本函数时
+// 全局 event 仍是侧边栏「更新」导航按钮的点击事件，event.target 会命中导航按钮，
+// textContent 会抹掉导航按钮里的 SVG 图标（更新页丢图标 bug 根因）。
+function _resolveCheckBtn(evt){
+  var t = evt && evt.currentTarget;
+  return (t && t.tagName === 'BUTTON') ? t : null;
+}
+function checkHermesUpdate(evt){
+  var btn=_resolveCheckBtn(evt); if(btn){btn.disabled=true;btn.textContent='检查中…';}
+  apiGet('/api/hermes/update/check').then(function(data){
+    if(!data || data.error){ var b=document.getElementById('hermesUpdateBtn'); if(b) b.style.display='none'; toast(data&&data.error?'检查失败：'+data.error:'检查 Hermes 更新失败'); return; }
+    if(data.date) window.__hermesDate=data.date;
+    var lat=document.getElementById('hermesLatest');
+    if(lat){ if(data.updateAvailable){ lat.textContent=data.latest||'未知'; var b2=document.getElementById('hermesUpdateBtn'); if(b2) b2.style.display='inline-flex'; toast('发现新版本：'+data.latest); } else { lat.textContent='已是最新'; var b3=document.getElementById('hermesUpdateBtn'); if(b3) b3.style.display='none'; toast('Hermes 核心已是最新'); } }
+  }).catch(function(){ toast('检查 Hermes 更新失败'); }).finally(function(){ if(btn){btn.disabled=false;btn.textContent='检查更新';} });
+}
+function confirmHermesUpdate(){
+  if(!confirm('确认更新 Hermes 核心？更新期间服务会短暂中断。')) return;
+  apiPost('/api/hermes/update', {}).then(function(data){
+    if(data && data.error){ toast('启动更新失败：'+data.error); return; }
+    toast('Hermes 更新中…');
+    var tries=0;
+    (function poll(){
+      tries++;
+      apiGet('/api/hermes/update/status').then(function(d){
+        if(d && d.status==='done'){ toast('Hermes 更新完成，正在重启'); apiPost('/api/restart',{}); var btn=document.getElementById('hermesUpdateBtn'); if(btn) btn.style.display='none'; }
+        else if(d && d.status==='error'){ toast('更新失败'); }
+        else if(tries<40){ setTimeout(poll, 2000); }
+      }).catch(function(){ if(tries<40) setTimeout(poll,2000); });
+    })();
+  }).catch(function(e){ toast('启动更新失败：'+e.message); });
+}
+function checkAppUpdate(evt){
+  var btn=_resolveCheckBtn(evt); if(btn){btn.disabled=true;btn.textContent='检查中…';}
+  apiGet('/api/app/update/check').then(function(data){
+    if(!data || data.error){ var b=document.getElementById('appUpdateBtn'); if(b) b.style.display='none'; toast(data&&data.error?'检查失败：'+data.error:'检查应用更新失败'); return; }
+    // 缓存更新信息供「完整安装」按钮使用（是否有 fpk 安装包/发布页链接）
+    window.__appUpdateInfo={ latest:data.latest||'', html_url:data.html_url||'', download_url:data.download_url||'' };
+    var lat=document.getElementById('appLatest');
+    if(data.rateLimited){
+      // PAT 未配置或 GitHub 限流：显示提示，隐藏更新按钮
+      if(lat) lat.textContent=data.hint||'无法检查更新';
+      var btn2=document.getElementById('appUpdateBtn'); if(btn2) btn2.style.display='none';
+      toast(data.hint||'GitHub API 限流');
+      return;
+    }
+    if(lat){
+      if(data.updateAvailable){
+        lat.textContent='v'+data.latest;
+        var btn3=document.getElementById('appUpdateBtn'); if(btn3) btn3.style.display='inline-flex';
+        toast('发现新版本：v'+data.latest+'，可点击「下载安装包」从 GitHub 获取');
+      } else {
+        lat.textContent='已是最新';
+        var btn4=document.getElementById('appUpdateBtn'); if(btn4) btn4.style.display='none';
+        toast('Hermes Agent 应用已是最新');
+      }
+    }
+  }).catch(function(){ toast('检查应用更新失败'); }).finally(function(){ if(btn){btn.disabled=false;btn.textContent='检查更新';} });
+}
+function confirmAppUpdate(){
+  // 完整安装：直接打开 GitHub 上最新 .fpk 安装包的下载地址（仓库公开，浏览器可直链下载），
+  // 下载完成后由用户在 fnOS「应用中心」手动安装/覆盖完成升级，不做服务端自动替换。
+  var info=window.__appUpdateInfo||{};
+  if(info.download_url){
+    toast('正在打开 GitHub 下载 v'+(info.latest||'最新')+' 安装包 (.fpk)…');
+    window.open(info.download_url,'_blank');
+  } else {
+    toast('未获取到安装包直链，已打开 GitHub 发布页…');
+    window.open(info.html_url||'https://github.com/hermes-agent/fnos-hermes-agent/releases/latest','_blank');
+  }
+}
+
+/* ============================ 设置页 ============================ */
+function renderSettings(){
+  // data-key 选项：从 _cfg 读取（后端未显式支持时存于 _cfg.chat）
+  applySettingsToggles();
+}
+function applySettingsToggles(){
+  // 设置项存于本机 localStorage（后端 config 接口不持久化 chat 段），刷新后仍生效
+  var chat = (PV.Store.load().chat) || {};
+  document.querySelectorAll('#page-settings .setting-row .toggle').forEach(function(t){
+    var key=t.getAttribute('data-key'); if(!key) return;
+    var stored = (chat[key]!==undefined) ? !!chat[key] : t.classList.contains('on');
+    t.classList.toggle('on', stored);
+  });
+}
+function initSettingsToggles(){
+  var local = PV.Store.load(); local.chat = local.chat || {};
+  document.querySelectorAll('#page-settings .setting-row .toggle').forEach(function(t){
+    var key=t.getAttribute('data-key'); if(!key) return;
+    t.addEventListener('click', function(){
+      var on=t.classList.toggle('on');
+      local.chat[key]=on; PV.Store.save(local);
+      _cfg.chat = _cfg.chat || {}; _cfg.chat[key]=on;
+      toast(on ? ('已开启：'+key) : ('已关闭：'+key));
+    });
+  });
+  applySettingsToggles();
+}
+
+/* ============================ 初始化 ============================ */
+document.addEventListener('click', function(e){
+  if(popup && !popup.contains(e.target) && !(e.target.closest && e.target.closest('.tool-btn'))) closeMini();
+});
+
+/* ============================ 飞牛桌面会话保活 ============================ */
+// Hermes 以同源 iframe 嵌入飞牛（fnOS）桌面（经 fnOS gateway 反向代理，带 BASE_PATH 前缀）。
+// 用户在 iframe 内的鼠标/键盘操作不会冒泡到飞牛顶层文档的活动监听器，飞牛空闲计时器
+// 会误判为「无操作」，超时后把整个桌面登出（弹「您已被登出」）。
+// 这里在嵌入环境下周期性向顶层文档派发合成 mousemove 事件，重置飞牛空闲计时器，
+// 恢复「打开 Hermes 聊天界面期间飞牛不被登出」的旧版行为。独立端口（顶层窗口）访问时自动跳过。
+function setupFnosKeepAlive(){
+  try {
+    if(window.self === window.top) return;            // 独立窗口访问，无需保活
+    var topWin = window.top;
+    var topDoc = topWin && topWin.document;
+    if(!topDoc) return;
+    try { void topDoc.body; } catch(e){ return; }     // 跨域（不同源）无法访问顶层文档，跳过
+    // 向顶层文档/窗口派发「无害活动事件」（mousemove/pointermove），重置飞牛桌面空闲计时器。
+    // 只用鼠标移动类事件，避免 keydown/wheel 误触飞牛快捷键或滚动桌面。
+    var fire = function(){
+      try {
+        if(document.hidden) return;                   // 切到其他飞牛应用时停止保活，交还飞牛空闲计时
+        ['mousemove','pointermove'].forEach(function(t){
+          try { topDoc.dispatchEvent(new topWin.MouseEvent(t, { bubbles:true, cancelable:true, view:topWin })); } catch(e){}
+          try { topWin.dispatchEvent(new topWin.MouseEvent(t, { bubbles:true, cancelable:true, view:topWin })); } catch(e){}
+        });
+      } catch(e){}
+    };
+    setInterval(fire, 30000);                         // 周期保活，远短于飞牛空闲超时
+    setTimeout(fire, 1500);                           // 载入后先打一次，避免首分钟内被判定空闲
+    // 用户在 iframe 内真实操作鼠标时，同步向顶层文档转发活动事件，使活跃期间持续重置飞牛空闲计时。
+    ['mousemove','pointermove','mousedown'].forEach(function(t){
+      try {
+        document.addEventListener(t, function(){
+          try { if(!document.hidden) topDoc.dispatchEvent(new topWin.MouseEvent(t, { bubbles:true, cancelable:true, view:topWin })); } catch(e){}
+        }, { passive:true, capture:true });
+      } catch(e){}
+    });
+  } catch(e){}
+}
+
+document.addEventListener('DOMContentLoaded', function(){
+  BASE = _resolveBase();
+  setTheme(localStorage.getItem('fnos-theme-mode')||'auto');
+  initSettingsToggles();
+  setupFnosKeepAlive();
+  var inp=document.getElementById('chatInput');
+  if(inp){ inp.addEventListener('input', function(){ autoResize(this); }); autoResize(inp); }
+  switchPage('chat');
+  // 专家库改为按需懒加载：进入「扩展→专家库/专家团」或打开专家胶囊时由 ensurePersonasLibrary 注入（版本号缓存键，不再启动即下载 3.4MB）
+  window.__personasOpenMini = function(){
+    if(activePanel==='expert'){ var b=document.getElementById('btnExpert'); if(b){ closeMini(); openMini(b,'expert'); } }
+    var ec=document.getElementById('expCount'); if(ec) ec.textContent='共 '+expertsList().length+' 位专家';
+  };
+  // 拉取 token 后加载所有真实数据
+  fetchToken().then(function(){
+    // 并行发起：profiles / 通道会话不依赖 _cfg，与 loadConfig 同时进行，避免串行请求链拖慢首屏
+    fetchProfiles();  // 初始化加载 profiles（智能体/角色）
+    fetchChannelSessions();  // 初始化加载通道会话（微信等）
+    setInterval(fetchChannelSessions, 30000);  // 每30秒刷新通道会话
+    loadConfig().then(function(){
+      renderProviders();
+      renderExtensions();
+      renderConnectors();
+      renderChannels();
+      renderWorkflowBar();
+      renderTeamBar();
+      // 团队模式恢复：刷新页面后保持 team 分组为当前活动分组，新会话自动归入
+      if (_cfg.extensions.team_enabled && _cfg.extensions.team && _cfg.extensions.team.length) {
+        ensureAgent('team', { name: _cfg.extensions.team_name || '我的团队', icon: '👥' });
+        currentAgent = 'team';
+        localStorage.setItem('hermes_rail_open_team', 'true');
+      }
+      // 恢复上次选择的模型按钮状态（per-session）
+      var _initModel = _getSessionModel();
+      if(_initModel){
+        var mName = (typeof _initModel==='object'&&_initModel.model) ? _initModel.model : _initModel;
+        var bm=document.getElementById('btnModel');
+        if(bm){
+          bm.setAttribute('data-tip','模型: '+mName); bm.classList.add('active');
+          var badge=document.createElement('span');
+          badge.className='model-badge';
+          badge.textContent=mName.length>8?mName.slice(0,8)+'…':mName;
+          bm.appendChild(badge);
+        }
+      }
+      // 必须在配置（含 agents 分组与 session→分组映射）恢复之后再加载会话并渲染侧栏，
+      // 否则 loadSessions 的 renderRail 会先用空映射把所有会话归入「默认主力助手」分组
+      loadSessions();
+    }).catch(function(){ loadSessions(); });
+    renderOverview();
+    tickStatus();
+    setInterval(tickStatus, 3000);   // 轻量周期轮询：状态变化（重启/启动/停止后）自动反映，无需阻塞等待
+  }).catch(function(){
+    toast('无法连接后端，已进入本地预览（数据不可用）。');
+    renderRail();
+  });
+  // 滚动到底部按钮（Issue #10）
+  var cb=document.getElementById('chatBody');
+  if(cb){
+    cb.addEventListener('scroll', function(){
+      var btn=document.getElementById('scrollBottomBtn');
+      if(!btn) return;
+      if(cb.scrollTop + cb.clientHeight < cb.scrollHeight - 50){ btn.style.display='flex'; }
+      else { btn.style.display='none'; }
+    });
+  }
+});
+

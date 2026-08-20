@@ -40,7 +40,7 @@ mkdir -p "$DIST" "$BUILD_DIR"
 
 # ── 隐私扫描（强制）─────────────────────────────────────────────────
 echo "── 隐私扫描 ──"
-PRIV_LEAKS="$(grep -rnE 'password[=:][^ ]{4,}|token[=:][A-Za-z0-9_\-.]{12,}|192\.168\.[0-9]{1,3}\.[0-9]{1,3}|10\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}|/vol[0-9]+/@app(home|data)/|sk-[A-Za-z0-9]{20}' src/ fpk/config/ app/server/ 2>/dev/null | grep -vE '\.pyc|node_modules|app_version' | head -20 || true)"
+PRIV_LEAKS="$(grep -rnE 'password[=:][^ ]{4,}|token[=:][A-Za-z0-9_\-.]{12,}|192\.168\.[0-9]{1,3}\.[0-9]{1,3}|10\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}|/vol[0-9]+/@app(home|data)/|sk-[A-Za-z0-9]{20}' src/ fpk/config/ app/server/ 2>/dev/null | grep -vE '\.pyc|node_modules|app_version|password[:=](password|true|false)|token[:=](token|true|false)' | head -20 || true)"
 if [ -n "$PRIV_LEAKS" ]; then
   echo "✗ 隐私扫描发现泄漏："
   echo "$PRIV_LEAKS"

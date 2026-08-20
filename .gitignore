@@ -24,3 +24,15 @@ upstream/
 
 # 内置 venv（180MB，不提交，由 CI 从上一 Release 提取）
 fpk/venv-bundle.tar.gz
+
+# Python 缓存
+__pycache__/
+*.pyc
+*.pyo
+
+# 备份与日志
+*.bak*
+*.log
+
+# 完整源码树（app/）内忽略
+app/hermes-src/.envrc

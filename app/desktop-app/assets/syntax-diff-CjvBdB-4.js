@@ -1,0 +1,2 @@
+import{o as e}from"./rolldown-runtime-C_s2cVnS.js";import{m as t,p as n}from"./vendor-react-QKvrQxCl.js";import{C as r,S as i,w as a}from"./index-tf85opAz.js";import{r as o}from"./shiki-DUbYnScX.js";var s=e(t(),1),c=e(n(),1);function l({language:e,lines:t}){let n=(0,s.useMemo)(()=>t.map(e=>e.text).join(`
+`),[t]),l=(0,s.useMemo)(()=>[r(t.map(e=>e.kind))],[t]);return o(n,e,a,{defaultColor:`light-dark()`,transformers:l})??(0,c.jsx)(i,{lines:t})}export{l as default};

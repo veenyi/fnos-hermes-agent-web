@@ -1,0 +1,1 @@
+function e(e){let t=Number(e??0);if(!Number.isFinite(t)||t<=0)return`0`;let n=(e,t)=>`${e.toFixed(1).replace(/\.0$/,``)}${t}`;return t>=999950?n(t/1e6,`M`):t>=999.5?n(t/1e3,`k`):`${Math.round(t)}`}export{e as t};

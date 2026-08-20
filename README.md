@@ -15,9 +15,14 @@
 
 ```
 fnos-hermes-agent-web/
-├── src/                    # 源码（编译前的自定义文件）
-│   ├── server/             # monitor.js 等 Node 后端
+├── app/                    # 完整应用源码树（与部署端一致，自包含可运行）
+│   ├── server/             # Node 后端（monitor.js / custom_routes.js / connectors.js 等）
+│   ├── desktop-app/        # 桌面端 Web UI（官方 dist + web-shim 汉化层/移动端适配）
 │   ├── ui/                 # 旧版控制台页面
+│   ├── hermes-src/         # Hermes Agent 上游源码（vendored，含自定义配置）
+│   └── config/             # fnOS 应用配置（bootstrap / privilege）
+├── src/                    # 编译前的自定义修改源文件（供对照/重新构建）
+│   ├── server/             # monitor.js 等 Node 后端
 │   └── desktop-app-*.js    # 桌面端 Web UI 自定义（web-shim 汉化层/移动端适配）
 ├── scripts/                # 构建与发布脚本
 │   ├── sync-upstream.sh    # 同步官方 hermes-agent 上游
@@ -27,6 +32,8 @@ fnos-hermes-agent-web/
 ├── VERSION                 # 当前版本号
 └── .github/workflows/      # GitHub Actions 自动同步/编译/发布
 ```
+
+`app/` 为完整可部署源码树（不含 venv 与运行时数据）；`src/` 为汉化/自定义修改的源文件集合，两者内容一致时以 `app/` 为准。
 
 ## 增量更新机制
 
@@ -60,4 +67,4 @@ monitor 的 `/api/app/hot-patch` 检测到 `hot-patch.json` 时，下载增量 t
 
 ## 隐私声明
 
-本仓库**不含**任何个人数据：无密码、token、内网 IP、NAS 路径或个人信息。打包前自动执行隐私扫描，确保零残留。
+本仓库**不含**任何个人数据：无密码、token、内网 IP、NAS 路径或个人信息。打包前自动执行隐私扫描，确保零残留。部署时通过环境变量注入真实配置（如 `GITHUB_REPO`），源码内仅保留匿名占位值。

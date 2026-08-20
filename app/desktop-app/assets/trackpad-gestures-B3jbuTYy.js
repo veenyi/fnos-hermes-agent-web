@@ -1,0 +1,1 @@
+function e(e){return e.ctrlKey&&e.deltaX===0&&e.deltaY===0}function t(e=300){let t=0;return(n=Date.now())=>n-t<e?(t=0,!0):(t=n,!1)}export{e as n,t};
