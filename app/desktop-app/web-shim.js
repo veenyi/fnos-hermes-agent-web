@@ -39,7 +39,7 @@
       logs: [],
       source: "env",
       windowButtonPosition: null,
-      profile: CONFIG.profile || undefined,
+      profile: CONFIG.profile || "default",
     };
   }
 
@@ -108,7 +108,7 @@
     getGatewayWsUrlFor: function () { return Promise.resolve({ ok: true, wsUrl: wsUrlFor() }); },
     getConnectionConfig: function () {
       return Promise.resolve({
-        envOverride: false, mode: "local", profile: CONFIG.profile || null,
+        envOverride: false, mode: "local", profile: CONFIG.profile || "default",
         remoteAuthMode: "token", remoteOauthConnected: false, remoteTokenPreview: null,
         remoteTokenSet: false, secureTokenStorage: false, remoteTokenPlainText: false,
         remoteUrl: "", cloudOrg: "", sshHost: "", sshUser: "", sshPort: null,
