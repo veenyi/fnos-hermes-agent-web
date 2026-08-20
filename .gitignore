@@ -1,0 +1,20 @@
+# 构建产物
+dist/
+build/
+*.fpk
+*.tgz
+!hot-patch.json
+
+# Node
+node_modules/
+
+# 敏感文件（永不提交）
+*.token
+*.key
+.env
+.env.providers
+github_pat
+
+# 系统
+.DS_Store
+Thumbs.db
