@@ -348,9 +348,22 @@ async function runRoomMember(rid, member, text, system, model, provider, session
   }
 }
 
-// ─── 应用包版本（manifest） ────────────────────────────────────────────
+// ─── 应用包版本（manifest / app_version 覆盖） ──────────────────────────
+// 语义化版本比较：0.20.4-build30 > 0.20.4-build9；官方段升级时 build 重置为 01
+function _verGt(a, b) {
+  const pa = String(a).split("-")[0].split(".").map(Number);
+  const pb = String(b).split("-")[0].split(".").map(Number);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const na = pa[i] || 0, nb = pb[i] || 0;
+    if (na !== nb) return na > nb;
+  }
+  const ba = parseInt(String(a).match(/build(\d+)/i)?.[1] || "0", 10);
+  const bb = parseInt(String(b).match(/build(\d+)/i)?.[1] || "0", 10);
+  return ba > bb;
+}
 function readAppVersion() {
-  const candidates = [process.env.APP_VERSION, `${APP_DIR}/manifest`, "/var/apps/hermes-agent/manifest"];
+  // 优先读取 app_version 覆盖文件（热更/增量更新写入，含 Build 号），与 monitor.js 一致
+  const candidates = [process.env.APP_VERSION, `${APP_DIR}/var/app_version`, `${APP_DIR}/../var/app_version`, "/vol1/@appdata/hermes-agent/app_version", "/vol3/@appdata/hermes-agent/app_version", `${APP_DIR}/manifest`, "/var/apps/hermes-agent/manifest"];
   for (const c of candidates) {
     if (!c) continue;
     try {
@@ -1668,7 +1681,8 @@ export async function handleCustomRoute(req) {
       const tag = String(data.tag_name || "");
       const latest = tag.replace(/^fnos-hermes-agent_v|^v/, "").trim() || "unknown";
       const current = APP_VERSION;
-      const updateAvailable = latest !== "unknown" && latest !== current;
+      // 语义化版本比较（支持 build 号）：0.20.4-build30 > 0.20.4-build9，官方升级时重置
+      const updateAvailable = latest !== "unknown" && _verGt(latest, current);
       let download_url = "";
       if (Array.isArray(data.assets)) {
         const asset = data.assets.find((a) => /\.fpk$/i.test(a.name || ""));

@@ -4585,6 +4585,7 @@ toolGuardLoad();
 
 // ─── 请求处理器 ─────────────────────────────────────────────────────────
 async function handleFetch(req) {
+  try { log("[HF] " + req.method + " " + (req.url||"").slice(0,80)); } catch(e) {}
   const url  = new URL(req.url);
   // fnOS gateway 反向代理不剥路径前缀（BASE_PATH），这里按实际 BASE_PATH 剥离
   let path = url.pathname;
@@ -4614,6 +4615,8 @@ async function handleFetch(req) {
     "Access-Control-Allow-Origin": corsOrigin,
     ...extra,
   });
+
+  if (path.startsWith("/api/app/")) log("[AppAPI] " + req.method + " " + path);
 
   // 需要令牌的变更操作（仅写操作，GET 不需要 token）
   const writePaths = ["/api/start", "/api/stop", "/api/restart", "/api/dashboard/start", "/api/dashboard/stop", "/api/config", "/api/config/test", "/api/hermes/update", "/api/logs/clear", "/api/tunnel/start", "/api/tunnel/stop", "/api/voice/config", "/api/kb/write", "/api/kb/new", "/api/kb/settle", "/api/memory/append"];
@@ -5143,6 +5146,7 @@ async function handleFetch(req) {
 
   if (path === "/api/app/update/check") {
     try {
+      log("[UpdateCheck] repo=" + GITHUB_REPO + " pat_len=" + getGitHubPAT().length);
       const pat = getGitHubPAT();
       const headers = { "Accept": "application/vnd.github+json", "User-Agent": "fnos-hermes-agent" };
       if (pat) headers["Authorization"] = `Bearer ${pat}`;
