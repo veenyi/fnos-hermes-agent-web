@@ -297,7 +297,18 @@
       updateAll: function () { return Promise.resolve(); },
       remove: function () { return Promise.resolve(); },
       setPrimary: function () { return Promise.resolve(); },
-      apply: function () { return Promise.resolve(); },
+      apply: function () {
+        // 「立即更新」：同步用户仓库最新 Build——触发 GitHub Actions 构建（/api/app/update/dispatch），
+        // 构建完成后 update/check 会检测到新版本并提示安装
+        var base = (CONFIG && CONFIG.base) ? CONFIG.base : "/proxy/dashboard";
+        var url = base.replace(/\/+$/, "") + "/api/app/update/dispatch";
+        try {
+          return fetch(url, { method: "POST", headers: { "X-Hermes-Session-Token": token, "Content-Type": "application/json" }, body: "{}" })
+            .then(function (r) { return r.json().catch(function () { return {}; }); })
+            .then(function (d) { return { ok: !!(d && d.ok), error: (d && d.error) || "", message: (d && d.error) || (d && d.ok ? "已触发同步构建" : ""), version: (d && d.version) || null }; })
+            .catch(function () { return { ok: false, error: "网络请求失败" }; });
+        } catch (e) { return Promise.resolve({ ok: false, error: String(e) }); }
+      },
       run: function () { return Promise.resolve(); },
       test: function () { return Promise.resolve(); },
       save: function () { return Promise.resolve(); },

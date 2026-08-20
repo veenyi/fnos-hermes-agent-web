@@ -5446,7 +5446,7 @@ async function handleFetch(req) {
         });
       }
       const version = APP_VERSION;
-      const r = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/actions/workflows/Build_fnos-hermes-agent.yml/dispatches`, {
+      const r = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/actions/workflows/sync-upstream.yml/dispatches`, {
         method: "POST",
         headers: {
           "Accept": "application/vnd.github+json",
