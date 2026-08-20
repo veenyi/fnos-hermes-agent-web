@@ -77,21 +77,26 @@ try {
 
 // ── 当前 Build 版本 ────────────────────────────────────────────────
 const CUR_VERSION = fs.readFileSync(VERSION_FILE, 'utf8').trim();
-const CUR_OFFICIAL = CUR_VERSION.split('-')[0];
-const buildMatch = CUR_VERSION.match(/build(\d+)/i);
-const CUR_BUILD = buildMatch ? parseInt(buildMatch[1], 10) : 0;
+const CUR_OFFICIAL = CUR_VERSION.split('.').slice(0, 3).join('.');
+const CUR_BUILD = parseInt(CUR_VERSION.split('.').pop(), 10) || 0;
 
 // ── 变更检测 ──────────────────────────────────────────────────────
 let NEW_VERSION = '';
 if (LATEST_VER !== CUR_OFFICIAL) {
-  NEW_VERSION = `${LATEST_VER}-build01`;
-  console.log(`◈ 官方版本变化: ${CUR_OFFICIAL} → ${LATEST_VER} → 重置 Build V01`);
+  // 官方版本与代号前缀不同（自定义代号如 0.24.4）：不重置版本线，仅 bump 迭代
+  if (LATEST_SHA === PREV_SHA && PREV_SHA && LATEST_SHA !== 'unknown') {
+    console.log(`◈ 上游无新提交（${LATEST_SHA.slice(0, 12)}），无需同步`);
+    process.exit(0);
+  }
+  const nb = CUR_BUILD + 1;
+  NEW_VERSION = `${CUR_OFFICIAL}.${String(nb).padStart(2, '0')}`;
+  console.log(`◈ 官方版本 ${LATEST_VER} 与代号 ${CUR_OFFICIAL} 不同（自定义代号），保持版本线 → ${NEW_VERSION}`);
 } else if (LATEST_SHA === PREV_SHA && PREV_SHA && LATEST_SHA !== 'unknown') {
   console.log(`◈ 上游无新提交（${LATEST_SHA.slice(0, 12)}），无需同步`);
   process.exit(0);
 } else {
   const nb = CUR_BUILD + 1;
-  NEW_VERSION = `${CUR_OFFICIAL}-build${String(nb).padStart(2, '0')}`;
+  NEW_VERSION = `${CUR_OFFICIAL}.${String(nb).padStart(2, '0')}`;
   console.log(`◈ 官方版本不变，main 有新提交 → Build V${String(CUR_BUILD).padStart(2, '0')} → V${String(nb).padStart(2, '0')}`);
 }
 console.log('新版本:', NEW_VERSION);

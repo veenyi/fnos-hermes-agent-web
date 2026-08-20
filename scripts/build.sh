@@ -18,8 +18,8 @@ cd "$ROOT"
 
 # ── 版本解析 ────────────────────────────────────────────────────────
 CUR_VERSION="$(cat VERSION | tr -d '[:space:]')"
-OFFICIAL_VER="$(echo "$CUR_VERSION" | cut -d- -f1)"
-BUILD_NUM="$(echo "$CUR_VERSION" | sed -E 's/.*build([0-9]+)/\1/i')"
+OFFICIAL_VER="$(echo "$CUR_VERSION" | cut -d. -f1-3)"
+BUILD_NUM="$(echo "$CUR_VERSION" | awk -F. '{print $NF}')"
 
 # 上一版本（从 git tag 取最近的非当前 tag）
 PREV_TAG="$(git describe --tags --abbrev=0 2>/dev/null || echo "")"
