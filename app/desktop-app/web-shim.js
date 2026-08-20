@@ -103,6 +103,21 @@
     },
     readFileDataUrl: function (id) { return _readFile(_findPicked(id), true); },
     readFileDataUrlForAttach: function (id) { return _readFile(_findPicked(id), true); },
+    openSessionWindow: function (sessionId) {
+      try {
+        var base = window.location.href.split('#')[0];
+        var url = base + '#/' + encodeURIComponent(String(sessionId || ''));
+        window.open(url, '_blank');
+        return Promise.resolve({ ok: true });
+      } catch (e) { return Promise.resolve({ ok: false, error: String(e) }); }
+    },
+    openWindow: function () {
+      try { window.open(window.location.href, '_blank'); return Promise.resolve({ ok: true }); }
+      catch (e) { return Promise.resolve({ ok: false, error: String(e) }); }
+    },
+    openSessionInTerminal: function () {
+      return Promise.resolve({ ok: false, error: 'web 版不支持在终端中打开会话' });
+    },
     // ── 版本信息（关于页「版本号」显示；值由 monitor 注入 __HERMES_WEB_CONFIG__）──
     getVersion: function () {
       var cfg = {};
