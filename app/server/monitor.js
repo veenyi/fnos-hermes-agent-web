@@ -4957,7 +4957,7 @@ async function handleFetch(req) {
     });
     if (!r.ok) return { data: null, status: r.status };
     const list = await r.json();
-    const published = (Array.isArray(list) ? list : []).filter(x => !x.draft && x.published_at);
+    const published = (Array.isArray(list) ? list : []).filter(x => !x.draft && !x.prerelease && x.published_at);
     if (!published.length) return { data: null, status: r.status };
     published.sort((a, b) => String(b.published_at).localeCompare(String(a.published_at)));
     return { data: published[0], status: r.status };

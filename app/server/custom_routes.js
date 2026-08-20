@@ -1671,7 +1671,8 @@ export async function handleCustomRoute(req) {
       let data;
       if (r.ok) {
         const list = await r.json();
-        data = (Array.isArray(list) && list[0]) || null;
+        const published = (Array.isArray(list) ? list : []).filter(x => !x.draft && !x.prerelease && x.published_at);
+        data = published[0] || null;
       }
       if (!data) {
         r = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest`, {
