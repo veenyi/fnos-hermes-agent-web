@@ -155,6 +155,71 @@ _cfg_cache: dict | None = None
 _cfg_mtime: float | None = None
 _cfg_path = None
 _session_resume_lock = threading.Lock()
+
+
+# setup.runtime_check deadline/cache state.
+# NOTE: handlers are rebound onto THIS module's globals by
+# HandlerRegistry.install() (method_ctx.py), so every name the handler
+# closes over must live here, NOT in methods_config.py — otherwise the
+# handler raises NameError at runtime.
+_runtime_check_cache = {"ts": 0.0, "result": None, "ok": None}
+_RUNTIME_CHECK_TTL = 60.0
+_RUNTIME_CHECK_TTL_ERR = 5.0
+# Max seconds the handler blocks on a live probe before answering from cache
+# (or optimistically). Keeps slow provider probes — e.g. a rate-limited or
+# unreachable portal endpoint — from stalling the frontend setup polls.
+_RUNTIME_CHECK_DEADLINE = 6.0
+_runtime_check_lock = threading.Lock()
+_runtime_check_inflight = False
+
+
+def _runtime_check_payload(params: dict) -> dict:
+    """Run the full provider resolution; return the response payload dict."""
+    from hermes_cli.runtime_provider import resolve_runtime_provider
+    from hermes_cli.auth import has_usable_secret
+    from hermes_cli.main import _has_any_provider_configured
+
+    requested = str(params.get("provider") or "").strip() or None
+    runtime = resolve_runtime_provider(requested=requested)
+    provider_configured = bool(_has_any_provider_configured())
+    provider = runtime.get("provider") or "provider"
+    source = str(runtime.get("source") or "")
+    if not provider_configured and provider == "bedrock" and source in {
+        "iam-role",
+        "aws-sdk-default-chain",
+    }:
+        return {
+            "ok": False,
+            "provider": provider,
+            "model": runtime.get("model"),
+            "source": source,
+            "error": "No Hermes provider is configured.",
+        }
+
+    api_key = runtime.get("api_key")
+    api_key_text = "" if callable(api_key) else str(api_key or "").strip()
+    credential_ok = (
+        callable(api_key)
+        or api_key_text in {"aws-sdk", "no-key-required"}
+        or has_usable_secret(api_key_text)
+        or bool(runtime.get("command"))
+    )
+
+    if not credential_ok:
+        return {
+            "ok": False,
+            "provider": provider,
+            "model": runtime.get("model"),
+            "source": runtime.get("source"),
+            "error": f"No usable credentials found for {provider}.",
+        }
+
+    return {
+        "ok": True,
+        "provider": runtime.get("provider"),
+        "model": runtime.get("model"),
+        "source": runtime.get("source"),
+    }
 try:
     _slash_timeout = float(os.environ.get("HERMES_TUI_SLASH_TIMEOUT_S") or "45")
 except (ValueError, TypeError):
