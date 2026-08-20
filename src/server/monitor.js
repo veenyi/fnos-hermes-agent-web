@@ -4385,7 +4385,7 @@ function serveDesktopAppFile(rel, req) {
       try { profile = readFileSync(`${DATA_DIR}/.active_profile`, "utf8").trim(); } catch (e) {}
       html = html.replace(
         'window.__HERMES_WEB_CONFIG__ = window.__HERMES_WEB_CONFIG__ || { base: "/proxy/dashboard", token: "", profile: null };',
-        `window.__HERMES_WEB_CONFIG__ = { base: "${BASE_PATH || ""}/proxy/dashboard", token: "${DASHBOARD_SESSION_TOKEN}", profile: "${profile}" };`
+        `window.__HERMES_WEB_CONFIG__ = { base: "${BASE_PATH || ""}/proxy/dashboard", token: "${DASHBOARD_SESSION_TOKEN}", profile: "${profile}", appVersion: "${APP_VERSION}" };`
       );
       return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } });
     } catch (e) {
