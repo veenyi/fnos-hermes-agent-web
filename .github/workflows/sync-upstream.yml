@@ -18,6 +18,15 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          fetch-tags: true
+
+      # 配置 git（publish/build 需要）
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config remote.origin.url "https://x-access-token:${GITHUB_TOKEN}@github.com/veenyi/fnos-hermes-agent-web.git"
+          git tag --sort=-creatordate | head -3 || true
 
       # 检测上游版本 + 更新 VERSION（无新提交时脚本直接退出，后续步骤跳过）
       - name: Detect upstream & bump version
@@ -29,7 +38,7 @@ jobs:
       # 拉取上游 hermes-src（仅当 VERSION 变化需要构建时）
       - name: Clone upstream
         run: |
-          if [ ! -d "upstream/hermes-src" ]; then
+          if [ ! -d "upstream/.git" ]; then
             git clone --depth 1 https://github.com/NousResearch/hermes-agent.git upstream
           else
             (cd upstream && git fetch --depth 1 origin main && git reset --hard origin/main)
@@ -64,8 +73,6 @@ jobs:
       - name: Commit version bump
         if: steps.check.outputs.changed == 'true'
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add VERSION .upstream-state
           git commit -m "version: bump to ${{ steps.version.outputs.version }}" --allow-empty
           git push origin HEAD:main
