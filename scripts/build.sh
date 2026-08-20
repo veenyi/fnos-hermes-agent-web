@@ -74,7 +74,16 @@ else
   echo "⚠ 未找到 upstream/hermes-src（仅影响完整包，增量包不受影响）"
 fi
 
-# 4. 版本写入
+# 4. config/prompts（config.yaml 模板 + skills）进 app.tgz
+# fnOS 安装时不复制 fpk 根目录的 config/prompts（只处理 fnOS 配置文件 bootstrap/privilege/resource），
+# 若不随 app.tgz 解压，install_callback 模板部署会跳过，导致全新安装无默认模型配置、网关无法启动。
+if [ -d "fpk/config/prompts" ]; then
+  mkdir -p "$APP_STAGE/config/prompts"
+  cp -r fpk/config/prompts/. "$APP_STAGE/config/prompts/"
+  echo "✓ config/prompts 已带入 app.tgz"
+fi
+
+# 5. 版本写入
 echo "$CUR_VERSION" > "$APP_STAGE/VERSION"
 if [ -f "fpk/manifest" ]; then
   sed -i "s/^version.*=.*/version               = $CUR_VERSION/" fpk/manifest
