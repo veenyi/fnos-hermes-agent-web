@@ -43,7 +43,66 @@
     };
   }
 
+  var _pickedFiles = [];
+  var _pickSeq = 0;
+  function _pickInput(opts) {
+    return new Promise(function (resolve) {
+      try {
+        var input = document.createElement('input');
+        input.type = 'file';
+        input.multiple = !!(opts && opts.multiple);
+        if (opts && opts.directory) input.webkitdirectory = true;
+        if (opts && opts.filters && opts.filters.length) {
+          var exts = [];
+          opts.filters.forEach(function (fl) { (fl.extensions || []).forEach(function (x) { exts.push('.' + x); }); });
+          if (exts.length) input.accept = exts.join(',');
+        }
+        input.style.display = 'none';
+        document.body.appendChild(input);
+        function cleanup() { try { document.body.removeChild(input); } catch (e) {} }
+        input.addEventListener('change', function () {
+          var paths = [];
+          Array.prototype.forEach.call(input.files || [], function (file) {
+            var id = 'webpick_' + (++_pickSeq);
+            _pickedFiles.push({ id: id, file: file });
+            paths.push(id);
+          });
+          cleanup();
+          resolve(paths.length ? paths : null);
+        });
+        input.addEventListener('cancel', function () { cleanup(); resolve(null); });
+        setTimeout(function () { input.click(); }, 0);
+      } catch (e) { resolve(null); }
+    });
+  }
+  function _findPicked(id) {
+    for (var i = 0; i < _pickedFiles.length; i++) if (_pickedFiles[i].id === id) return _pickedFiles[i].file;
+    return null;
+  }
+  function _readFile(file, asDataUrl) {
+    return new Promise(function (resolve) {
+      if (!file) return resolve(null);
+      var reader = new FileReader();
+      reader.onload = function () { resolve(reader.result); };
+      reader.onerror = function () { resolve(null); };
+      if (asDataUrl) reader.readAsDataURL(file); else reader.readAsText(file);
+    });
+  }
+
   var core = {
+    // ── 文件/文件夹选择（web 版用 <input type=file>，选中文件以 webpick_ id 关联，读取时按 id 取内容）──
+    selectPaths: function (opts) { return _pickInput(opts); },
+    selectSavePath: function (opts) { return Promise.resolve((opts && opts.defaultPath) || 'download'); },
+    getPathForFile: function (file) {
+      if (file && (file.name || file instanceof Blob)) {
+        var pid = 'webpick_' + (++_pickSeq);
+        _pickedFiles.push({ id: pid, file: file });
+        return pid;
+      }
+      return '';
+    },
+    readFileDataUrl: function (id) { return _readFile(_findPicked(id), true); },
+    readFileDataUrlForAttach: function (id) { return _readFile(_findPicked(id), true); },
     // ── 版本信息（关于页「版本号」显示；值由 monitor 注入 __HERMES_WEB_CONFIG__）──
     getVersion: function () {
       var cfg = {};
@@ -246,7 +305,7 @@
   // 显式定义 renderer 高频访问的嵌套对象(含 updates 复数键,renderer 用
   // hermesDesktop.updates.onProgress/subscribe/check)
   var nested = {
-    fs: { readDir: function () { return Promise.resolve([]); }, readFileText: function () { return Promise.resolve(null); }, writeTextFile: function () { return Promise.resolve(); } },
+    fs: { readDir: function () { return Promise.resolve([]); }, readFileText: function (id) { return _readFile(_findPicked(id), false); }, writeTextFile: function () { return Promise.resolve(); } },
     git: { listBranches: function () { return Promise.resolve([]); } },
     terminal: { list: function () { return Promise.resolve([]); } },
     hud: { open: function () { return Promise.resolve({}); }, close: function () { return Promise.resolve(); }, getState: function () { return Promise.resolve(false); }, setIgnoreMouse: function () { return Promise.resolve(); }, moveBy: function () { return Promise.resolve(); }, setBounds: function () { return Promise.resolve(); }, setVibrancy: function () { return Promise.resolve(false); }, setSession: function () { return Promise.resolve(); }, onChanged: function () { return function () {}; }, onGoto: function () { return function () {}; }, onCursor: function () { return function () {}; } },
