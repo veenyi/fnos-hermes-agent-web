@@ -3,7 +3,7 @@ name: Sync Upstream & Build & Release
 on:
   # 手动触发
   workflow_dispatch:
-  # 定时检查上游（每天 4 次）
+  # 定时检查上游（每 6 小时）
   schedule:
     - cron: '0 */6 * * *'
 
@@ -19,14 +19,22 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Sync upstream
-        run: |
-          bash scripts/sync-upstream.sh
-
-      - name: Read new version
+      # 检测上游版本 + 更新 VERSION（无新提交时脚本直接退出，后续步骤跳过）
+      - name: Detect upstream & bump version
         id: version
         run: |
+          node scripts/sync-upstream.js
           echo "version=$(cat VERSION)" >> "$GITHUB_OUTPUT"
+
+      # 拉取上游 hermes-src（仅当 VERSION 变化需要构建时）
+      - name: Clone upstream
+        run: |
+          if [ ! -d "upstream/hermes-src" ]; then
+            git clone --depth 1 https://github.com/NousResearch/hermes-agent.git upstream
+          else
+            (cd upstream && git fetch --depth 1 origin main && git reset --hard origin/main)
+          fi
+          echo "upstream version: $(grep -m1 '^version' upstream/pyproject.toml)"
 
       - name: Check version changed
         id: check
@@ -58,6 +66,6 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add VERSION
+          git add VERSION .upstream-state
           git commit -m "version: bump to ${{ steps.version.outputs.version }}" --allow-empty
           git push origin HEAD:main
