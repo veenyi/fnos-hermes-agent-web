@@ -1,0 +1,105 @@
+#!/bin/bash
+#
+# Hermes Agent — 生命周期管理
+# start:  启动 Node.js monitor（后台运行，写 PID 文件）
+# stop:   发送 SIGTERM，等待优雅关闭，超时 SIGKILL
+# status: 查询进程状态
+#
+
+TRIM_APPDEST="${TRIM_APPDEST:-/var/apps/hermes-agent}"
+TRIM_PKGHOME="${TRIM_PKGHOME:-/var/apps/hermes-agent/home}"
+TRIM_PKGVAR="${TRIM_PKGVAR:-/var/apps/hermes-agent/var}"
+
+LOG_FILE="${TRIM_PKGVAR}/info.log"
+PID_FILE="${TRIM_PKGVAR}/app.pid"
+# 优先使用 v24（manifest install_dep_apps=nodejs_v24），并向后兼容其他常见 Node 安装路径
+export PATH=/var/apps/nodejs_v24/target/bin:/var/apps/nodejs_v22/target/bin:/var/apps/nodejs_v20/target/bin:/var/apps/nodejs/target/bin:$PATH
+DATA_DIR="${TRIM_PKGHOME}/data"
+VAR_DIR="${TRIM_PKGVAR}"
+MONITOR_SCRIPT="${TRIM_APPDEST}/server/monitor.js"
+SOCKET_PATH="${TRIM_APPDEST}/hermes-agent.sock"
+
+log_msg() { echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" >> ${LOG_FILE}; }
+
+start_process() {
+    if status; then return 0; fi
+    if ! command -v node >/dev/null 2>&1; then log_msg "node not found"; return 1; fi
+
+    # 修复权限漂移：确保数据/日志目录归属与 app 目录一致，防止 root/hermes-agent 混跑导致 EACCES
+    # （安装/调试期可能以 root 写入，后续正常启动降为 hermes-agent 时无法覆写）
+    if [ -d "${TRIM_APPDEST}" ]; then
+        APP_OWNER=$(stat -c '%U:%G' "${TRIM_APPDEST}" 2>/dev/null)
+        if [ -n "$APP_OWNER" ]; then
+            [ -d "${TRIM_PKGVAR}" ] && chown -R "$APP_OWNER" "${TRIM_PKGVAR}" 2>/dev/null || true
+            [ -d "${TRIM_PKGHOME}" ] && chown -R "$APP_OWNER" "${TRIM_PKGHOME}" 2>/dev/null || true
+        fi
+    fi
+
+    # 确保 socket 目录存在且可写
+    local SOCK_DIR="$(dirname "${SOCKET_PATH}")"
+    mkdir -p "${SOCK_DIR}" 2>/dev/null
+    chmod 755 "${SOCK_DIR}" 2>/dev/null
+
+    mkdir -p "${TRIM_PKGVAR}" 2>/dev/null
+
+    log_msg "Starting Hermes Agent monitor (socket mode) ..."
+    log_msg "SOCKET_PATH=${SOCKET_PATH}"
+    log_msg "TRIM_APPDEST=${TRIM_APPDEST}"
+    rm -f "${SOCKET_PATH}"
+
+    HOME="${DATA_DIR}" HERMES_HOME="${DATA_DIR}" APP_DIR="${TRIM_APPDEST}" DATA_DIR="${DATA_DIR}" VAR_DIR="${VAR_DIR}" MONITOR_SOCKET_PATH="${SOCKET_PATH}" BASE_PATH="/app/hermes-agent" PATH="${DATA_DIR}/venv/bin:/var/apps/nodejs_v24/target/bin:/var/apps/nodejs_v22/target/bin:/var/apps/nodejs_v20/target/bin:/var/apps/nodejs/target/bin:/usr/local/bin:/usr/bin:/bin" node "${MONITOR_SCRIPT}" >> ${LOG_FILE} 2>&1 &
+    printf "%s" "$!" > ${PID_FILE}
+
+    # 等待 socket 创建（最多 5 秒）
+    local i
+    for i in $(seq 1 10); do
+        if [ -S "${SOCKET_PATH}" ]; then
+            chmod 777 "${SOCKET_PATH}" 2>/dev/null
+            log_msg "Started, pid=$!, socket=${SOCKET_PATH} (verified)"
+            return 0
+        fi
+        sleep 0.5
+    done
+
+    log_msg "WARNING: socket not created after 5s at ${SOCKET_PATH}"
+    log_msg "SOCK_DIR exists=$([ -d "${SOCK_DIR}" ] && echo yes || echo no) writable=$([ -w "${SOCK_DIR}" ] && echo yes || echo no)"
+    log_msg "Started anyway, pid=$!"
+    return 0
+}
+
+stop_process() {
+    log_msg "Stopping Hermes Agent ..."
+    if [ -r "${PID_FILE}" ]; then
+        pid=$(head -n 1 "${PID_FILE}" | tr -d '[:space:]')
+        if kill -0 "${pid}" 2>/dev/null; then
+            kill -TERM "${pid}"
+            for i in $(seq 1 3); do
+                sleep 1
+                kill -0 "${pid}" 2>/dev/null || { log_msg "Stopped"; break; }
+            done
+            kill -KILL "${pid}" 2>/dev/null
+        fi
+    fi
+    # 兜底清理不在 PID 文件中的残留进程（如手动部署拉起的 monitor、孤儿 gateway/dashboard）
+    # 否则下次 start 时残留进程占端口/socket，新实例无法正常接管，应用显示「已停止」且启用无效
+    pkill -TERM -f "node.*monitor\.js" 2>/dev/null || true
+    sleep 1
+    pkill -9 -f "node.*monitor\.js" 2>/dev/null || true
+    pkill -9 -f "hermes.*gateway" 2>/dev/null || true
+    pkill -9 -f "hermes.*dashboard" 2>/dev/null || true
+    rm -f "${PID_FILE}"
+    rm -f "${SOCKET_PATH}"
+    log_msg "Stopped (incl. leftover cleanup)"
+    return 0
+}
+
+status() {
+    [ -f "${PID_FILE}" ] && pid=$(head -n 1 "${PID_FILE}" | tr -d '[:space:]') && kill -0 "${pid}" 2>/dev/null
+}
+
+case $1 in
+start)   start_process ;;
+stop)    stop_process ;;
+status)  status && exit 0 || exit 3 ;;
+*)       exit 1 ;;
+esac
