@@ -32,6 +32,7 @@ mkdir -p "$DIST" "$BUILD_DIR"
 
 # ── 隐私扫描（强制）─────────────────────────────────────────────────
 echo "── 隐私扫描 ──"
+# 排除公开仓库名 veenyi/fnos-hermes-agent-web（项目标识）与 app_version 路径（部署约定）
 PRIV_LEAKS="$(grep -rnE 'password[=:][^ ]{4,}|token[=:][A-Za-z0-9_\-.]{12,}|192\.168\.[0-9]{1,3}\.[0-9]{1,3}|10\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}|/vol[0-9]+/@app(home|data)/|sk-[A-Za-z0-9]{20}' src/ fpk/config/ app/server/ 2>/dev/null | grep -vE '\.pyc|node_modules|app_version' | head -20 || true)"
 if [ -n "$PRIV_LEAKS" ]; then
   echo "✗ 隐私扫描发现泄漏："
@@ -82,14 +83,30 @@ fi
 # ── 生成增量更新包 ──────────────────────────────────────────────────
 echo "── 生成增量更新包 ──"
 # 对比当前 git 树与上一 tag 的 src/ 变更文件，打成 tar.gz
-# 变更文件 = git diff 的 src/ 部分（保留相对路径）
+# 变更文件 = git diff 的 src/ 部分；tar 内路径 = 部署相对路径：
+#   src/server/monitor.js        → server/monitor.js        （APP_DIR/server/）
+#   src/desktop-app-web-shim.js  → desktop-app/web-shim.js  （APP_DIR/desktop-app/）
+#   src/desktop-app-index.html   → desktop-app/index.html
 if [ -n "$PREV_TAG" ] && [ "$PREV_TAG" != "v$CUR_VERSION" ]; then
   CHANGED_FILES="$(git diff --name-only "$PREV_TAG" HEAD -- src/ 2>/dev/null || true)"
   if [ -n "$CHANGED_FILES" ]; then
-    # 生成 tar：文件放在 tar 根的 src/ 下（monitor 解压到 APP_DIR 时对 src/ 前缀特殊处理）
-    # 实际部署时 src/server/monitor.js → APP_DIR/server/monitor.js
-    tar czf "$DIST/incremental-${PREV_VERSION}-to-${CUR_VERSION}.tar.gz" \
-      -C "$ROOT" $CHANGED_FILES
+    # 构建 staging 目录，映射 src/ → 部署路径
+    INC_STAGE="$BUILD_DIR/inc-stage"
+    rm -rf "$INC_STAGE"
+    mkdir -p "$INC_STAGE"
+    for f in $CHANGED_FILES; do
+      case "$f" in
+        src/server/*)      DEST="$INC_STAGE/server/$(basename "$f")" ;;
+        src/desktop-app-web-shim.js) DEST="$INC_STAGE/desktop-app/web-shim.js" ;;
+        src/desktop-app-index.html)  DEST="$INC_STAGE/desktop-app/index.html" ;;
+        src/desktop-app/*) DEST="$INC_STAGE/desktop-app/$(basename "$f")" ;;
+        src/ui/*)          DEST="$INC_STAGE/ui/$(basename "$f")" ;;
+        *)                 DEST="$INC_STAGE/$(basename "$f")" ;;
+      esac
+      mkdir -p "$(dirname "$DEST")"
+      cp "$f" "$DEST"
+    done
+    tar czf "$DIST/incremental-${PREV_VERSION}-to-${CUR_VERSION}.tar.gz" -C "$INC_STAGE" .
     echo "✓ 增量包: incremental-${PREV_VERSION}-to-${CUR_VERSION}.tar.gz ($CHANGED_FILES 文件)"
   else
     echo "⚠ src/ 无变更，跳过增量包"
