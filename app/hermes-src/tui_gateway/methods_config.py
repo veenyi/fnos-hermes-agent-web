@@ -351,6 +351,69 @@ def _(rid, params: dict) -> dict:
         return _err(rid, 5016, str(e))
 
 
+import threading as _rc_threading
+
+_runtime_check_cache = {"ts": 0.0, "result": None, "ok": None}
+_RUNTIME_CHECK_TTL = 60.0
+_RUNTIME_CHECK_TTL_ERR = 5.0
+# Max seconds the handler blocks on a live probe before answering from cache
+# (or optimistically). Keeps slow provider probes — e.g. an unreachable
+# portal endpoint on a restricted network — from stalling the frontend's
+# 30s setup.runtime_check poll ("推理未就绪" false positives).
+_RUNTIME_CHECK_DEADLINE = 6.0
+_runtime_check_lock = _rc_threading.Lock()
+_runtime_check_inflight = False
+
+
+def _runtime_check_payload(params: dict) -> dict:
+    """Run the full provider resolution; return the response payload dict."""
+    from hermes_cli.runtime_provider import resolve_runtime_provider
+    from hermes_cli.auth import has_usable_secret
+    from hermes_cli.main import _has_any_provider_configured
+
+    requested = str(params.get("provider") or "").strip() or None
+    runtime = resolve_runtime_provider(requested=requested)
+    provider_configured = bool(_has_any_provider_configured())
+    provider = runtime.get("provider") or "provider"
+    source = str(runtime.get("source") or "")
+    if not provider_configured and provider == "bedrock" and source in {
+        "iam-role",
+        "aws-sdk-default-chain",
+    }:
+        return {
+            "ok": False,
+            "provider": provider,
+            "model": runtime.get("model"),
+            "source": source,
+            "error": "No Hermes provider is configured.",
+        }
+
+    api_key = runtime.get("api_key")
+    api_key_text = "" if callable(api_key) else str(api_key or "").strip()
+    credential_ok = (
+        callable(api_key)
+        or api_key_text in {"aws-sdk", "no-key-required"}
+        or has_usable_secret(api_key_text)
+        or bool(runtime.get("command"))
+    )
+
+    if not credential_ok:
+        return {
+            "ok": False,
+            "provider": provider,
+            "model": runtime.get("model"),
+            "source": runtime.get("source"),
+            "error": f"No usable credentials found for {provider}.",
+        }
+
+    return {
+        "ok": True,
+        "provider": runtime.get("provider"),
+        "model": runtime.get("model"),
+        "source": runtime.get("source"),
+    }
+
+
 @method("setup.runtime_check")
 def _(rid, params: dict) -> dict:
     """Strict provider check: does the configured/default model actually resolve to a usable runtime?
@@ -361,64 +424,91 @@ def _(rid, params: dict) -> dict:
     uses on session creation. It returns ok=False with the auth error message
     when the user's configured model cannot actually be served, so UIs can
     surface onboarding before the user submits a doomed prompt.
+
+    Deadlined + cached: resolve_runtime_provider() may probe remote provider
+    endpoints, which can hang for minutes on restricted networks. The handler
+    waits at most _RUNTIME_CHECK_DEADLINE seconds for a live probe; beyond
+    that it answers from the last cached result (or optimistically) while the
+    probe finishes in a background thread and refreshes the cache.
     """
-    try:
-        from hermes_cli.runtime_provider import resolve_runtime_provider
-        from hermes_cli.auth import has_usable_secret
-        from hermes_cli.main import _has_any_provider_configured
+    global _runtime_check_inflight
+    import time as _time
 
-        requested = str(params.get("provider") or "").strip() or None
-        runtime = resolve_runtime_provider(requested=requested)
-        provider_configured = bool(_has_any_provider_configured())
-        provider = runtime.get("provider") or "provider"
-        source = str(runtime.get("source") or "")
-        if not provider_configured and provider == "bedrock" and source in {
-            "iam-role",
-            "aws-sdk-default-chain",
-        }:
+    # 1) Fresh cache -> answer immediately.
+    _now = _time.time()
+    _cached = _runtime_check_cache["result"]
+    if _cached is not None:
+        _ttl = _RUNTIME_CHECK_TTL if _runtime_check_cache.get("ok") else _RUNTIME_CHECK_TTL_ERR
+        if _now - _runtime_check_cache["ts"] < _ttl:
+            try:
+                if _cached.get("id") == rid:
+                    return _cached
+                return _ok(rid, _cached.get("result") or {})
+            except Exception:
+                pass
+
+    # 2) Cache stale/missing -> probe with a deadline.
+    import threading as _threading
+
+    _done = _threading.Event()
+    _box = {"payload": None}
+
+    def _worker():
+        global _runtime_check_inflight
+        try:
+            try:
+                _payload = _runtime_check_payload(params)
+            except Exception as e:  # noqa: BLE001
+                _payload = {"ok": False, "error": str(e)}
+            _box["payload"] = _payload
+            try:
+                _runtime_check_cache["ts"] = _time.time()
+                _runtime_check_cache["result"] = _ok("cached", _payload)
+                _runtime_check_cache["ok"] = bool(_payload.get("ok"))
+            except Exception:
+                pass
+        finally:
+            with _runtime_check_lock:
+                _runtime_check_inflight = False
+            _done.set()
+
+    with _runtime_check_lock:
+        if _runtime_check_inflight:
+            # A probe is already running: answer from stale cache, or
+            # optimistically on the very first poll.
+            if _cached is not None:
+                try:
+                    return _ok(rid, _cached.get("result") or {})
+                except Exception:
+                    pass
             return _ok(
                 rid,
-                {
-                    "ok": False,
-                    "provider": provider,
-                    "model": runtime.get("model"),
-                    "source": source,
-                    "error": "No Hermes provider is configured.",
-                },
+                {"ok": True, "provider": "pending", "source": "runtime-check-pending"},
             )
+        _runtime_check_inflight = True
 
-        api_key = runtime.get("api_key")
-        api_key_text = "" if callable(api_key) else str(api_key or "").strip()
-        credential_ok = (
-            callable(api_key)
-            or api_key_text in {"aws-sdk", "no-key-required"}
-            or has_usable_secret(api_key_text)
-            or bool(runtime.get("command"))
-        )
+    _threading.Thread(
+        target=_worker, name="setup-runtime-check-probe", daemon=True
+    ).start()
 
-        if not credential_ok:
-            return _ok(
-                rid,
-                {
-                    "ok": False,
-                    "provider": provider,
-                    "model": runtime.get("model"),
-                    "source": runtime.get("source"),
-                    "error": f"No usable credentials found for {provider}.",
-                },
-            )
+    if _done.wait(_RUNTIME_CHECK_DEADLINE):
+        _payload = _box["payload"]
+        if _payload is not None:
+            return _ok(rid, _payload)
+        return _ok(rid, {"ok": False, "error": "runtime check produced no result"})
 
-        return _ok(
-            rid,
-            {
-                "ok": True,
-                "provider": runtime.get("provider"),
-                "model": runtime.get("model"),
-                "source": runtime.get("source"),
-            },
-        )
-    except Exception as e:
-        return _ok(rid, {"ok": False, "error": str(e)})
+    # Deadline exceeded: stale cache wins; otherwise answer optimistically so
+    # the UI does not flash a false "needs setup" while the probe is still
+    # running in the background.
+    if _cached is not None:
+        try:
+            return _ok(rid, _cached.get("result") or {})
+        except Exception:
+            pass
+    return _ok(
+        rid,
+        {"ok": True, "provider": "pending", "source": "runtime-check-pending"},
+    )
 
 
 def register(server) -> None:
