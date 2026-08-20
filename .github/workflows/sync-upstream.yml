@@ -3,9 +3,9 @@ name: Sync Upstream & Build & Release
 on:
   # 手动触发
   workflow_dispatch:
-  # 定时检查上游（每 6 小时）
+  # 定时检查上游（每天凌晨 3 点，UTC+8）
   schedule:
-    - cron: '0 */6 * * *'
+    - cron: '0 19 * * *'
 
 permissions:
   contents: write
