@@ -4394,7 +4394,7 @@ function serveDesktopAppFile(rel, req) {
       const _sha = _GH_SHA || "";
       html = html.replace(
         'window.__HERMES_WEB_CONFIG__ = window.__HERMES_WEB_CONFIG__ || { base: "/proxy/dashboard", token: "", profile: null };',
-        `window.__HERMES_WEB_CONFIG__ = { base: "${BASE_PATH || ""}/proxy/dashboard", token: "${DASHBOARD_SESSION_TOKEN}", profile: "${profile || "default"}", appVersion: "${_appVer}", branch: "${_branch}", sha: "${_sha}" };`
+        `window.__HERMES_WEB_CONFIG__ = { base: "${BASE_PATH || ""}/proxy/dashboard", token: "${DASHBOARD_SESSION_TOKEN}", profile: "${profile || "default"}", appVersion: "${_appVer}", branch: "${_branch}", sha: "${_sha}", home: "${DATA_DIR}" };`
       );
       return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } });
     } catch (e) {
