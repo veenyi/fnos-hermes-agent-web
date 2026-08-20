@@ -11140,6 +11140,12 @@ function startServer() {
         // Dashboard WS 认证要求 ?token=<session_token> 查询参数（浏览器 WS 无法设 header）
         const _sep = url.search ? "&" : "?";
         const targetUrl = `ws://${DASHBOARD_BIND}:${DASHBOARD_PORT}${subPath}${url.search}${_sep}token=${DASHBOARD_SESSION_TOKEN}`;
+        // dashboard 的 WS Host/Origin 守卫只放行 loopback 来源（bound=127.0.0.1）；
+        // 门户经 192.168.x.x 访问时 Host/Origin 是内网 IP，会被 403 拒绝（桌面端 Electron
+        // 无 Origin/为 file:// 所以正常）。这里在反代转发前把 Host/Origin 改写为 loopback，
+        // 让守卫通过；真正鉴权仍是 ?token 参数（DASHBOARD_SESSION_TOKEN 会话级）。
+        req.headers.host = `${DASHBOARD_BIND}:${DASHBOARD_PORT}`;
+        if (req.headers.origin) req.headers.origin = `http://${DASHBOARD_BIND}:${DASHBOARD_PORT}`;
         log(`[WS-UPGRADE] ${wsPath} -> ${targetUrl}`);
         wss.handleUpgrade(req, socket, head, (ws) => {
           ws.data = { type: "dashboard-proxy", targetUrl };
