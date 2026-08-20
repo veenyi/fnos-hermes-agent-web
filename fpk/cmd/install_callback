@@ -516,24 +516,47 @@ if [ -d "${PROMPTS_SRC}" ]; then
         log_msg "config.yaml deployed (first install)"
     fi
 
-    # providers-state.yaml — 首次安装预置默认模型服务商（token.sensenova.cn 免费聚合端点）。
-    # monitor 启动 gateway 前检查 ${VAR_DIR}/providers-state.yaml 必须有至少一个非 hermes 的
-    # provider，否则拒绝启动网关（报"请先在设置中添加至少一个模型服务商"）。
-    # 全新安装若无此文件会导致网关无法启动，故此处预置默认服务商实现开箱即用。
-    if [ ! -f "${VAR_DIR}/providers-state.yaml" ]; then
-        cat > "${VAR_DIR}/providers-state.yaml" << 'PSEOF'
+    # 清理源目录（install_callback 只运行一次）
+    rm -rf "${PROMPTS_SRC}"
+    log_msg "prompts source cleaned up"
+fi
+
+# ---------------------------------------------------------------------------
+# 4b. 默认模型服务商（内联，不依赖 prompts 解压）
+# 说明：fnOS 安装 FPK 时不复制 fpk 根目录的 config/prompts（只处理 fnOS 配置文件
+# bootstrap/privilege/resource），app.tgz 顶层 config/ 目录也可能被 fnOS 忽略，
+# 因此关键配置在这里内联写入，保证全新安装网关能启动（开箱即用）。
+# ---------------------------------------------------------------------------
+# providers-state.yaml — monitor 启动 gateway 前检查此文件须有至少一个非 hermes 的
+# provider，否则拒绝启动网关（报"请先在设置中添加至少一个模型服务商"）。
+if [ ! -f "${VAR_DIR}/providers-state.yaml" ]; then
+    cat > "${VAR_DIR}/providers-state.yaml" << 'PSEOF'
 providers:
   custom_token_sensenova_cn:
     model: deepseek-v4-flash
     base_url: https://token.sensenova.cn/v1
     name: token.sensenova.cn
 PSEOF
-        log_msg "providers-state.yaml deployed (first install)"
-    fi
+    log_msg "providers-state.yaml deployed (inline)"
+fi
 
-    # 清理源目录（install_callback 只运行一次）
-    rm -rf "${PROMPTS_SRC}"
-    log_msg "prompts source cleaned up"
+# config.yaml — 若无默认模型配置则写入 model 块（token.sensenova.cn 免费聚合端点）
+if ! grep -qE '^model:' "${DATA_DIR}/config.yaml" 2>/dev/null \
+   || grep -qE '^[[:space:]]+provider:[[:space:]]*$|^[[:space:]]+provider:[[:space:]]*'"'"''"'"'' "${DATA_DIR}/config.yaml" 2>/dev/null; then
+    cat > "${DATA_DIR}/config.yaml.model.tmp" << 'PSEOF'
+model:
+  provider: custom:token.sensenova.cn
+  default: sensenova-6.8-flash-lite
+  base_url: https://token.sensenova.cn/v1
+PSEOF
+    if [ -f "${DATA_DIR}/config.yaml" ]; then
+        cat "${DATA_DIR}/config.yaml.model.tmp" "${DATA_DIR}/config.yaml" > "${DATA_DIR}/config.yaml.new"
+        mv "${DATA_DIR}/config.yaml.new" "${DATA_DIR}/config.yaml"
+    else
+        mv "${DATA_DIR}/config.yaml.model.tmp" "${DATA_DIR}/config.yaml"
+    fi
+    rm -f "${DATA_DIR}/config.yaml.model.tmp"
+    log_msg "config.yaml model block deployed (inline)"
 fi
 
 # ---------------------------------------------------------------------------
