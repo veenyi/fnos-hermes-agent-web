@@ -1,0 +1,611 @@
+#!/bin/bash
+
+### 安装后回调 — 创建 venv、安装 hermes-agent、部署 prompts
+
+set -e
+
+LOG_FILE="${TRIM_PKGVAR}/info.log"
+
+log_msg() {
+    local msg="$(date '+%Y-%m-%d %H:%M:%S') - [install] $1"
+    echo "$msg"
+    echo "$msg" >> "${LOG_FILE}" 2>/dev/null || true
+}
+
+toast_err() {
+    echo "$*" > "$TRIM_TEMP_LOGFILE"
+}
+
+# 全局错误捕获 — 任何行失败都显示具体命令和错误
+trap 'toast_err "脚本出错(L${LINENO}): $(tail -3 "${LOG_FILE}" 2>/dev/null)"' ERR
+
+# ---------------------------------------------------------------------------
+# 路径
+# ---------------------------------------------------------------------------
+DATA_DIR="${TRIM_PKGHOME}/data"
+VAR_DIR="${TRIM_PKGVAR}"
+VENV_DIR="${DATA_DIR}/venv"
+HERMES="${VENV_DIR}/bin/hermes"
+UV_BIN="${DATA_DIR}/bin"
+
+APP_DIR="${TRIM_APPDEST}"
+PROMPTS_SRC="${APP_DIR}/config/prompts"
+
+# Hermes Agent v0.20.0 起官方停止 PyPI wheel 分发（setup.py 构建守卫），
+# 本包内置完整源码目录，安装时走 editable 安装（build_editable 不触发守卫）。
+HERMES_SRC="${APP_DIR}/hermes-src"
+
+export HOME="${DATA_DIR}"
+
+# uv 缓存目录放到 DATA_DIR 下，确保和 venv 同一文件系统，hardlink 可用
+export UV_CACHE_DIR="${DATA_DIR}/.uv-cache"
+
+# PyPI 国内镜像（阿里云）— UV_INDEX_URL 给 uv pip install 用
+export PIP_INDEX_URL="https://pypi.tuna.tsinghua.edu.cn/simple"
+export UV_INDEX_URL="https://pypi.tuna.tsinghua.edu.cn/simple"
+
+# ---------------------------------------------------------------------------
+# curl 从阿里云 PyPI 镜像直接下载 uv wheel，unzip 提取二进制
+# ---------------------------------------------------------------------------
+ensure_uv() {
+    if [ -x "${UV_BIN}/uv" ]; then
+        UV="${UV_BIN}/uv"
+        log_msg "uv found (persistent): ${UV}"
+    else
+        log_msg "uv not found, installing via curl ..."
+        mkdir -p "${UV_BIN}"
+        local TMP_DIR
+        TMP_DIR="$(mktemp -d)"
+
+        local ARCH
+        case "$(uname -m)" in
+            x86_64)  ARCH="x86_64" ;;
+            aarch64) ARCH="aarch64" ;;
+            *)       ARCH="$(uname -m)" ;;
+        esac
+
+        log_msg ">>> 正在从 PyPI 镜像下载 uv (${ARCH}) ..."
+
+        # 多源查询 uv wheel：清华 → 阿里云 → 官方 PyPI（任一源查到即用）
+        # 注意 URL 必须是 /simple/uv/（历史 bug：/simpleuv/ 缺斜杠返回 404，
+        # 导致 uv 下载失败 → 大量用户全新安装报「uv 安装失败: curl 404/403」）
+        local WHEEL_URL=""
+        for IDX in \
+            "https://pypi.tuna.tsinghua.edu.cn/simple/uv/" \
+            "https://mirrors.aliyun.com/pypi/simple/uv/" \
+            "https://pypi.org/simple/uv/"
+        do
+            log_msg "querying uv wheel index: ${IDX}"
+            WHEEL_URL=$(curl -LsSf --connect-timeout 15 --max-time 30 "${IDX}" 2>>"${LOG_FILE}" \
+                | grep -o 'href="[^"]*py3-none-manylinux[^"]*' \
+                | grep "${ARCH}" \
+                | sed 's|^href="../../|https://mirrors.aliyun.com/pypi/|; s|^href="||; s|#sha256=.*||' \
+                | sort -t'-' -k2,2V \
+                | tail -1)
+            if [ -n "${WHEEL_URL}" ]; then
+                log_msg "uv wheel URL: ${WHEEL_URL}"
+                break
+            fi
+        done
+
+        local UV_WHL="${TMP_DIR}/uv.whl"
+        if [ -n "${WHEEL_URL}" ]; then
+            if curl -L --retry 3 --retry-delay 3 --connect-timeout 15 --progress-bar -o "${UV_WHL}" "${WHEEL_URL}" 2>&1 \
+               && unzip -o -j "${UV_WHL}" "uv-*.data/scripts/uv" -d "${UV_BIN}" >>"${LOG_FILE}" 2>&1; then
+                log_msg "uv extracted from wheel"
+            fi
+        else
+            log_msg "simple index query failed, trying GitHub fallback ..."
+        fi
+
+        # wheel 下载失败 → GitHub tar.gz 兜底（ghproxy 中继优先，直连兜底）
+        if [ ! -x "${UV_BIN}/uv" ]; then
+            log_msg ">>> wheel 方式失败，尝试 GitHub 下载 ..."
+            local UV_TAR="uv-${ARCH}-unknown-linux-gnu"
+            local UV_GZ="${TMP_DIR}/uv.tar.gz"
+            local UV_GZ_OK=false
+            if curl -L --retry 3 --retry-delay 5 --connect-timeout 15 --progress-bar \
+                 -o "${UV_GZ}" "https://ghproxy.net/https://github.com/astral-sh/uv/releases/latest/download/${UV_TAR}.tar.gz" 2>&1 \
+               && tar tzf "${UV_GZ}" >/dev/null 2>&1 \
+               && tar xzf "${UV_GZ}" -C "${UV_BIN}" --strip-components=1 "${UV_TAR}/uv" 2>&1; then
+                UV_GZ_OK=true
+                log_msg "uv extracted from GitHub tarball (ghproxy)"
+            fi
+            if [ "${UV_GZ_OK}" != "true" ] && curl -L --retry 3 --retry-delay 5 --connect-timeout 15 --progress-bar \
+                 -o "${UV_GZ}" "https://github.com/astral-sh/uv/releases/latest/download/${UV_TAR}.tar.gz" 2>&1 \
+               && tar tzf "${UV_GZ}" >/dev/null 2>&1 \
+               && tar xzf "${UV_GZ}" -C "${UV_BIN}" --strip-components=1 "${UV_TAR}/uv" 2>&1; then
+                log_msg "uv extracted from GitHub tarball"
+            fi
+        fi
+
+        rm -rf "${TMP_DIR}"
+
+        if [ -x "${UV_BIN}/uv" ]; then
+            UV="${UV_BIN}/uv"
+            log_msg "uv installed: ${UV}"
+        else
+            toast_err "uv 安装失败: $(tail -3 "${LOG_FILE}" 2>/dev/null)"
+            exit 1
+        fi
+    fi
+
+    log_msg "uv version: $("${UV}" --version 2>&1 || echo 'FAILED')"
+}
+
+# ---------------------------------------------------------------------------
+# 在线下载 Node.js v22 运行时（对话增强功能，失败不影响主安装）
+# ---------------------------------------------------------------------------
+ensure_node() {
+    local NODE_DIR="${DATA_DIR}/node/bin"
+    local NODE_BIN="${NODE_DIR}/node"
+
+    # 幂等：已存在且可执行则跳过
+    if [ -x "${NODE_BIN}" ]; then
+        log_msg "node found: ${NODE_BIN} ($("${NODE_BIN}" --version 2>/dev/null || echo 'unknown'))"
+        return 0
+    fi
+
+    # 架构映射
+    local ARCH
+    case "$(uname -m)" in
+        x86_64)        ARCH="x64" ;;
+        aarch64|arm64) ARCH="arm64" ;;
+        *)
+            log_msg "WARNING: unsupported arch $(uname -m) for node download, skipping"
+            return 0
+            ;;
+    esac
+
+    # 使用已知稳定的 Node v22 LTS 版本号常量（避免在线解析目录列表）
+    # v22.16.0 — 2025-05 发布的长期支持版，经生产验证
+    # 选 .tar.gz 格式确保设备无 xz 工具也能解包
+    local NODE_VER="v22.16.0"
+    local TARBALL="node-${NODE_VER}-linux-${ARCH}.tar.gz"
+    local MIRROR_URL="https://npmmirror.com/mirrors/node/${NODE_VER}/${TARBALL}"
+    local OFFICIAL_URL="https://nodejs.org/dist/${NODE_VER}/${TARBALL}"
+
+    log_msg ">>> 正在下载 Node.js ${NODE_VER} (${ARCH}) ..."
+
+    # ── 非致命下载：子 shell 内执行，exit 1 仅退出子 shell；|| true 规避 ERR trap ──
+    (
+        set +e
+        TMP_DIR="$(mktemp -d)"
+        DL_PATH="${TMP_DIR}/${TARBALL}"
+        DL_OK=false
+
+        # 优先国内镜像（npmmirror）
+        log_msg "mirror: ${MIRROR_URL}"
+        if curl -L --retry 3 --retry-delay 3 --connect-timeout 15 --progress-bar \
+             -o "${DL_PATH}" "${MIRROR_URL}" 2>&1 && [ -s "${DL_PATH}" ]; then
+            DL_OK=true
+        else
+            # 兜底官方源
+            log_msg "mirror failed, trying official: ${OFFICIAL_URL}"
+            if curl -L --retry 3 --retry-delay 5 --connect-timeout 15 --progress-bar \
+                 -o "${DL_PATH}" "${OFFICIAL_URL}" 2>&1 && [ -s "${DL_PATH}" ]; then
+                DL_OK=true
+            fi
+        fi
+
+        if [ "${DL_OK}" != "true" ]; then
+            log_msg "WARNING: node download failed, skipping"
+            rm -rf "${TMP_DIR}"
+            exit 1
+        fi
+
+        # 解包 .tar.gz
+        if ! tar xzf "${DL_PATH}" -C "${TMP_DIR}" 2>>"${LOG_FILE}"; then
+            log_msg "WARNING: node tarball extraction failed, skipping"
+            rm -rf "${TMP_DIR}"
+            exit 1
+        fi
+
+        # 从解包目录复制 node 二进制
+        EXTRACTED_DIR="${TMP_DIR}/node-${NODE_VER}-linux-${ARCH}"
+        if [ ! -f "${EXTRACTED_DIR}/bin/node" ]; then
+            log_msg "WARNING: node binary not found in extracted dir, skipping"
+            rm -rf "${TMP_DIR}"
+            exit 1
+        fi
+
+        mkdir -p "${NODE_DIR}"
+        cp "${EXTRACTED_DIR}/bin/node" "${NODE_BIN}"
+        chmod +x "${NODE_BIN}"
+        rm -rf "${TMP_DIR}"
+    ) || true
+
+    # 验证最终结果
+    if [ -x "${NODE_BIN}" ]; then
+        log_msg "node installed: ${NODE_BIN} ($("${NODE_BIN}" --version 2>/dev/null || echo '${NODE_VER}'))"
+    else
+        log_msg "WARNING: node 下载/安装未成功，对话功能可能不可用（不影响主功能）"
+    fi
+}
+
+# ---------------------------------------------------------------------------
+# 从 wheel 中提取 hermes_cli/tui_dist/entry.js（对话 TUI 增强，非致命）
+# ---------------------------------------------------------------------------
+ensure_tui_bundle() {
+    # v0.20.0+ 源码模式：TUI bundle 已预构建在 hermes-src/ui-tui/dist/entry.js，
+    # monitor.js 启动时会自动 symlink 到 ${DATA_DIR}/tui/dist/；无需再从 wheel 提取。
+    if [ -f "${HERMES_SRC}/ui-tui/dist/entry.js" ]; then
+        log_msg "tui_dist available in hermes-src (prebuilt): ${HERMES_SRC}/ui-tui/dist/entry.js"
+        return 0
+    fi
+
+    # 动态定位 hermes_cli 目录（不硬编码 python 版本）
+    local HERMES_CLI_DIR
+    HERMES_CLI_DIR=$("${VENV_DIR}/bin/python3" -c "import hermes_cli,os;print(os.path.dirname(hermes_cli.__file__))" 2>/dev/null)
+    if [ -z "${HERMES_CLI_DIR}" ] || [ ! -d "${HERMES_CLI_DIR}" ]; then
+        log_msg "WARNING: cannot locate hermes_cli package dir, skipping tui_dist provisioning"
+        return 0
+    fi
+
+    local SP
+    SP=$(dirname "${HERMES_CLI_DIR}")
+    local ENTRY="${HERMES_CLI_DIR}/tui_dist/entry.js"
+
+    # 幂等：已存在则跳过
+    if [ -f "${ENTRY}" ]; then
+        log_msg "tui_dist present: ${ENTRY}"
+        return 0
+    fi
+
+    # tui_dist 缺失时不再从 PyPI wheel 下载（环境为内置源码/Node 版，无需 PyPI 包；
+    # 且第三方索引对 hermes-agent 查询不稳定）。tui_dist 为可选终端 UI，缺失仅提示。
+    log_msg "WARNING: tui_dist/entry.js 缺失，跳过 PyPI wheel 下载（可选终端 UI，不影响主功能）"
+    return 0
+
+    # ── 非致命：子 shell 内执行，失败仅 WARNING ──
+    (
+        set +e
+        TMP_DIR="$(mktemp -d)"
+        WHL="${TMP_DIR}/hermes_agent.whl"
+        DL_OK=false
+
+        # --- 清华镜像 simple index（URL 注意 /simple/<pkg>/ 格式，此前缺斜杠导致 404） ---
+        log_msg "querying tsinghua simple index for hermes-agent wheel ..."
+        WHEEL_URL=$(curl -LsSf "https://pypi.tuna.tsinghua.edu.cn/simple/hermes-agent/" 2>>"${LOG_FILE}" \
+            | grep -o 'href="[^"]*hermes_agent-'"${HERMES_VERSION}"'-py3-none-any[^"]*' \
+            | head -1 \
+            | sed 's|^href="../../|https://pypi.tuna.tsinghua.edu.cn/|; s|#sha256=.*||')
+
+        if [ -n "${WHEEL_URL}" ]; then
+            log_msg "wheel URL (tsinghua): ${WHEEL_URL}"
+            if curl -L --retry 3 --retry-delay 3 --connect-timeout 15 --progress-bar \
+                 -o "${WHL}" "${WHEEL_URL}" 2>&1 && [ -s "${WHL}" ]; then
+                DL_OK=true
+            else
+                log_msg "WARNING: tsinghua wheel download failed"
+            fi
+        else
+            log_msg "WARNING: tsinghua simple index query returned no py3-none-any wheel"
+        fi
+
+        # --- 兜底：官方 PyPI ---
+        if [ "${DL_OK}" != "true" ]; then
+            log_msg "trying official PyPI simple index ..."
+            WHEEL_URL=$(curl -LsSf "https://pypi.org/simple/hermes-agent/" 2>>"${LOG_FILE}" \
+                | grep -o 'href="[^"]*hermes_agent-'"${HERMES_VERSION}"'-py3-none-any[^"]*' \
+                | head -1 \
+                | sed 's|#sha256=.*||')
+
+            if [ -n "${WHEEL_URL}" ]; then
+                log_msg "wheel URL (pypi): ${WHEEL_URL}"
+                if curl -L --retry 3 --retry-delay 5 --connect-timeout 15 --progress-bar \
+                     -o "${WHL}" "${WHEEL_URL}" 2>&1 && [ -s "${WHL}" ]; then
+                    DL_OK=true
+                else
+                    log_msg "WARNING: official PyPI wheel download failed"
+                fi
+            else
+                log_msg "WARNING: official PyPI query returned no py3-none-any wheel"
+            fi
+        fi
+
+        if [ "${DL_OK}" != "true" ]; then
+            log_msg "WARNING: cannot obtain hermes-agent wheel, tui_dist not provisioned"
+            rm -rf "${TMP_DIR}"
+            exit 1
+        fi
+
+        # 从 wheel 中解压 tui_dist 目录到 site-packages
+        log_msg "extracting hermes_cli/tui_dist/* from wheel ..."
+        if ! unzip -o "${WHL}" "hermes_cli/tui_dist/*" -d "${SP}" >>"${LOG_FILE}" 2>&1; then
+            log_msg "WARNING: unzip tui_dist from wheel failed"
+            rm -rf "${TMP_DIR}"
+            exit 1
+        fi
+
+        rm -rf "${TMP_DIR}"
+    ) || true
+
+    # 验证最终结果
+    if [ -f "${ENTRY}" ]; then
+        log_msg "tui_dist/entry.js provisioned: ${ENTRY}"
+    else
+        log_msg "WARNING: tui_dist/entry.js 未能补齐，对话功能可能不可用（不影响主功能）"
+    fi
+}
+
+# ---------------------------------------------------------------------------
+# 1. 创建数据目录
+# ---------------------------------------------------------------------------
+log_msg "Creating data directories under ${DATA_DIR} ..."
+mkdir -p "${DATA_DIR}"/{sessions,skills,workspace,logs,memories,hooks,bin,cron/output}
+mkdir -p "${VAR_DIR}"
+
+# ---------------------------------------------------------------------------
+# 2. 读取目标版本号（从 hermes-version.env，manifest 不部署到设备）
+# ---------------------------------------------------------------------------
+if [ ! -f "${APP_DIR}/config/bootstrap/hermes-version.env" ]; then
+    toast_err "hermes-version.env 不存在，请检查打包是否包含 config/bootstrap/"
+    exit 1
+fi
+# shellcheck disable=SC1090
+. "${APP_DIR}/config/bootstrap/hermes-version.env"
+if [ -z "${HERMES_VERSION}" ]; then
+    toast_err "hermes-version.env 中未定义 HERMES_VERSION"
+    exit 1
+fi
+log_msg "hermes-agent target version: ${HERMES_VERSION}"
+
+# ---------------------------------------------------------------------------
+# 3. 检测并安装 hermes-agent（使用 uv）
+# ---------------------------------------------------------------------------
+ensure_uv
+
+SKIP_INSTALL=false
+INSTALLED_VER=""
+
+# 用 uv pip show 检测已安装版本
+if INSTALLED_VER=$("$UV" pip show --python "${VENV_DIR}/bin/python3" hermes-agent 2>"${LOG_FILE}" | grep -i '^version' | awk '{print $2}'); then
+    log_msg "Detected hermes-agent ${INSTALLED_VER}, target ${HERMES_VERSION}"
+    if [ "${INSTALLED_VER}" = "${HERMES_VERSION}" ]; then
+        SKIP_INSTALL=true
+        log_msg "Version matches, skipping install"
+    elif [ "$(printf '%s\n%s' "${INSTALLED_VER}" "${HERMES_VERSION}" | sort -V | tail -1)" = "${INSTALLED_VER}" ]; then
+        SKIP_INSTALL=true
+        log_msg "Installed ${INSTALLED_VER} > target ${HERMES_VERSION}, skipping (no downgrade)"
+    else
+        log_msg "Version mismatch, will upgrade"
+    fi
+else
+    log_msg "hermes-agent not installed, will install ${HERMES_VERSION}"
+fi
+
+if [ "${SKIP_INSTALL}" = "false" ]; then
+    # ── 内置 venv 快速部署(免在线安装,秒级) ──
+    if [ -f "${APP_DIR}/venv-bundle.tar.gz" ]; then
+        log_msg ">>> 检测到内置 venv,直接解压部署(免在线安装)..."
+        rm -rf "${VENV_DIR}" 2>/dev/null || true
+        mkdir -p "${DATA_DIR}"
+        tar xzf "${APP_DIR}/venv-bundle.tar.gz" -C "${DATA_DIR}" 2>>"${LOG_FILE}"
+        if [ -x "${VENV_DIR}/bin/python3" ]; then
+            # 重写 editable 路径指向实际 hermes-src(内置 venv 打包自 249,路径不同)
+            for f in "${VENV_DIR}"/lib/python*/site-packages/__editable___hermes_agent_*_finder.py; do
+                [ -f "$f" ] && sed -i "s|/vol3/@appcenter/hermes-agent/hermes-src|${HERMES_SRC}|g" "$f"
+            done
+            # bin/* 脚本 shebang 重写
+            sed -i "s|/vol3/@apphome/hermes-agent/data/venv|${VENV_DIR}|g" "${VENV_DIR}/bin/hermes" 2>/dev/null || true
+            # chown 归 hermes-agent(内置 venv 打包时属主为 root)
+            chown -R hermes-agent:hermes-agent "${VENV_DIR}" 2>/dev/null || chown -R hermes-agent "${VENV_DIR}" 2>/dev/null || true
+            log_msg ">>> 内置 venv 部署完成,跳过在线安装"
+            SKIP_INSTALL=true
+        else
+            log_msg "WARNING: 内置 venv 解压异常,回退在线安装..."
+        fi
+    fi
+fi
+
+if [ "${SKIP_INSTALL}" = "false" ]; then
+    # 创建或重建虚拟环境（python3 不可用时也要重建）
+    if [ ! -d "${VENV_DIR}/bin" ] || [ ! -x "${VENV_DIR}/bin/python3" ]; then
+        if [ -d "${VENV_DIR}" ]; then
+            log_msg ">>> 旧 venv 不可用，正在重建 ..."
+            rm -rf "${VENV_DIR}" 2>/dev/null || true
+        else
+            log_msg ">>> 正在创建 Python 虚拟环境 ..."
+        fi
+        "$UV" venv --python /usr/bin/python3 "${VENV_DIR}" 2>>"${LOG_FILE}"
+        if [ ! -d "${VENV_DIR}/bin" ]; then
+            toast_err "venv 创建失败: $(tail -5 "${LOG_FILE}" 2>/dev/null)"
+            exit 1
+        fi
+        log_msg "venv created"
+    fi
+
+    if [ -f "${HERMES_SRC}/pyproject.toml" ]; then
+        # 内置源码模式（v0.20.0+）：editable 安装是官方支持的源码分发路径
+        # 注意：此处必须禁用 set -e / ERR trap——uv 源 403/失败不应中断脚本，
+        # 三源重试链走完后再统一判断（此前 trap ERR 导致清华 403 直接中止，多源重试形同虚设）
+        set +e
+        trap - ERR
+        log_msg ">>> 正在从内置源码 editable 安装 hermes-agent[all]（多源重试：官方→阿里云→清华）..."
+        # 第 1 源：官方 PyPI（最稳定）
+        UV_INDEX_URL="https://pypi.org/simple" \
+            "$UV" pip install --python "${VENV_DIR}/bin/python3" -e "${HERMES_SRC}[all,voice]" \
+            2>>"${LOG_FILE}"
+        # 第 2 源：阿里云镜像
+        if [ ! -f "${HERMES}" ]; then
+            log_msg ">>> 官方源失败，换阿里云镜像重试 ..."
+            rm -rf "${VENV_DIR}"/lib/python*/site-packages/hermes* 2>/dev/null || true
+            UV_INDEX_URL="https://mirrors.aliyun.com/pypi/simple/" \
+                "$UV" pip install --python "${VENV_DIR}/bin/python3" -e "${HERMES_SRC}[all,voice]" \
+                2>>"${LOG_FILE}"
+        fi
+        # 第 3 源：清华镜像
+        if [ ! -f "${HERMES}" ]; then
+            log_msg ">>> 阿里云也失败，换清华镜像重试 ..."
+            rm -rf "${VENV_DIR}"/lib/python*/site-packages/hermes* 2>/dev/null || true
+            UV_INDEX_URL="https://pypi.tuna.tsinghua.edu.cn/simple" \
+                "$UV" pip install --python "${VENV_DIR}/bin/python3" -e "${HERMES_SRC}[all,voice]" \
+                2>>"${LOG_FILE}"
+        fi
+        set -e
+        trap 'toast_err "脚本出错(L${LINENO}): $(tail -3 "${LOG_FILE}" 2>/dev/null)"' ERR
+        if [ ! -f "${HERMES}" ]; then
+            toast_err "hermes-agent 安装失败（三源均失败）: $(tail -5 "${LOG_FILE}" 2>/dev/null)"
+            exit 1
+        fi
+    else
+        # 兜底：无内置源码（旧包/热补丁场景）→ 退回 PyPI wheel 安装
+        log_msg "WARNING: hermes-src 不存在（${HERMES_SRC}），退回 PyPI wheel 安装 hermes-agent[all]==${HERMES_VERSION}"
+        UV_INDEX_URL="https://pypi.tuna.tsinghua.edu.cn/simple" \
+            "$UV" pip install --python "${VENV_DIR}/bin/python3" "hermes-agent[all,voice]==${HERMES_VERSION}" \
+            2>>"${LOG_FILE}"
+    fi
+
+    if [ ! -f "${HERMES}" ]; then
+        toast_err "hermes-agent 安装失败: $(tail -5 "${LOG_FILE}" 2>/dev/null)"
+        exit 1
+    fi
+    log_msg "hermes binary verified"
+fi
+
+ACTUAL_VER=$("$UV" pip show --python "${VENV_DIR}/bin/python3" hermes-agent 2>>"${LOG_FILE}" | grep -i '^version' | awk '{print $2}' || echo "unknown")
+log_msg "hermes-agent installed: ${ACTUAL_VER}"
+
+# 把 uv 软链接进 venv/bin，让 hermes 运行时（PATH 仅含 venv/bin）能找到 uv
+if [ -x "${UV_BIN}/uv" ] && [ -d "${VENV_DIR}/bin" ]; then
+    ln -sf "${UV_BIN}/uv" "${VENV_DIR}/bin/uv"
+    if [ -x "${VENV_DIR}/bin/uv" ]; then
+        log_msg "uv symlinked into venv/bin"
+    else
+        log_msg "WARNING: uv symlink into venv/bin failed"
+    fi
+fi
+
+# ---------------------------------------------------------------------------
+# 3.5 下载 Node.js 运行时（对话增强，非致命）
+# ---------------------------------------------------------------------------
+ensure_node
+
+# ---------------------------------------------------------------------------
+# 3.6 补齐 tui_dist/entry.js（对话 TUI 增强，非致命）
+# ---------------------------------------------------------------------------
+ensure_tui_bundle
+
+# ---------------------------------------------------------------------------
+# 4. 部署 prompts
+# ---------------------------------------------------------------------------
+if [ -d "${PROMPTS_SRC}" ]; then
+    # skills/ — 始终覆盖（跟随版本）
+    if [ -d "${PROMPTS_SRC}/skills" ]; then
+        mkdir -p "${DATA_DIR}/skills"
+        cp -a "${PROMPTS_SRC}/skills/." "${DATA_DIR}/skills/"
+        log_msg "skills deployed"
+    fi
+
+    # SOUL.md — 不存在才复制
+    if [ -f "${PROMPTS_SRC}/SOUL.md" ] && [ ! -f "${DATA_DIR}/SOUL.md" ]; then
+        cp "${PROMPTS_SRC}/SOUL.md" "${DATA_DIR}/SOUL.md"
+        log_msg "SOUL.md deployed (first install)"
+    fi
+
+    # AGENTS.md — 不存在才复制
+    if [ -f "${PROMPTS_SRC}/AGENTS.md" ] && [ ! -f "${DATA_DIR}/AGENTS.md" ]; then
+        cp "${PROMPTS_SRC}/AGENTS.md" "${DATA_DIR}/AGENTS.md"
+        log_msg "AGENTS.md deployed (first install)"
+    fi
+
+    # config.yaml — 不存在才复制（使用 prompts/ 中的模板）
+    if [ -f "${PROMPTS_SRC}/config.yaml" ] && [ ! -f "${DATA_DIR}/config.yaml" ]; then
+        cp "${PROMPTS_SRC}/config.yaml" "${DATA_DIR}/config.yaml"
+        log_msg "config.yaml deployed (first install)"
+    fi
+
+    # 清理源目录（install_callback 只运行一次）
+    rm -rf "${PROMPTS_SRC}"
+    log_msg "prompts source cleaned up"
+fi
+
+# ---------------------------------------------------------------------------
+# 5. 修复权限
+# ---------------------------------------------------------------------------
+mkdir -p "${VAR_DIR}" 2>/dev/null
+
+if [ -n "${TRIM_USERNAME}" ]; then
+    log_msg "=== 修复权限 ==="
+    log_msg "TRIM_USERNAME=${TRIM_USERNAME}"
+    log_msg "APP_DIR=${APP_DIR} owner=$(stat -c '%U:%G' "${APP_DIR}" 2>/dev/null || echo 'N/A') perms=$(stat -c '%a' "${APP_DIR}" 2>/dev/null || echo 'N/A')"
+    log_msg "DATA_DIR=${DATA_DIR} owner=$(stat -c '%U:%G' "${DATA_DIR}" 2>/dev/null || echo 'N/A') perms=$(stat -c '%a' "${DATA_DIR}" 2>/dev/null || echo 'N/A')"
+    log_msg "VAR_DIR=${VAR_DIR} owner=$(stat -c '%U:%G' "${VAR_DIR}" 2>/dev/null || echo 'N/A') perms=$(stat -c '%a' "${VAR_DIR}" 2>/dev/null || echo 'N/A')"
+
+    if chown -R "${TRIM_USERNAME}:${TRIM_USERNAME}" "${APP_DIR}" 2>>"${LOG_FILE}"; then
+        log_msg "chown -R ${TRIM_USERNAME}:${TRIM_USERNAME} ${APP_DIR} → OK"
+    else
+        log_msg "chown -R ${TRIM_USERNAME}:${TRIM_USERNAME} ${APP_DIR} → FAILED (exit=$?)"
+    fi
+    if chmod 775 "${APP_DIR}" 2>>"${LOG_FILE}"; then
+        log_msg "chmod 775 ${APP_DIR} → OK"
+    else
+        log_msg "chmod 775 ${APP_DIR} → FAILED (exit=$?)"
+    fi
+
+    if chown -R "${TRIM_USERNAME}:${TRIM_USERNAME}" "${DATA_DIR}" 2>>"${LOG_FILE}"; then
+        log_msg "chown -R ${TRIM_USERNAME}:${TRIM_USERNAME} ${DATA_DIR} → OK"
+    else
+        log_msg "chown -R ${TRIM_USERNAME}:${TRIM_USERNAME} ${DATA_DIR} → FAILED (exit=$?)"
+    fi
+    if chmod -R 750 "${DATA_DIR}" 2>>"${LOG_FILE}"; then
+        log_msg "chmod -R 750 ${DATA_DIR} → OK"
+    else
+        log_msg "chmod -R 750 ${DATA_DIR} → FAILED (exit=$?)"
+    fi
+
+    # VAR_DIR 必须归应用用户，否则 monitor 后续以 hermes-agent 启动时会因 root 残留文件报 EACCES
+    if chown -R "${TRIM_USERNAME}:${TRIM_USERNAME}" "${VAR_DIR}" 2>>"${LOG_FILE}"; then
+        log_msg "chown -R ${TRIM_USERNAME}:${TRIM_USERNAME} ${VAR_DIR} → OK"
+    else
+        log_msg "chown -R ${TRIM_USERNAME}:${TRIM_USERNAME} ${VAR_DIR} → FAILED (exit=$?)"
+    fi
+    if chmod -R 750 "${VAR_DIR}" 2>>"${LOG_FILE}"; then
+        log_msg "chmod -R 750 ${VAR_DIR} → OK"
+    else
+        log_msg "chmod -R 750 ${VAR_DIR} → FAILED (exit=$?)"
+    fi
+
+    # 残留文件检查
+    log_msg "--- 权限修复后目录状态 ---"
+    ls -la "${APP_DIR}" 2>&1 | while IFS= read -r line; do log_msg "  $line"; done
+else
+    log_msg "TRIM_USERNAME 为空，跳过权限修复"
+fi
+
+
+
+# —— 知识整合初始化：部署 knowledge/memories/skill/mirror + crontab（Hermes 方案） ——
+if [ -x "${TRIM_APPDEST:-/var/apps/hermes-agent}/init/init.sh" ]; then
+    log_msg '>>> 运行知识整合初始化 (init.sh) ...'
+    "${TRIM_APPDEST:-/var/apps/hermes-agent}/init/init.sh" >> "${TRIM_PKGVAR}/info.log" 2>&1 || log_msg 'WARNING: init.sh 执行失败'
+else
+    log_msg 'init.sh 不存在'
+fi
+
+# —— sudoers 授权：hermes-agent 免密 cp/chown/psql（版本同步/覆盖/权限修复必需）——
+# monitor（hermes-agent 用户）需要 sudo -n cp/chown 覆盖应用文件 + sudo -u postgres psql 同步应用中心版本；
+# 未配置时 auto-update 覆盖后应用中心版本不刷新（显示旧版本）。
+if [ -n "${TRIM_USERNAME:-}" ]; then
+    _SUDOERS_FILE="/etc/sudoers.d/hermes-appcenter"
+    # 旧版 sudoers 可能只有 cp/psql（缺 chown）→ 内容不完整必须重写（含 chown 才算完整）
+    if [ ! -f "${_SUDOERS_FILE}" ] || ! grep -q 'chown' "${_SUDOERS_FILE}" 2>/dev/null; then
+        log_msg ">>> 写入 sudoers 授权（${_SUDOERS_FILE}）..."
+        printf 'hermes-agent ALL=(root) NOPASSWD: /bin/cp, /usr/bin/cp, /bin/chown, /usr/bin/chown, /usr/bin/sudo -u postgres /usr/bin/psql -d appcenter *\n' > /tmp/hermes-appcenter-sudoers
+        chmod 440 /tmp/hermes-appcenter-sudoers
+        if cp /tmp/hermes-appcenter-sudoers "${_SUDOERS_FILE}" 2>>"${TRIM_PKGVAR}/info.log"; then
+            chmod 440 "${_SUDOERS_FILE}" 2>/dev/null || true
+            log_msg "sudoers 写入成功"
+        else
+            log_msg "sudoers 写入失败（请手动配置 /etc/sudoers.d/hermes-appcenter）"
+        fi
+        rm -f /tmp/hermes-appcenter-sudoers
+    else
+        log_msg "sudoers 已存在且完整，跳过"
+    fi
+fi
+
+trap - ERR
+log_msg "install_callback finished successfully."
+exit 0

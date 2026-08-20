@@ -1,10 +1,15 @@
 #!/bin/bash
 # ═══════════════════════════════════════════════════════════════════
 # fnos-hermes-agent-web 构建脚本
-# 产出：
-#   1. fnos-hermes-agent_v<ver>.fpk          — 完整安装包（全新安装）
-#   2. incremental-v<prev>-to-v<cur>.tar.gz  — 增量更新包（tar 解压）
-#   3. hot-patch.json                        — 更新元数据
+# 产出（放入 dist/）：
+#   1. fnos-hermes-agent_v<ver>.fpk          完整安装包（含内置 venv，全新安装用）
+#   2. incremental-<prev>-to-<cur>.tar.gz    增量更新包（tar 解压）
+#   3. hot-patch.json                        更新元数据
+#
+# 依赖：
+#   - upstream/hermes-src   （先运行 sync-upstream.js 克隆上游）
+#   - fpk/                   FPK 骨架（manifest/cmd/config/ICON/wizard）
+#   - venv-bundle.tar.gz     内置 venv（从已有部署提取，放 fpk/）
 # ═══════════════════════════════════════════════════════════════════
 set -euo pipefail
 
@@ -12,18 +17,21 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
 # ── 版本解析 ────────────────────────────────────────────────────────
-# VERSION 格式: <official>-build<NN>，如 0.20.4-build30
 CUR_VERSION="$(cat VERSION | tr -d '[:space:]')"
 OFFICIAL_VER="$(echo "$CUR_VERSION" | cut -d- -f1)"
 BUILD_NUM="$(echo "$CUR_VERSION" | sed -E 's/.*build([0-9]+)/\1/i')"
 
-# 上一版本（从 git tag 取，无则用当前）
+# 上一版本（从 git tag 取最近的非当前 tag）
 PREV_TAG="$(git describe --tags --abbrev=0 2>/dev/null || echo "")"
+if [ "$PREV_TAG" = "v$CUR_VERSION" ]; then
+  # 当前版本已是 tag（可能是手动构建），用 git log 找上一个 tag
+  PREV_TAG="$(git tag --sort=-creatordate | grep -v "^v$CUR_VERSION$" | head -1 || echo "")"
+fi
 PREV_VERSION="${PREV_TAG#v}"
-PREV_VERSION="${PREV_VERSION:-$CUR_VERSION}"
+PREV_VERSION="${PREV_VERSION:-}"
 
 echo "═══ 构建 fnos-hermes-agent $CUR_VERSION ═══"
-echo "官方版本: $OFFICIAL_VER | Build: $BUILD_NUM | 上一版: $PREV_VERSION"
+echo "官方版本: $OFFICIAL_VER | Build: $BUILD_NUM | 上一版: ${PREV_VERSION:-无}"
 
 # ── 目录 ────────────────────────────────────────────────────────────
 DIST="dist"
@@ -32,8 +40,7 @@ mkdir -p "$DIST" "$BUILD_DIR"
 
 # ── 隐私扫描（强制）─────────────────────────────────────────────────
 echo "── 隐私扫描 ──"
-# 排除公开仓库名 veenyi/fnos-hermes-agent-web（项目标识）与 app_version 路径（部署约定）
-PRIV_LEAKS="$(grep -rnE 'Ferr0li|192\.168\.3\.(123|249)|/vol[13]/@app(home|data)/hermes-agent|sk-[A-Za-z0-9]{20}' src/ 2>/dev/null | grep -vE '\.pyc|node_modules|veenyi/fnos-hermes-agent-web|app_version' | head -20 || true)"
+PRIV_LEAKS="$(grep -rnE 'Ferr0li|192\.168\.3\.(123|249)|/vol[13]/@app(home|data)/hermes-agent|sk-[A-Za-z0-9]{20}' src/ fpk/config/ 2>/dev/null | grep -vE '\.pyc|node_modules|veenyi/fnos-hermes-agent-web|app_version' | head -20 || true)"
 if [ -n "$PRIV_LEAKS" ]; then
   echo "✗ 隐私扫描发现泄漏："
   echo "$PRIV_LEAKS"
@@ -42,55 +49,98 @@ fi
 echo "✓ 隐私扫描通过"
 
 # ── 组装应用目录（完整包内容）──────────────────────────────────────
-# 从 src/ 复制自定义文件 + 从上游/编译产物复制
+echo "── 组装应用目录 ──"
 APP_STAGE="$BUILD_DIR/app"
+rm -rf "$APP_STAGE"
 mkdir -p "$APP_STAGE"
-cp -r src/server "$APP_STAGE/server" 2>/dev/null || true
-cp -r src/ui "$APP_STAGE/ui" 2>/dev/null || true
 
-# 桌面端 Web（desktop-app）：web-shim 汉化层 + index.html 注入
+# 1. server（后端）
+cp -r src/server "$APP_STAGE/server"
+
+# 2. desktop-app（桌面端 Web：web-shim + index + i18n + skills）
 mkdir -p "$APP_STAGE/desktop-app"
 cp src/desktop-app-web-shim.js "$APP_STAGE/desktop-app/web-shim.js"
 cp src/desktop-app-index.html "$APP_STAGE/desktop-app/index.html"
+if [ -d "src/desktop-app" ]; then
+  cp src/desktop-app/i18n-tNRQyTMd.js "$APP_STAGE/desktop-app/assets/i18n-tNRQyTMd.js" 2>/dev/null || true
+  cp src/desktop-app/skills-DOyAoEBU.js "$APP_STAGE/desktop-app/assets/skills-DOyAoEBU.js" 2>/dev/null || true
+fi
 
-# 上游 hermes-src（需先 sync-upstream.sh 拉取）
+# 3. 上游 hermes-src（CI 克隆后）
 if [ -d "upstream/hermes-src" ]; then
   cp -r upstream/hermes-src "$APP_STAGE/hermes-src"
   echo "✓ 上游 hermes-src 已带入"
 else
-  echo "⚠ 未找到 upstream/hermes-src，请先运行 scripts/sync-upstream.sh"
+  echo "⚠ 未找到 upstream/hermes-src（仅影响完整包，增量包不受影响）"
 fi
 
-# ── 版本写入 ────────────────────────────────────────────────────────
+# 4. 版本写入
 echo "$CUR_VERSION" > "$APP_STAGE/VERSION"
-# manifest 版本 = 官方版本（fnOS 应用中心显示）
-if [ -f "$APP_STAGE/manifest" ]; then
-  sed -i "s/^version.*=.*/version               = $OFFICIAL_VER/" "$APP_STAGE/manifest"
+if [ -f "fpk/manifest" ]; then
+  sed -i "s/^version.*=.*/version               = $CUR_VERSION/" fpk/manifest
 fi
 
-# ── 打包完整 FPK ────────────────────────────────────────────────────
+# ── 组装完整 FPK ────────────────────────────────────────────────────
 echo "── 打包完整 FPK ──"
-# 注：完整 FPK 需要 venv-bundle（180MB 内置 venv）与 cmd/config 等，
-# 这些由 fpk-build 目录提供（脱敏后的 fnOS 应用包骨架）
-if [ -d "fpk-build" ]; then
+# FPK 结构：manifest + app.tgz + cmd + config + ICON + LICENSE + wizard
+# app.tgz = 应用部署目录（bin/config/desktop-app/hermes-src/server/ui + venv-bundle.tar.gz）
+if [ -d "fpk/cmd" ]; then
+  # 生成 app.tgz（含 venv-bundle）
+  APP_TGZ_STAGE="$BUILD_DIR/fpk-app"
+  rm -rf "$APP_TGZ_STAGE"
+  mkdir -p "$APP_TGZ_STAGE"
+  cp -r "$APP_STAGE"/* "$APP_TGZ_STAGE/" 2>/dev/null || true
+  # 内置 venv：优先 fpk/venv-bundle.tar.gz，其次从 dist 已有完整包提取
+  VENV_SRC="fpk/venv-bundle.tar.gz"
+  if [ ! -f "$VENV_SRC" ]; then
+    # 从已有完整 FPK 提取（app.tgz 内含 venv-bundle.tar.gz）
+    OLD_FPK="$(ls dist/fnos-hermes-agent_v*.fpk 2>/dev/null | grep -v "v$CUR_VERSION" | head -1 || true)"
+    if [ -n "$OLD_FPK" ]; then
+      echo "── 从 $OLD_FPK 提取内置 venv ──"
+      (cd "$BUILD_DIR" && tar xzf "$ROOT/$OLD_FPK" app.tgz && tar xzf app.tgz venv-bundle.tar.gz 2>/dev/null && cp venv-bundle.tar.gz "$ROOT/fpk/venv-bundle.tar.gz") || true
+      VENV_SRC="fpk/venv-bundle.tar.gz"
+    fi
+  fi
+  if [ -f "$VENV_SRC" ]; then
+    cp "$VENV_SRC" "$APP_TGZ_STAGE/"
+    echo "✓ 内置 venv 已带入（$(du -sh "$VENV_SRC" | cut -f1)）"
+  else
+    echo "⚠ 未找到 venv-bundle（完整包不含内置 venv，安装需在线）"
+  fi
+  # 打包 app.tgz
+  tar czf "$BUILD_DIR/app.tgz" -C "$APP_TGZ_STAGE" . 2>/dev/null
+
+  # 组装 FPK
+  FPK_STAGE="$BUILD_DIR/fpk-out"
+  rm -rf "$FPK_STAGE"
+  mkdir -p "$FPK_STAGE"
+  cp "$BUILD_DIR/app.tgz" "$FPK_STAGE/"
+  cp fpk/manifest "$FPK_STAGE/"
+  cp -r fpk/cmd "$FPK_STAGE/"
+  cp -r fpk/config "$FPK_STAGE/"
+  cp fpk/ICON.PNG fpk/ICON_256.PNG fpk/LICENSE "$FPK_STAGE/" 2>/dev/null || true
+  cp -r fpk/wizard "$FPK_STAGE/" 2>/dev/null || true
+
+  # 计算 checksum 并更新 manifest
+  APP_MD5="$(md5sum "$FPK_STAGE/app.tgz" | awk '{print $1}')"
+  sed -i "s/^checksum.*=.*/checksum              = $APP_MD5/" "$FPK_STAGE/manifest"
+  echo "app.tgz checksum: $APP_MD5"
+
+  # 打包 FPK
   tar czf "$DIST/fnos-hermes-agent_v${CUR_VERSION}.fpk" \
-    -C fpk-build manifest app.tgz cmd config ICON.PNG ICON_256.PNG LICENSE wizard 2>/dev/null || \
-  echo "⚠ 完整 FPK 打包跳过（缺 fpk-build 骨架）"
+    -C "$FPK_STAGE" manifest app.tgz cmd config ICON.PNG ICON_256.PNG LICENSE wizard 2>/dev/null || \
+  tar czf "$DIST/fnos-hermes-agent_v${CUR_VERSION}.fpk" \
+    -C "$FPK_STAGE" manifest app.tgz cmd config ICON.PNG ICON_256.PNG LICENSE
+  echo "✓ 完整 FPK: $DIST/fnos-hermes-agent_v${CUR_VERSION}.fpk"
 else
-  echo "⚠ 未找到 fpk-build，完整 FPK 跳过（增量更新不受影响）"
+  echo "⚠ 未找到 fpk/cmd，完整 FPK 跳过"
 fi
 
 # ── 生成增量更新包 ──────────────────────────────────────────────────
 echo "── 生成增量更新包 ──"
-# 对比当前 git 树与上一 tag 的 src/ 变更文件，打成 tar.gz
-# 变更文件 = git diff 的 src/ 部分；tar 内路径 = 部署相对路径：
-#   src/server/monitor.js        → server/monitor.js        （APP_DIR/server/）
-#   src/desktop-app-web-shim.js  → desktop-app/web-shim.js  （APP_DIR/desktop-app/）
-#   src/desktop-app-index.html   → desktop-app/index.html
-if [ -n "$PREV_TAG" ] && [ "$PREV_TAG" != "v$CUR_VERSION" ]; then
+if [ -n "$PREV_VERSION" ] && [ "$PREV_TAG" != "v$CUR_VERSION" ]; then
   CHANGED_FILES="$(git diff --name-only "$PREV_TAG" HEAD -- src/ 2>/dev/null || true)"
   if [ -n "$CHANGED_FILES" ]; then
-    # 构建 staging 目录，映射 src/ → 部署路径
     INC_STAGE="$BUILD_DIR/inc-stage"
     rm -rf "$INC_STAGE"
     mkdir -p "$INC_STAGE"
@@ -107,17 +157,17 @@ if [ -n "$PREV_TAG" ] && [ "$PREV_TAG" != "v$CUR_VERSION" ]; then
       cp "$f" "$DEST"
     done
     tar czf "$DIST/incremental-${PREV_VERSION}-to-${CUR_VERSION}.tar.gz" -C "$INC_STAGE" .
-    echo "✓ 增量包: incremental-${PREV_VERSION}-to-${CUR_VERSION}.tar.gz ($CHANGED_FILES 文件)"
+    echo "✓ 增量包: incremental-${PREV_VERSION}-to-${CUR_VERSION}.tar.gz"
   else
     echo "⚠ src/ 无变更，跳过增量包"
   fi
 else
-  echo "⚠ 无上一版本 tag，跳过增量包（首次发布）"
+  echo "⚠ 无上一版本，跳过增量包（首次发布）"
 fi
 
 # ── 生成 hot-patch.json ─────────────────────────────────────────────
 echo "── 生成 hot-patch.json ──"
-if [ -f "$DIST/incremental-${PREV_VERSION}-to-${CUR_VERSION}.tar.gz" ]; then
+if [ -n "$PREV_VERSION" ] && [ -f "$DIST/incremental-${PREV_VERSION}-to-${CUR_VERSION}.tar.gz" ]; then
   ARCHIVE_MD5="$(md5sum "$DIST/incremental-${PREV_VERSION}-to-${CUR_VERSION}.tar.gz" | awk '{print $1}')"
   cat > "$DIST/hot-patch.json" << JSONEOF
 {
@@ -128,7 +178,7 @@ if [ -f "$DIST/incremental-${PREV_VERSION}-to-${CUR_VERSION}.tar.gz" ]; then
   "files": []
 }
 JSONEOF
-  echo "✓ hot-patch.json 已生成（tar 增量模式）"
+  echo "✓ hot-patch.json 已生成"
 else
   echo "⚠ 无增量包，hot-patch.json 跳过"
 fi
