@@ -4605,7 +4605,7 @@ async function handleFetch(req) {
   // 仅剥 monitor/custom_routes 自己实现的 /api/app/*、/api/voice/* 前缀，
   // 其余官方 API（profiles/model/config/cron 等）保留 /proxy/dashboard 前缀走 dashboard 代理，
   // 否则会因 monitor 无对应路由而 404（此前全量剥除导致 profiles/active 等大面积 404）。
-  if (/^\/proxy\/dashboard\/api\/(app|voice)\//.test(path) || path === "/proxy/dashboard/api/config" || path === "/proxy/dashboard/api/config/test") {
+  if (/^\/proxy\/dashboard\/api\/(app|voice)\//.test(path) ) {
     path = path.slice("/proxy/dashboard".length);
   }
 
