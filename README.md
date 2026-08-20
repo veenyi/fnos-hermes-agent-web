@@ -23,6 +23,7 @@ fnos-hermes-agent-web/
 │   ├── sync-upstream.sh    # 同步官方 hermes-agent 上游
 │   ├── build.sh            # 编译打包（FPK + 增量 tar）
 │   └── publish.sh          # 发布到 GitHub Release
+├── fpk/                     # FPK 打包骨架（manifest/cmd/config/ICON/wizard/技能）
 ├── VERSION                 # 当前版本号
 └── .github/workflows/      # GitHub Actions 自动同步/编译/发布
 ```
