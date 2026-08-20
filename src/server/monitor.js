@@ -4601,9 +4601,13 @@ async function handleFetch(req) {
     if (path.startsWith(BASE_PATH + "/")) path = path.slice(BASE_PATH.length);
     else if (path === BASE_PATH) path = "/";
   }
-  // 桌面 Web 版（web-shim base=/proxy/dashboard）调用的自定义 API 也带前缀：
-  // /proxy/dashboard/api/* 与 /api/* 等价，避免被下方 proxyDashboard 转发导致 404
-  if (path.startsWith("/proxy/dashboard/api/")) path = path.slice("/proxy/dashboard".length);
+  // 桌面 Web 版（web-shim base=/proxy/dashboard）调用的【自定义】API 也带前缀：
+  // 仅剥 monitor/custom_routes 自己实现的 /api/app/*、/api/voice/* 前缀，
+  // 其余官方 API（profiles/model/config/cron 等）保留 /proxy/dashboard 前缀走 dashboard 代理，
+  // 否则会因 monitor 无对应路由而 404（此前全量剥除导致 profiles/active 等大面积 404）。
+  if (/^\/proxy\/dashboard\/api\/(app|voice)\//.test(path) || path === "/proxy/dashboard/api/config" || path === "/proxy/dashboard/api/config/test") {
+    path = path.slice("/proxy/dashboard".length);
+  }
 
   // CORS 预检
   if (req.method === "OPTIONS") {
