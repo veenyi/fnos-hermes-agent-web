@@ -21,3 +21,6 @@ Thumbs.db
 
 # 上游克隆目录（不提交）
 upstream/
+
+# 内置 venv（180MB，不提交，由 CI 从上一 Release 提取）
+fpk/venv-bundle.tar.gz

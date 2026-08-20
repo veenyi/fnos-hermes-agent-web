@@ -58,6 +58,21 @@ jobs:
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
+      # 提取 venv-bundle（从上一 Release 的完整包，180MB 不提交仓库）
+      - name: Fetch venv-bundle from previous release
+        if: steps.check.outputs.changed == 'true'
+        run: |
+          mkdir -p fpk
+          if [ ! -f fpk/venv-bundle.tar.gz ]; then
+            PREV_RELEASE_URL="$(curl -sS -H 'Accept: application/vnd.github+json' 'https://api.github.com/repos/veenyi/fnos-hermes-agent-web/releases/latest' | grep -oE '"browser_download_url":"[^"]*\.fpk"' | head -1 | sed -E 's/.*:"([^"]*)"/\1/')"
+            if [ -n "$PREV_RELEASE_URL" ]; then
+              echo "下载上一完整包: $PREV_RELEASE_URL"
+              curl -sSL -o /tmp/prev.fpk "$PREV_RELEASE_URL"
+              (cd /tmp && tar xzf prev.fpk app.tgz && tar xzf app.tgz venv-bundle.tar.gz && mv venv-bundle.tar.gz "$GITHUB_WORKSPACE/fpk/venv-bundle.tar.gz")
+            fi
+          fi
+          ls -la fpk/venv-bundle.tar.gz 2>/dev/null && echo "✓ venv-bundle 就绪" || echo "⚠ 无 venv-bundle（首个 Release 需手动提供）"
+
       - name: Build
         if: steps.check.outputs.changed == 'true'
         run: |
