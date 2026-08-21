@@ -5103,6 +5103,15 @@ async function handleFetch(req) {
       // 清除版本缓存：确保 UI 显示新版本（VERSION_OVERRIDE_FILE 残留会导致显示旧版本）
       try { unlinkSync(VERSION_OVERRIDE_FILE); } catch {}
       try { writeFileSync(`${APP_DIR}/VERSION`, _appVer + "\n", { mode: 0o644 }); } catch (e4) { log(`[app-update] VERSION 文件写入失败: ${e4.message}`); }
+      // readAppVersion 优先读 APP_DIR/manifest（VERSION 文件不参与版本显示），
+      // 一并写入使版本号立即生效（文件属 hermes-agent，应用自身可写）
+      try {
+        const _mfPath = `${APP_DIR}/manifest`;
+        if (existsSync(_mfPath)) {
+          const _mfTxt = readFileSync(_mfPath, "utf8").replace(/^version\s*=.*$/m, `version               = ${_appVer}`);
+          writeFileSync(_mfPath, _mfTxt, { mode: 0o644 });
+        }
+      } catch (e5) { log(`[app-update] APP_DIR manifest 版本写入失败: ${e5.message}`); }
       try { HERMES_VERSION = "unknown"; } catch {}
       try { APP_VERSION = readAppVersion(); } catch {}
       // 同步 fnOS 应用中心版本记录（postgres appcenter.app 表）——应用中心 UI 显示版本与 manifest 一致
