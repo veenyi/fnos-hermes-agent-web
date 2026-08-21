@@ -5102,6 +5102,7 @@ async function handleFetch(req) {
       }
       // 清除版本缓存：确保 UI 显示新版本（VERSION_OVERRIDE_FILE 残留会导致显示旧版本）
       try { unlinkSync(VERSION_OVERRIDE_FILE); } catch {}
+      try { writeFileSync(`${APP_DIR}/VERSION`, _appVer + "\n", { mode: 0o644 }); } catch (e4) { log(`[app-update] VERSION 文件写入失败: ${e4.message}`); }
       try { HERMES_VERSION = "unknown"; } catch {}
       try { APP_VERSION = readAppVersion(); } catch {}
       // 同步 fnOS 应用中心版本记录（postgres appcenter.app 表）——应用中心 UI 显示版本与 manifest 一致
