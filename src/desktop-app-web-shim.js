@@ -406,6 +406,20 @@
     hud: { open: function () { return Promise.resolve({}); }, close: function () { return Promise.resolve(); }, getState: function () { return Promise.resolve(false); }, setIgnoreMouse: function () { return Promise.resolve(); }, moveBy: function () { return Promise.resolve(); }, setBounds: function () { return Promise.resolve(); }, setVibrancy: function () { return Promise.resolve(false); }, setSession: function () { return Promise.resolve(); }, onChanged: function () { return function () {}; }, onGoto: function () { return function () {}; }, onCursor: function () { return function () {}; } },
     petOverlay: { open: function () { return Promise.resolve({}); }, close: function () { return Promise.resolve(); }, getState: function () { return Promise.resolve(false); }, setBounds: function () { return Promise.resolve(); }, setIgnoreMouse: function () { return Promise.resolve(); }, setFocusable: function () { return Promise.resolve(); }, pushState: function () { return Promise.resolve(); }, onState: function () { return function () {}; }, onControl: function () { return function () {}; } },
     wakeIndicator: { getState: function () { return Promise.resolve(false); }, setState: function () { return Promise.resolve(); }, onState: function () { return function () {}; } },
+    _parseReleaseCommits: function (body) {
+      var out = [];
+      try {
+        var lines = String(body || "").split("\n");
+        for (var i = 0; i < lines.length; i++) {
+          var ln = (lines[i] || "").trim();
+          if (ln.indexOf("-") === 0 || ln.indexOf("•") === 0) {
+            var txt = ln.replace(/^[-\u2022]\s*/, "").trim();
+            if (txt) out.push({ sha: "release-" + i, summary: txt });
+          }
+        }
+      } catch (e) {}
+      return out;
+    },
     updates: {
       getStatus: function () {
         var v = "";
@@ -417,7 +431,8 @@
             .then(function (r) { return r.json().catch(function () { return {}; }); })
             .then(function (d) {
               var ver = (d && d.current) ? d.current : v;
-              return { appVersion: ver, currentVersion: ver, currentSha: (d && d.sha) || null, branch: (d && d.branch) || null, behind: (d && d.behind) || 0, updateAvailable: !!(d && d.updateAvailable), supported: true };
+              var _cm = (this && this._parseReleaseCommits) ? this._parseReleaseCommits(d && d.body) : [];
+              return { appVersion: ver, currentVersion: ver, currentSha: (d && d.sha) || null, branch: (d && d.branch) || null, behind: (d && d.behind) || 0, commits: _cm, updateAvailable: !!(d && d.updateAvailable), supported: true };
             })
             .catch(function () { return fallback(); });
         } catch (e) { return Promise.resolve(fallback()); }
@@ -439,6 +454,7 @@
                 branch: (d && d.branch) || null,
                 currentSha: (d && d.sha) || null,
                 behind: (d && d.behind) || 0,
+                commits: this._parseReleaseCommits ? this._parseReleaseCommits(d && d.body) : [],
                 supported: true,
                 fetchedAt: Date.now(),
               };

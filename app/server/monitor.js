@@ -5084,12 +5084,12 @@ async function handleFetch(req) {
       try {
         execSync(`rm -rf ${stage} && mkdir -p ${stage} && tar xzf ${fpkPath} -C ${stage}`, { timeout: 120000, encoding: "utf8" });
         execSync(`cd ${stage} && tar xzf app.tgz`, { timeout: 600000, encoding: "utf8" });
-        // 完整性校验：完整包必须含 hermes-src + bin/ui（骨架包/前端热补丁包缺少核心组件，
-        // 直接覆盖会把旧版 monitor/web-shim 换回来甚至导致 gateway 无法自动拉起——中止安装）
+        // 完整性校验：完整包必须含 hermes-src + ui + server（骨架包/前端热补丁包缺少核心组件，
+        // 直接覆盖会把旧版 monitor/web-shim 换回来甚至导致 gateway 无法自动拉起——中止安装；本包结构无 bin 目录，勿要求 bin
         const _stageList = execSync(`ls ${stage}`, { encoding: "utf8" });
-        if (!/\bhermes-src\b/.test(_stageList) || !/\bbin\b/.test(_stageList) || !/\bui\b/.test(_stageList)) {
+        if (!/\bhermes-src\b/.test(_stageList) || !/\bui\b/.test(_stageList) || !/\bserver\b/.test(_stageList)) {
           try { execSync(`rm -rf ${stage}`, { timeout: 30000 }); } catch {}
-          throw new Error("安装包不完整（缺少 hermes-src/bin/ui 核心组件），已中止更新；请改用完整版安装包");
+          throw new Error("安装包不完整（缺少 hermes-src/ui/server 核心组件），已中止更新；请改用完整版安装包");
         }
         // 覆盖应用目录（bin/server/ui/hermes-src/package.json 等；config 为 fnOS 只读模板不覆盖）
         execSync(`cp -rf ${stage}/bin ${stage}/server ${stage}/ui ${stage}/hermes-src ${stage}/package.json ${APP_DIR}/ 2>/dev/null; true`, { timeout: 600000, encoding: "utf8" });
@@ -5151,6 +5151,16 @@ async function handleFetch(req) {
       return new Response(JSON.stringify({ ok: true, version, note: "文件已覆盖，服务即将自动重启生效" }), { headers: jsonHeaders() });
     } catch (e) {
       log(`[app-update] 自动更新失败: ${e.message}`);
+      // 恢复服务：更新流程中途失败（下载/校验/覆盖）时 gateway/dashboard 已被停止，
+      // 必须重新拉起，否则整个应用瘫痪（页面全 502/503、WebSocket 断开）
+      try {
+        if (!(readPid(PID_GATEWAY) || readPid(PID_DASHBOARD))) {
+          log("[app-update] 更新失败，恢复 gateway/dashboard ...");
+          try { ensureEmbedServer(); } catch (e3) {}
+          spawnHermes("gateway",   PID_GATEWAY,   ["gateway", "run", "--replace"]);
+          spawnHermes("dashboard", PID_DASHBOARD, ["dashboard", "--host", DASHBOARD_BIND, "--port", String(DASHBOARD_PORT), "--no-open", "--insecure"]);
+        }
+      } catch (e2) { log(`[app-update] 恢复服务异常: ${e2.message}`); }
       return new Response(JSON.stringify({ ok: false, error: e.message }), { status: 500, headers: jsonHeaders() });
     }
   }
