@@ -7,9 +7,9 @@
 #   3. hot-patch.json                        更新元数据
 #
 # 依赖：
-#   - upstream/hermes-src   （先运行 sync-upstream.js 克隆上游）
-#   - fpk/                   FPK 骨架（manifest/cmd/config/ICON/wizard）
-#   - venv-bundle.tar.gz     内置 venv（从已有部署提取，放 fpk/）
+#   - app/                 本地维护树（server/desktop-app/hermes-src/ui/config，含全部修复）
+#   - fpk/                 FPK 骨架（manifest/cmd/config/ICON/wizard）
+#   - venv-bundle.tar.gz   内置 venv（从已有部署提取，放 fpk/）
 # ═══════════════════════════════════════════════════════════════════
 set -euo pipefail
 
@@ -38,9 +38,18 @@ DIST="dist"
 BUILD_DIR="build/$CUR_VERSION"
 mkdir -p "$DIST" "$BUILD_DIR"
 
+# ── 前置校验（缺核心组件直接中止，禁止产出残次包）──────────────────
+[ -d "app/server" ]      || { echo "✗ 缺少 app/server" >&2; exit 1; }
+[ -d "app/desktop-app" ] || { echo "✗ 缺少 app/desktop-app" >&2; exit 1; }
+[ -d "app/hermes-src" ]  || { echo "✗ 缺少 app/hermes-src（含本地修复，必须存在）" >&2; exit 1; }
+[ -f "fpk/venv-bundle.tar.gz" ] || { echo "✗ 缺少 fpk/venv-bundle.tar.gz" >&2; exit 1; }
+[ -d "fpk/cmd" ]         || { echo "✗ 缺少 fpk/cmd" >&2; exit 1; }
+[ -f "fpk/config/bootstrap/hermes-version.env" ] || { echo "✗ 缺少 fpk/config/bootstrap/hermes-version.env" >&2; exit 1; }
+echo "✓ 前置校验通过"
+
 # ── 隐私扫描（强制）─────────────────────────────────────────────────
 echo "── 隐私扫描 ──"
-PRIV_LEAKS="$(grep -rnE 'password[=:][^ ]{4,}|token[=:][A-Za-z0-9_\-.]{12,}|192\.168\.[0-9]{1,3}\.[0-9]{1,3}|10\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}|/vol[0-9]+/@app(home|data)/|sk-[A-Za-z0-9]{20}' src/ fpk/config/ app/server/ 2>/dev/null | grep -vE '\.pyc|node_modules|app_version|password[:=](password|true|false)|token[:=](token|true|false)' | head -20 || true)"
+PRIV_LEAKS="$(grep -rnE 'password[=:][^ ]{4,}|token[=:][A-Za-z0-9_\-.]{12,}|192\.168\.[0-9]{1,3}\.[0-9]{1,3}|10\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}|/vol[0-9]+/@app(home|data)/|sk-[A-Za-z0-9]{20}' app/ fpk/config/ 2>/dev/null | grep -vE '\.pyc|node_modules|app_version|password[:=](password|true|false)|token[:=](token|true|false)' | head -20 || true)"
 if [ -n "$PRIV_LEAKS" ]; then
   echo "✗ 隐私扫描发现泄漏："
   echo "$PRIV_LEAKS"
@@ -48,42 +57,43 @@ if [ -n "$PRIV_LEAKS" ]; then
 fi
 echo "✓ 隐私扫描通过"
 
-# ── 组装应用目录（完整包内容）──────────────────────────────────────
+# ── 组装应用目录（完整包内容，统一从 app/ 维护树取）────────────────
 echo "── 组装应用目录 ──"
 APP_STAGE="$BUILD_DIR/app"
 rm -rf "$APP_STAGE"
 mkdir -p "$APP_STAGE"
 
-# 1. server（后端）
-cp -r src/server "$APP_STAGE/server"
+# 1. server（后端 monitor/routes 等）
+cp -r app/server "$APP_STAGE/server"
 
-# 2. desktop-app（桌面端 Web：web-shim + index + i18n + skills）
-mkdir -p "$APP_STAGE/desktop-app"
-cp src/desktop-app-web-shim.js "$APP_STAGE/desktop-app/web-shim.js"
-cp src/desktop-app-index.html "$APP_STAGE/desktop-app/index.html"
-if [ -d "src/desktop-app" ]; then
-  cp src/desktop-app/i18n-tNRQyTMd.js "$APP_STAGE/desktop-app/assets/i18n-tNRQyTMd.js" 2>/dev/null || true
-  cp src/desktop-app/skills-DOyAoEBU.js "$APP_STAGE/desktop-app/assets/skills-DOyAoEBU.js" 2>/dev/null || true
+# 2. desktop-app（桌面端 Web：web-shim/index/assets，整目录含 i18n）
+cp -r app/desktop-app "$APP_STAGE/desktop-app"
+
+# 3. hermes-src（本地维护树，含全部修复；官方上游更新经 sync-upstream 合并进来）
+cp -r app/hermes-src "$APP_STAGE/hermes-src"
+echo "✓ hermes-src 已带入（本地维护树）"
+
+# 4. ui（dashboard 前端，可选）
+if [ -d "app/ui" ]; then
+  cp -r app/ui "$APP_STAGE/ui"
+  echo "✓ ui 已带入"
 fi
 
-# 3. 上游 hermes-src（CI 克隆后）
-if [ -d "upstream/hermes-src" ]; then
-  cp -r upstream/hermes-src "$APP_STAGE/hermes-src"
-  echo "✓ 上游 hermes-src 已带入"
-else
-  echo "⚠ 未找到 upstream/hermes-src（仅影响完整包，增量包不受影响）"
+# 5. config（bootstrap/privilege/resource 随 app.tgz——
+#    install_callback 检查 APP_DIR/config/bootstrap/hermes-version.env）
+if [ -d "app/config" ]; then
+  cp -r app/config "$APP_STAGE/config"
+  echo "✓ config 已带入 app.tgz"
 fi
-
-# 4. config/prompts（config.yaml 模板 + skills）进 app.tgz
-# fnOS 安装时不复制 fpk 根目录的 config/prompts（只处理 fnOS 配置文件 bootstrap/privilege/resource），
-# 若不随 app.tgz 解压，install_callback 模板部署会跳过，导致全新安装无默认模型配置、网关无法启动。
+# 5.1 config/prompts（config.yaml 模板 + skills）——fnOS 只处理外层 config 的
+#     bootstrap/privilege/resource，prompts 必须随 app.tgz 解压
 if [ -d "fpk/config/prompts" ]; then
   mkdir -p "$APP_STAGE/config/prompts"
   cp -r fpk/config/prompts/. "$APP_STAGE/config/prompts/"
   echo "✓ config/prompts 已带入 app.tgz"
 fi
 
-# 5. 版本写入
+# 6. 版本写入
 echo "$CUR_VERSION" > "$APP_STAGE/VERSION"
 if [ -f "fpk/manifest" ]; then
   sed -i "s/^version.*=.*/version               = $CUR_VERSION/" fpk/manifest
@@ -92,36 +102,15 @@ fi
 # ── 组装完整 FPK ────────────────────────────────────────────────────
 echo "── 打包完整 FPK ──"
 # FPK 结构：manifest + app.tgz + cmd + config + ICON + LICENSE + wizard
-# app.tgz = 应用部署目录（bin/config/desktop-app/hermes-src/server/ui + venv-bundle.tar.gz）
-if [ -d "fpk/cmd" ]; then
+# app.tgz = 应用部署目录（server/desktop-app/hermes-src/ui/config + venv-bundle.tar.gz）
   # 生成 app.tgz（含 venv-bundle）
   APP_TGZ_STAGE="$BUILD_DIR/fpk-app"
   rm -rf "$APP_TGZ_STAGE"
   mkdir -p "$APP_TGZ_STAGE"
   cp -r "$APP_STAGE"/* "$APP_TGZ_STAGE/" 2>/dev/null || true
-  # 内置 venv：优先 fpk/venv-bundle.tar.gz，其次从 dist 已有完整包提取
   VENV_SRC="fpk/venv-bundle.tar.gz"
-  if [ ! -f "$VENV_SRC" ]; then
-    # 从已有完整 FPK 提取（app.tgz 内含 venv-bundle.tar.gz）
-    OLD_FPK="$(ls dist/fnos-hermes-agent_v*.fpk 2>/dev/null | grep -v "v$CUR_VERSION" | head -1 || true)"
-    if [ -n "$OLD_FPK" ]; then
-      echo "── 从 $OLD_FPK 提取内置 venv ──"
-      if (cd "$BUILD_DIR" && tar xzf "$ROOT/$OLD_FPK" app.tgz && tar xzf app.tgz venv-bundle.tar.gz && cp venv-bundle.tar.gz "$ROOT/fpk/venv-bundle.tar.gz"); then
-        echo "✓ 从旧包提取 venv 成功"
-      else
-        echo "✗ 从旧包提取 venv 失败，构建中止" >&2
-        exit 1
-      fi
-      VENV_SRC="fpk/venv-bundle.tar.gz"
-    fi
-  fi
-  if [ -f "$VENV_SRC" ]; then
-    cp "$VENV_SRC" "$APP_TGZ_STAGE/"
-    echo "✓ 内置 venv 已带入（$(du -sh "$VENV_SRC" | cut -f1)）"
-  else
-    echo "✗ 未找到 venv-bundle，完整包必须包含内置 venv，构建中止" >&2
-    exit 1
-  fi
+  cp "$VENV_SRC" "$APP_TGZ_STAGE/"
+  echo "✓ 内置 venv 已带入（$(du -sh "$VENV_SRC" | cut -f1)）"
   # 打包 app.tgz
   tar czf "$BUILD_DIR/app.tgz" -C "$APP_TGZ_STAGE" . 2>/dev/null
 
@@ -147,26 +136,24 @@ if [ -d "fpk/cmd" ]; then
   tar czf "$DIST/fnos-hermes-agent_v${CUR_VERSION}.fpk" \
     -C "$FPK_STAGE" manifest app.tgz cmd config ICON.PNG ICON_256.PNG LICENSE
   echo "✓ 完整 FPK: $DIST/fnos-hermes-agent_v${CUR_VERSION}.fpk"
-else
-  echo "⚠ 未找到 fpk/cmd，完整 FPK 跳过"
-fi
 
 # ── 生成增量更新包 ──────────────────────────────────────────────────
 echo "── 生成增量更新包 ──"
 if [ -n "$PREV_VERSION" ] && [ "$PREV_TAG" != "v$CUR_VERSION" ]; then
-  CHANGED_FILES="$(git diff --name-only "$PREV_TAG" HEAD -- src/ 2>/dev/null || true)"
+  CHANGED_FILES="$(git diff --name-only "$PREV_TAG" HEAD -- app/ 2>/dev/null || true)"
   if [ -n "$CHANGED_FILES" ]; then
     INC_STAGE="$BUILD_DIR/inc-stage"
     rm -rf "$INC_STAGE"
     mkdir -p "$INC_STAGE"
     for f in $CHANGED_FILES; do
       case "$f" in
-        src/server/*)      DEST="$INC_STAGE/server/$(basename "$f")" ;;
-        src/desktop-app-web-shim.js) DEST="$INC_STAGE/desktop-app/web-shim.js" ;;
-        src/desktop-app-index.html)  DEST="$INC_STAGE/desktop-app/index.html" ;;
-        src/desktop-app/*) DEST="$INC_STAGE/desktop-app/$(basename "$f")" ;;
-        src/ui/*)          DEST="$INC_STAGE/ui/$(basename "$f")" ;;
-        *)                 DEST="$INC_STAGE/$(basename "$f")" ;;
+        app/server/*)            DEST="$INC_STAGE/server/$(basename "$f")" ;;
+        app/desktop-app/*)       DEST="$INC_STAGE/desktop-app/${f#app/desktop-app/}" ;;
+        app/hermes-src/*)        DEST="$INC_STAGE/hermes-src/${f#app/hermes-src/}" ;;
+        app/config/*)            DEST="$INC_STAGE/config/${f#app/config/}" ;;
+        app/ui/*)                DEST="$INC_STAGE/ui/$(basename "$f")" ;;
+        app/VERSION)             DEST="$INC_STAGE/VERSION" ;;
+        *)                       DEST="$INC_STAGE/$(basename "$f")" ;;
       esac
       mkdir -p "$(dirname "$DEST")"
       cp "$f" "$DEST"
@@ -174,7 +161,7 @@ if [ -n "$PREV_VERSION" ] && [ "$PREV_TAG" != "v$CUR_VERSION" ]; then
     tar czf "$DIST/incremental-${PREV_VERSION}-to-${CUR_VERSION}.tar.gz" -C "$INC_STAGE" .
     echo "✓ 增量包: incremental-${PREV_VERSION}-to-${CUR_VERSION}.tar.gz"
   else
-    echo "⚠ src/ 无变更，跳过增量包"
+    echo "⚠ app/ 无变更，跳过增量包"
   fi
 else
   echo "⚠ 无上一版本，跳过增量包（首次发布）"
