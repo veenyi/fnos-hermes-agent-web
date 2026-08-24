@@ -469,23 +469,43 @@
       setPrimary: function () { return Promise.resolve(); },
       apply: function (status) {
         var base = (CONFIG && CONFIG.base) ? CONFIG.base : "/proxy/dashboard";
-        var url = base.replace(/\/+$/, "") + "/api/app/auto-update";
+        var b = base.replace(/\/+$/, "");
         var ver = (status && (status.latestVersion || status.currentVersion)) || "";
-        var body = { source: "auto" };
-        if (ver) body.version = ver;
+        var hdrs = { "Content-Type": "application/json", "X-Hermes-Session-Token": token };
         function err(e) { return { ok: false, error: "apply-failed", message: String((e && e.message) || e || "update failed") }; }
-        try {
-          return fetch(url, {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "X-Hermes-Session-Token": token },
-            body: JSON.stringify(body),
-          }).then(function (r) { return r.json().catch(function () { return {}; }); })
-            .then(function (d) {
-              if (d && d.ok) return { ok: true, handedOff: true, message: (d && d.note) || "" };
-              return { ok: false, error: "apply-failed", message: (d && d.error) || "update failed" };
-            })
-            .catch(function (e) { return err(e); });
-        } catch (e) { return Promise.resolve(err(e)); }
+        // ① 增量更新（hot-patch 链路，小包快更；无增量包时由后端返回"请完整安装"）
+        function tryHotPatch() {
+          try {
+            return fetch(b + "/api/app/hot-patch", { method: "POST", headers: hdrs, body: "{}" })
+              .then(function (r) { return r.json().catch(function () { return {}; }); })
+              .then(function (d) {
+                if (d && d.ok) return { ok: true, handedOff: true, mode: d.mode || "patch", message: (d && d.note) || "" };
+                var msg = (d && d.error) || "";
+                // 无增量包 → 回退完整包全量更新
+                if (/\u65e0\u70ed\u66f4\u65b0|\u5b8c\u6574\u5b89\u88c5|404/.test(msg)) return tryFull();
+                return { ok: false, error: "apply-failed", message: msg || "hot patch failed" };
+              })
+              .catch(function () { return tryFull(); });
+          } catch (e) { return Promise.resolve(tryFull()); }
+        }
+        // ② 完整包兜底（auto-update，224MB 全量）
+        function tryFull() {
+          var body = { source: "auto" };
+          if (ver) body.version = ver;
+          try {
+            return fetch(b + "/api/app/auto-update", {
+              method: "POST",
+              headers: hdrs,
+              body: JSON.stringify(body),
+            }).then(function (r) { return r.json().catch(function () { return {}; }); })
+              .then(function (d) {
+                if (d && d.ok) return { ok: true, handedOff: true, mode: "full", message: (d && d.note) || "" };
+                return { ok: false, error: "apply-failed", message: (d && d.error) || "update failed" };
+              })
+              .catch(function (e) { return err(e); });
+          } catch (e) { return Promise.resolve(err(e)); }
+        }
+        return tryHotPatch();
       },
       run: function (status) { return this.apply ? this.apply(status) : Promise.resolve({ ok: false, error: "unavailable" }); },
       test: function () { return Promise.resolve(); },
