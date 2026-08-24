@@ -976,7 +976,22 @@ DANGEROUS_PATTERNS = [
     # the `hermes gateway stop|restart` pattern above by driving launchd
     # directly against the service label (commonly `ai.hermes.gateway`).
     # Catch the operations that stop, restart, or unload it.
-    (r'\blaunchctl\s+(stop|kickstart|bootout|unload|kill|disable|remove)\b.*\b(hermes|ai\.hermes)\b', "stop/restart hermes launchd service (kills running agents)"),
+    #
+    # Order-independent (2026-08-02 incident): the previous version required
+    # "hermes"/"ai.hermes" to appear AFTER the launchctl verb in the same
+    # string (`.*` only scans forward). A shell for-loop that builds the
+    # label from a list defined earlier in the command — e.g. `for item in
+    # 'ai.hermes.gateway-apollo:...' ...; do label=${item%%:*}; launchctl
+    # bootout "$label"; done` — never has the literal text "hermes" appear
+    # after "bootout" (only the expanded variable does), so it slipped past
+    # undetected and restarted 4 gateways with zero approval. Two
+    # independent lookaheads instead of one sequential match: both
+    # substrings must appear SOMEWHERE in the command, in either order.
+    # This is intentionally broader (a launchctl-verb command anywhere near
+    # an unrelated "hermes" mention now also matches) — for an approval gate
+    # that's the correct direction to err: an extra approval prompt is
+    # cheap, a missed one took down the whole gateway fleet.
+    (r'(?=[\s\S]*\blaunchctl\s+(?:stop|kickstart|bootout|unload|kill|disable|remove)\b)(?=[\s\S]*\b(?:hermes|ai\.hermes)\b)', "stop/restart hermes launchd service (kills running agents)"),
     # File copy/move/edit into sensitive system paths (/etc/ and macOS
     # /private/etc/ mirror).
     (rf'\b(cp|mv|install)\b.*\s{_SYSTEM_CONFIG_PATH}', "copy/move file into system config path"),
@@ -2318,6 +2333,38 @@ def _is_verification_artifact_cleanup(command: str) -> bool:
     return re.fullmatch(r"hermes-(?:verify|ad-hoc)-[A-Za-z0-9_.-]+", basename) is not None
 
 
+_GATEWAY_LIFECYCLE_SPLICE_DESCRIPTION = (
+    "stop/restart hermes gateway via shell-spliced verb (kills running agents)"
+)
+
+
+def _is_shell_token_spliced_gateway_lifecycle(command: str) -> bool:
+    """Catch gateway-lifecycle verbs spelled with quote/backslash splicing.
+
+    ``_normalize_command_for_detection`` strips backslash escapes, so
+    ``kick\\start`` already reaches the launchctl pattern above. Quote
+    splicing does not: ``_deobfuscate_shell_word_for_detection`` is
+    deliberately scoped to command-position words (widening it would let
+    quoted prose like ``git commit -m "rm -rf /"`` match the destructive
+    patterns), and the spliced verb sits in an ARGUMENT position. So
+    ``launchctl kick"start" -k gui/501/ai.hermes.gateway`` auto-approved
+    while executing exactly as the gated ``kickstart`` form (#80269).
+
+    Delegate to ``cron.lifecycle_guard``, which tokenizes with shlex and is
+    anchored on a hermes-gateway identifier — reusing its prose
+    false-positive coverage instead of loosening the generic pattern
+    engine. This runs last, so an ordinary pattern match still wins and
+    keeps its more specific reason string. Unlike the guard's use inside
+    ``terminal_tool``, this layer only raises an approval prompt; the
+    non-bypassable block still lives in ``cron.lifecycle_guard``.
+    """
+    try:
+        from cron.lifecycle_guard import contains_gateway_lifecycle_command
+    except Exception:
+        return False
+    return contains_gateway_lifecycle_command(command)
+
+
 def detect_dangerous_command(command: str) -> tuple:
     """Check if a command matches any dangerous patterns.
 
@@ -2338,6 +2385,12 @@ def detect_dangerous_command(command: str) -> tuple:
     normalized = _normalize_command_for_detection(command)
     for description, _ in _execution_flag_findings(normalized):
         return (True, description, description)
+    if _is_shell_token_spliced_gateway_lifecycle(command):
+        return (
+            True,
+            _GATEWAY_LIFECYCLE_SPLICE_DESCRIPTION,
+            _GATEWAY_LIFECYCLE_SPLICE_DESCRIPTION,
+        )
     return (False, None, None)
 
 
@@ -2965,20 +3018,27 @@ def prompt_dangerous_approval(command: str, description: str,
                               timeout_seconds: int | None = None,
                               allow_permanent: bool = True,
                               approval_callback=None,
-                              *, smart_denied: bool = False) -> str:
+                              *, allow_session: bool = True,
+                              smart_denied: bool = False) -> str:
     """Prompt the user to approve a dangerous command (CLI only).
 
     Args:
         allow_permanent: When False, hide the [a]lways option (used when
             tirith warnings are present, since broad permanent allowlisting
             is inappropriate for content-level security findings).
+        allow_session: When False, hide the [s]ession option too — the
+            caller grants one operation and re-asks next time (the
+            protected agent-instruction gate in ``tools/file_tools.py``).
+            Offering a scope the caller discards makes every subsequent
+            write re-prompt and reads as a broken gate (#81887).
         smart_denied: When True, this is an owner override of a Smart DENY.
             Offer only one-operation approval or denial.
         approval_callback: Optional callback registered by the CLI for
             prompt_toolkit integration. Signature:
             (command, description, *, allow_permanent=True,
-            smart_denied=False) -> str. Legacy callback signatures remain
-            supported when ``smart_denied`` is false.
+            allow_session=True, smart_denied=False) -> str. Legacy callback
+            signatures remain supported while both keywords hold their
+            defaults.
 
     Returns: 'once', 'session', 'always', 'deny', or 'timeout'.
         'timeout' means the prompt expired without a user response — the
@@ -2999,6 +3059,7 @@ def prompt_dangerous_approval(command: str, description: str,
             timeout_seconds,
             allow_permanent,
             approval_callback,
+            allow_session=allow_session,
             smart_denied=smart_denied,
         )
 
@@ -3007,7 +3068,8 @@ def _prompt_dangerous_approval_inner(command: str, description: str,
                                      timeout_seconds: int,
                                      allow_permanent: bool = True,
                                      approval_callback=None,
-                                     *, smart_denied: bool = False) -> str:
+                                     *, allow_session: bool = True,
+                                     smart_denied: bool = False) -> str:
     # Redact secrets before any user-visible rendering. The original
     # `command` is still what executes after approval; only the displayed
     # copy is scrubbed. Reuses the same redaction module used for memory
@@ -3016,9 +3078,15 @@ def _prompt_dangerous_approval_inner(command: str, description: str,
     display_command = redact_sensitive_text(command)
     display_description = redact_sensitive_text(description)
 
+    # Smart DENY and a session-less gate both reduce the menu to
+    # once/deny; the rendered strings are the same either way.
+    once_only = smart_denied or not allow_session
+
     if approval_callback is not None:
         try:
             callback_kwargs = {"allow_permanent": allow_permanent}
+            if not allow_session:
+                callback_kwargs["allow_session"] = False
             if smart_denied:
                 callback_kwargs["smart_denied"] = True
             return approval_callback(
@@ -3065,7 +3133,7 @@ def _prompt_dangerous_approval_inner(command: str, description: str,
             print(f"  {t('approval.dangerous_header', description=display_description)}")
             print(f"      {display_command}")
             print()
-            if smart_denied:
+            if once_only:
                 print(t("approval.choose_smart_deny"))
             elif allow_permanent:
                 print(t("approval.choose_long"))
@@ -3078,7 +3146,7 @@ def _prompt_dangerous_approval_inner(command: str, description: str,
 
             def get_input():
                 try:
-                    if smart_denied:
+                    if once_only:
                         prompt = t("approval.prompt_smart_deny")
                     else:
                         prompt = t("approval.prompt_long") if allow_permanent else t("approval.prompt_short")
@@ -3098,7 +3166,7 @@ def _prompt_dangerous_approval_inner(command: str, description: str,
                 return "timeout"
 
             choice = result["choice"]
-            if smart_denied:
+            if once_only:
                 choice_map = {
                     **{
                         value: "once"
@@ -4891,7 +4959,11 @@ def check_all_command_guards(command: str, env_type: str,
                 "command": _disp_command,
                 "description": _disp_combined_desc,
                 "message": (
-                    f"⚠️ {_disp_combined_desc}. Asking the user for approval.\n\n**Command:**\n```\n{_disp_command}\n```"
+                    f"⚠️ {_disp_combined_desc}. Asking the user for approval.\n\n**Command:**\n```\n{_disp_command}\n```\n\n"
+                    "STOP: do NOT re-run, rephrase, or re-issue this command — each "
+                    "variant sends the user ANOTHER approval card. Wait for the "
+                    "user's decision; if this turn must end, report that approval "
+                    "is pending."
                 ),
             }
             if smart_denied_for_owner:
@@ -5025,6 +5097,8 @@ def check_execute_code_guard(code: str, env_type: str,
 
     is_gateway = _is_gateway_approval_context()
     is_ask = env_var_enabled("HERMES_EXEC_ASK")
+    is_cli = _is_interactive_cli()
+    approval_callback = _resolve_cli_approval_callback()
 
     # Single-query (-q): no user is present to approve arbitrary code. Mirrors
     # the cron branch below so the -q escape-hatch no longer auto-approves.
@@ -5074,8 +5148,13 @@ def check_execute_code_guard(code: str, env_type: str,
     #   * Local non-interactive non-gateway: documented limitation above.
     # Ask-mode (HERMES_EXEC_ASK) still takes this path even when INTERACTIVE
     # is also set — that combination is how gateway/smart tests and messaging
-    # ask-mode drive whole-script approval. Terminal-command CLI leaks are
-    # handled in check_all_command_guards via the CLI callback fall-through.
+    # ask-mode drive whole-script approval. When that combination leaks into
+    # an interactive CLI with no gateway notify callback registered, the
+    # notify_cb-less branch below falls through to the same CLI Dangerous
+    # Command panel check_all_command_guards uses, instead of a silent
+    # pending_approval. Terminal-command (not whole-script) CLI leaks from
+    # the script's own per-call terminal() guards are handled separately in
+    # check_all_command_guards.
     if not is_gateway and not is_ask:
         return {"approved": True, "message": None}
 
@@ -5203,6 +5282,96 @@ def check_execute_code_guard(code: str, env_type: str,
         notify_cb = _gateway_notify_cbs.get(session_key)
 
     if notify_cb is None:
+        # HERMES_EXEC_ASK (and sometimes a session platform marker) can leak
+        # into an interactive CLI process — most commonly via `import
+        # gateway.run`. Without this, that combination silently queued a
+        # pending approval nobody could see instead of showing the CLI panel
+        # the user can actually answer, even though a callback was
+        # registered (same class as check_all_command_guards / #85865-
+        # adjacent leak this fixes for the whole-script gate specifically).
+        if _should_fall_through_to_cli_approval(
+            is_cli=is_cli,
+            approval_callback=approval_callback,
+            notify_cb=notify_cb,
+        ):
+            _fire_approval_hook(
+                "pre_approval_request",
+                command=display_command,
+                description=display_description,
+                pattern_key=pattern_key,
+                pattern_keys=[pattern_key],
+                session_key=session_key,
+                surface="cli",
+            )
+            choice = prompt_dangerous_approval(
+                display_command,
+                display_description,
+                allow_permanent=not smart_denied_for_owner,
+                approval_callback=approval_callback,
+                smart_denied=smart_denied_for_owner,
+            )
+            _fire_approval_hook(
+                "post_approval_response",
+                command=display_command,
+                description=display_description,
+                pattern_key=pattern_key,
+                pattern_keys=[pattern_key],
+                session_key=session_key,
+                surface="cli",
+                choice=choice,
+            )
+
+            if choice == "timeout":
+                breaker_addendum = _denial_breaker_addendum(session_key)
+                return {
+                    "approved": False,
+                    "message": (
+                        "BLOCKED: Action timed out without user response. The "
+                        "user has NOT consented to this action. Do NOT retry "
+                        "it, do NOT rephrase it, and do NOT attempt the same "
+                        "outcome via a different path. Silence is not "
+                        f"consent.{breaker_addendum}"
+                    ),
+                    "pattern_key": pattern_key,
+                    "description": description,
+                    "outcome": "timeout",
+                    "user_consent": False,
+                }
+            if choice == "deny":
+                # No _record_denial() here: the breaker counts consecutive
+                # *guardian LLM* DENY verdicts (see _record_denial), not
+                # deliberate human denials. Both sibling CLI tails
+                # (check_all_command_guards, _run_approval_gate) read the
+                # tally without incrementing it on a human deny; this arm
+                # matches them.
+                breaker_addendum = _denial_breaker_addendum(session_key)
+                return {
+                    "approved": False,
+                    "message": (
+                        "BLOCKED: User denied execute_code script execution "
+                        f"(matched '{description}'). Do NOT retry — the user "
+                        f"has explicitly rejected it.{breaker_addendum}"
+                    ),
+                    "pattern_key": pattern_key,
+                    "description": description,
+                    "outcome": "denied",
+                    "user_consent": False,
+                }
+            if not smart_denied_for_owner:
+                if choice == "session":
+                    approve_session(session_key, pattern_key)
+                elif choice == "always":
+                    approve_session(session_key, pattern_key)
+                    approve_permanent(pattern_key)
+                    save_permanent_allowlist(_permanent_approved)
+            _reset_denials(session_key)
+            return {
+                "approved": True,
+                "message": None,
+                "user_approved": True,
+                "description": description,
+            }
+
         # No gateway callback registered (e.g. ask-mode without a notifier):
         # surface a pending approval for backward compatibility.
         pending_data = {
@@ -5223,7 +5392,11 @@ def check_execute_code_guard(code: str, env_type: str,
             "description": display_description,
             "message": (
                 f"⚠️ {display_description}. Asking the user for approval.\n\n"
-                f"**Code:**\n```python\n{display_code}\n```"
+                f"**Code:**\n```python\n{display_code}\n```\n\n"
+                "STOP: do NOT re-run, rephrase, or re-issue this code — each "
+                "variant sends the user ANOTHER approval card. Wait for the "
+                "user's decision; if this turn must end, report that approval "
+                "is pending."
             ),
         }
         if smart_denied_for_owner:

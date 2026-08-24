@@ -2729,6 +2729,27 @@ class GatewaySlashCommandsMixin:
             state = mgr.resume()
             if state is None:
                 return t("gateway.goal.no_resume")
+            # Resume must restart work, not just flip persisted state
+            # (#75362): enqueue the canonical continuation through the
+            # adapter FIFO — the same path the post-turn judge uses — so
+            # the next turn fires as soon as this reply is delivered. A
+            # real user message already queued still preempts naturally,
+            # and pause/clear's stale-continuation cleanup recognizes it.
+            prompt = mgr.next_continuation_prompt()
+            try:
+                adapter = self.adapters.get(event.source.platform) if event.source else None
+                _quick_key = self._session_key_for_source(event.source) if event.source else None
+                if prompt and adapter and _quick_key:
+                    cont_event = MessageEvent(
+                        text=prompt,
+                        message_type=MessageType.TEXT,
+                        source=event.source,
+                        message_id=None,
+                        channel_prompt=None,
+                    )
+                    self._enqueue_fifo(_quick_key, cont_event, adapter)
+            except Exception as exc:
+                logger.debug("goal resume: continuation enqueue failed: %s", exc)
             return t("gateway.goal.resumed", goal=state.goal)
 
         if lower in {"clear", "stop", "done"}:
@@ -2975,6 +2996,64 @@ class GatewaySlashCommandsMixin:
             f"any memory/skill updates will be reported when done."
         )
 
+    async def _handle_review_command(self, event: "MessageEvent") -> str:
+        """Handle /review — spawn an independent reviewer subagent.
+
+        Snapshots the last 10 chat messages from the session's cached agent,
+        wraps them (plus any argument text) in a reviewer briefing, and
+        dispatches a full-privilege background subagent on the async
+        delegation rail. The completed review re-enters this session as a
+        normal async-delegation completion turn.
+
+        The approval session-key contextvar is only bound during agent
+        turns, so it is bound explicitly here — without it the completion
+        event would carry no gateway route and never re-enter this chat.
+        """
+        args = (event.get_command_args() or "").strip()
+        quick_key = self._session_key_for_source(event.source) if event.source else None
+        if not quick_key:
+            return "Review unavailable (no session)."
+        if quick_key in self._running_agents:
+            return "Agent is running — wait for the turn to finish, then /review."
+
+        agent = None
+        cache_lock = getattr(self, "_agent_cache_lock", None)
+        if cache_lock is not None:
+            with cache_lock:
+                cached = self._agent_cache.get(quick_key)
+                agent = cached[0] if isinstance(cached, tuple) else cached if cached else None
+        if agent is None:
+            return "Nothing to review yet — send a message first."
+
+        snapshot = list(getattr(agent, "_session_messages", None) or [])
+
+        from tools.approval import (
+            reset_current_session_key,
+            set_current_session_key,
+        )
+
+        loop = asyncio.get_running_loop()
+
+        def _dispatch():
+            token = set_current_session_key(quick_key)
+            try:
+                from agent.review_engine import start_review
+
+                return start_review(agent, snapshot, args)
+            finally:
+                reset_current_session_key(token)
+
+        try:
+            result = await loop.run_in_executor(None, _dispatch)
+        except ValueError as exc:
+            return str(exc)
+        except Exception as exc:
+            return f"/review failed to start: {exc}"
+
+        from agent.review_engine import format_dispatch_note
+
+        return format_dispatch_note(result, args)
+
     async def _handle_subgoal_command(self, event: "MessageEvent") -> str:
         """Handle /subgoal for gateway platforms (mirror of CLI handler).
 
@@ -3038,6 +3117,10 @@ class GatewaySlashCommandsMixin:
         except Exception as exc:
             logger.debug("loop manager unavailable: %s", exc)
             return None, None
+        # Warm the SessionDB cache off-loop. A cold cache drops the first
+        # /loop write while the reply claims the loop was set (same class
+        # as the /goal false-ack fix).
+        await self._warm_goals_session_db("loop manager")
         try:
             session_entry = await self.async_session_store.get_or_create_session(event.source)
         except Exception:
@@ -5933,8 +6016,11 @@ class GatewaySlashCommandsMixin:
                 import textwrap
                 from hermes_cli._subprocess_compat import windows_detach_popen_kwargs
 
-                # hermes_cmd is a list of argv parts we can pass directly
-                # (no shell-quoting needed).
+                # Invoke the updater as a module under this interpreter rather
+                # than through hermes_cmd (venv\Scripts\hermes.exe): the shim
+                # launcher holds its own file open for the whole run, and the
+                # update has to replace it. Going through python.exe maps no
+                # shim, so the entry points can be rewritten freely.
                 helper = textwrap.dedent(
                     """
                     import os, subprocess, sys
@@ -5954,7 +6040,8 @@ class GatewaySlashCommandsMixin:
                     [
                         sys.executable, "-c", helper,
                         str(output_path), str(exit_code_path),
-                        *hermes_cmd, "update", "--gateway",
+                        sys.executable, "-m", "hermes_cli.main",
+                        "update", "--gateway",
                     ],
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
