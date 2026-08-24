@@ -35,7 +35,7 @@ jobs:
           node scripts/sync-upstream.js
           echo "version=$(cat VERSION)" >> "$GITHUB_OUTPUT"
 
-      # 拉取上游 hermes-src（仅当 VERSION 变化需要构建时）
+      # 拉取上游（官方 monorepo，运行时核心在仓库根）
       - name: Clone upstream
         run: |
           if [ ! -d "upstream/.git" ]; then
@@ -57,6 +57,21 @@ jobs:
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
+
+      # 受控合并（移植原则）：只同步官方运行时核心到 app/hermes-src，
+      # 桌面端( apps/native/web/website/docs/evals )与 tests 排除，
+      # 移植修改(PORT_OVERRIDES: server.py/methods_config.py/web_server.py)保留
+      - name: Merge upstream (受控合并)
+        if: steps.check.outputs.changed == 'true'
+        run: |
+          node scripts/merge-upstream.js --upstream upstream --write
+
+      # 先提交合并结果（build.sh 增量包 diff 需要 HEAD 包含合并）
+      - name: Commit sync & merge
+        if: steps.check.outputs.changed == 'true'
+        run: |
+          git add VERSION .upstream-state app/hermes-src scripts/merge-upstream.js
+          git commit -m "sync: 上游 ${{ steps.version.outputs.version }} 受控合并（保留移植修改）" --allow-empty || true
 
       # 提取 venv-bundle（从上一 Release 的完整包，180MB 不提交仓库）
       - name: Fetch venv-bundle from previous release
@@ -85,9 +100,7 @@ jobs:
         run: |
           bash scripts/publish.sh
 
-      - name: Commit version bump
+      - name: Push
         if: steps.check.outputs.changed == 'true'
         run: |
-          git add VERSION .upstream-state
-          git commit -m "version: bump to ${{ steps.version.outputs.version }}" --allow-empty
           git push origin HEAD:main
