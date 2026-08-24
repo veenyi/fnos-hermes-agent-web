@@ -106,7 +106,12 @@ if [ -d "fpk/cmd" ]; then
     OLD_FPK="$(ls dist/fnos-hermes-agent_v*.fpk 2>/dev/null | grep -v "v$CUR_VERSION" | head -1 || true)"
     if [ -n "$OLD_FPK" ]; then
       echo "── 从 $OLD_FPK 提取内置 venv ──"
-      (cd "$BUILD_DIR" && tar xzf "$ROOT/$OLD_FPK" app.tgz && tar xzf app.tgz venv-bundle.tar.gz 2>/dev/null && cp venv-bundle.tar.gz "$ROOT/fpk/venv-bundle.tar.gz") || true
+      if (cd "$BUILD_DIR" && tar xzf "$ROOT/$OLD_FPK" app.tgz && tar xzf app.tgz venv-bundle.tar.gz && cp venv-bundle.tar.gz "$ROOT/fpk/venv-bundle.tar.gz"); then
+        echo "✓ 从旧包提取 venv 成功"
+      else
+        echo "✗ 从旧包提取 venv 失败，构建中止" >&2
+        exit 1
+      fi
       VENV_SRC="fpk/venv-bundle.tar.gz"
     fi
   fi
@@ -114,7 +119,8 @@ if [ -d "fpk/cmd" ]; then
     cp "$VENV_SRC" "$APP_TGZ_STAGE/"
     echo "✓ 内置 venv 已带入（$(du -sh "$VENV_SRC" | cut -f1)）"
   else
-    echo "⚠ 未找到 venv-bundle（完整包不含内置 venv，安装需在线）"
+    echo "✗ 未找到 venv-bundle，完整包必须包含内置 venv，构建中止" >&2
+    exit 1
   fi
   # 打包 app.tgz
   tar czf "$BUILD_DIR/app.tgz" -C "$APP_TGZ_STAGE" . 2>/dev/null
