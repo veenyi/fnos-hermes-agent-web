@@ -81,7 +81,7 @@ jobs:
         run: |
           mkdir -p fpk
           if [ ! -f fpk/venv-bundle.tar.gz ]; then
-            PREV_RELEASE_URL="$(curl -sS -H 'Accept: application/vnd.github+json' -H "Authorization: token ${GITHUB_TOKEN}" 'https://api.github.com/repos/veenyi/fnos-hermes-agent-web/releases/latest' | grep -oE '"browser_download_url"[[:space:]]*:[[:space:]]*"[^"]*\.fpk"' | head -1 | sed -E 's/.*:"([^"]*)"/\1/')"
+            PREV_RELEASE_URL="$(curl -sS -H 'Accept: application/vnd.github+json' -H "Authorization: token ${GITHUB_TOKEN}" 'https://api.github.com/repos/veenyi/fnos-hermes-agent-web/releases/latest' | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{try{const j=JSON.parse(d);const a=(j.assets||[]).find(x=>/\.fpk$/.test(x.name||''));console.log(a?a.browser_download_url:'')}catch(e){}})" )"
             if [ -z "$PREV_RELEASE_URL" ]; then
               echo "✗ 无法获取上一 Release 的 fpk 下载地址（API 响应解析失败？）" >&2
               exit 1
