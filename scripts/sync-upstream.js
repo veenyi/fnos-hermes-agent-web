@@ -83,14 +83,10 @@ const CUR_BUILD = parseInt(CUR_VERSION.split('.').pop(), 10) || 0;
 // ── 变更检测 ──────────────────────────────────────────────────────
 let NEW_VERSION = '';
 if (LATEST_VER !== CUR_OFFICIAL) {
-  // 官方版本与代号前缀不同（自定义代号如 0.24.4）：不重置版本线，仅 bump 迭代
-  if (LATEST_SHA === PREV_SHA && PREV_SHA && LATEST_SHA !== 'unknown') {
-    console.log(`◈ 上游无新提交（${LATEST_SHA.slice(0, 12)}），无需同步`);
-    process.exit(0);
-  }
-  const nb = CUR_BUILD + 1;
-  NEW_VERSION = `${CUR_OFFICIAL}.${String(nb).padStart(2, '0')}`;
-  console.log(`◈ 官方版本 ${LATEST_VER} 与代号 ${CUR_OFFICIAL} 不同（自定义代号），保持版本线 → ${NEW_VERSION}`);
+  // 版本规则：版本号 = 官方版本 + 迭代号；官方升版（0.20.4→0.20.5）时
+  // 版本线跟随官方，迭代重置为 1（0.20.4.54 → 0.20.5.1）
+  NEW_VERSION = `${LATEST_VER}.1`;
+  console.log(`◈ 官方版本 ${LATEST_VER}（原线 ${CUR_OFFICIAL}），版本线切换、迭代重置 → ${NEW_VERSION}`);
 } else if (LATEST_SHA === PREV_SHA && PREV_SHA && LATEST_SHA !== 'unknown') {
   console.log(`◈ 上游无新提交（${LATEST_SHA.slice(0, 12)}），无需同步`);
   process.exit(0);
