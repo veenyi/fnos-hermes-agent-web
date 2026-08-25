@@ -2821,25 +2821,34 @@ def _(rid, params: dict) -> dict:
         )
     removed = 0
     with session["history_lock"]:
-        history = session.get("history", [])
+        if session.get("running"):
+            return _err(
+                rid, 4009, "session busy — /interrupt the current turn before /undo"
+            )
+        history = _history_without_ephemeral_scaffolding(
+            session.get("history", [])
+        )
         # Truncate from the last *real* user turn. Popping only trailing
         # assistant/tool then one user left timeline markers
         # (async_delegation_complete, model_switch, …) or compaction
         # handoffs as the undo target — so session.undo removed
         # bookkeeping instead of the last exchange (#80622).
-        # Match list_recent_user_messages / CLI turn counting.
-        from agent.context_compressor import is_user_originated_turn
+        # Match user_originated_turn_view / CLI turn counting.
+        from agent.context_compressor import user_originated_turn_view
 
-        last_user_idx = None
-        for i in range(len(history) - 1, -1, -1):
-            msg = history[i]
-            if is_user_originated_turn(msg):
-                last_user_idx = i
-                break
-        if last_user_idx is not None:
-            removed = len(history) - last_user_idx
-            del history[last_user_idx:]
-            session["history_version"] = int(session.get("history_version", 0)) + 1
+        user_indices = [
+            index
+            for index, message in enumerate(history)
+            if user_originated_turn_view(message) is not None
+        ]
+        if user_indices:
+            try:
+                _installed, _live_view, rewound_count = (
+                    _rewind_active_session_history(session, len(user_indices) - 1)
+                )
+                removed = rewound_count
+            except Exception as exc:
+                return _err(rid, 5008, f"undo: {exc}")
     return _ok(rid, {"removed": removed})
 
 
@@ -3626,6 +3635,45 @@ def _(rid, params: dict) -> dict:
         return err
     session["cols"] = int(params.get("cols", 80))
     return _ok(rid, {"cols": session["cols"]})
+
+
+@method("session.events.since")
+def _(rid, params: dict) -> dict:
+    """Replay recorded events for a session newer than the client's last-seen seq.
+
+    Reconnect contract (desktop / web clients): every event frame now carries
+    ``params.seq``. After a WS reconnect the client calls this with its last
+    observed seq; this returns the buffered frames in order so no mid-stream
+    event is lost. Frames older than the ring window report ``truncated`` so
+    the client knows to refetch history instead of silently accepting a gap.
+    """
+    sid = str(params.get("session_id") or "")
+    try:
+        last_seen = int(params.get("last_seen", 0))
+    except (TypeError, ValueError):
+        return _err(rid, -32602, "invalid params: last_seen must be an integer")
+    from tui_gateway import event_replay
+
+    frames = event_replay.events_since(sid, last_seen)
+    return _ok(rid, {
+        "events": frames,
+        "latest_seq": event_replay.latest_seq(sid),
+        "truncated": event_replay.is_truncated(sid, last_seen),
+        "count": len(frames),
+        # Restart detection: seq counters are in-process, so after a gateway
+        # restart a client's old high watermark would silently match nothing.
+        # Clients compare this against the epoch they learned at gateway.ready
+        # and reset watermarks on mismatch.
+        "epoch": event_replay.replay_epoch(),
+    })
+
+
+@method("session.events.stats")
+def _(rid, params: dict) -> dict:
+    """Replay-buffer telemetry (ops/debug)."""
+    from tui_gateway import event_replay
+
+    return _ok(rid, event_replay.replay_stats())
 
 
 def register(server) -> None:
