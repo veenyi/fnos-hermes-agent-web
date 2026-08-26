@@ -51,7 +51,18 @@ try {
   const py = curl(`https://raw.githubusercontent.com/${UPSTREAM_REPO}/main/pyproject.toml`);
   const m = py.match(/^version\s*=\s*"([0-9]+\.[0-9]+\.[0-9]+)"/m);
   LATEST_VER = m ? m[1] : '';
-} catch (e) { console.log('✗ 获取 pyproject 失败:', e.message.slice(0, 100)); }
+} catch (e) { console.log('⚠ raw.githubusercontent.com 获取失败:', e.message.slice(0, 80)); }
+if (!LATEST_VER) {
+  // fallback：api.github.com contents API（CI 网络 raw 域名不稳时兜底）
+  try {
+    const py2 = curl(`https://api.github.com/repos/${UPSTREAM_REPO}/contents/pyproject.toml?ref=main`);
+    let content = py2;
+    try { content = Buffer.from(JSON.parse(py2).content || "", "base64").toString("utf8"); } catch {}
+    const m2 = content.match(/^version\s*=\s*"([0-9]+\.[0-9]+\.[0-9]+)"/m);
+    LATEST_VER = m2 ? m2[1] : '';
+    if (LATEST_VER) console.log('（经 api.github.com 获取）');
+  } catch (e2) { console.log('⚠ api.github.com 兜底也失败:', e2.message.slice(0, 80)); }
+}
 if (!LATEST_VER) {
   console.log('✗ 无法获取上游版本（网络受限？尝试 --proxy socks5://127.0.0.1:10808）');
   process.exit(1);
@@ -87,7 +98,12 @@ if (LATEST_VER !== CUR_OFFICIAL) {
   // 版本线跟随官方，迭代重置为 1（0.20.4.54 → 0.20.5.1）
   NEW_VERSION = `${LATEST_VER}.1`;
   console.log(`◈ 官方版本 ${LATEST_VER}（原线 ${CUR_OFFICIAL}），版本线切换、迭代重置 → ${NEW_VERSION}`);
-} else if (LATEST_SHA === PREV_SHA && PREV_SHA && LATEST_SHA !== 'unknown') {
+} else if (LATEST_SHA === 'unknown') {
+  // 无法确认上游是否有新提交：官方版本未变时保守处理，保持现状不 bump
+  //（避免 commit sha 获取失败（网络）被误判为"有新提交"而错误递增版本）
+  console.log('⚠ 无法获取上游 commit sha，官方版本未变 → 保持当前版本，不递增');
+  process.exit(0);
+} else if (LATEST_SHA === PREV_SHA && PREV_SHA) {
   console.log(`◈ 上游无新提交（${LATEST_SHA.slice(0, 12)}），无需同步`);
   process.exit(0);
 } else {
