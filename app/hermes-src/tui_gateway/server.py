@@ -1191,7 +1191,7 @@ _ws_orphan_reap_timers: dict = {}
 
 
 def _cancel_ws_orphan_reap(sid: str) -> None:
-    """Cancel a pending ws-orphan reap timer for "sid".
+    """Cancel a pending ws-orphan reap timer for ``sid``.
 
     Official upstream calls this from session.resume but never defined it
     (NameError: name '_cancel_ws_orphan_reap' is not defined). Fixed here by
@@ -1200,6 +1200,7 @@ def _cancel_ws_orphan_reap(sid: str) -> None:
     timer = _ws_orphan_reap_timers.pop(sid, None)
     if timer is not None:
         timer.cancel()
+
 def _schedule_ws_orphan_reap(sid: str) -> None:
     """After a grace window, reap session ``sid`` iff it's still orphaned.
 
