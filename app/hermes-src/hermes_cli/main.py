@@ -433,6 +433,7 @@ import shlex
 import shutil
 import stat
 import subprocess
+import tempfile
 from pathlib import Path
 from typing import Optional
 
@@ -5056,6 +5057,7 @@ _LAZY_COMMAND_EXPORTS = {
         "_capture_active_lazy_features",
         "_capture_active_tool_dependencies",
         "_capture_head_sha",
+        "_classify_concurrent_instance",
         "_assess_parked_branch_switch",
         "_branch_head_label",
         "_branch_head_suffix",
@@ -5076,6 +5078,7 @@ _LAZY_COMMAND_EXPORTS = {
         "_ensure_uv_for_termux",
         "_finish_dashboard_update_cleanup",
         "_fleet_probe_expected_runtimes",
+        "_filter_non_gateway_concurrent_instances",
         "_for_each_systemd_gateway_unit",
         "_format_concurrent_instances_message",
         "_format_time_ago",
@@ -7784,10 +7787,232 @@ def _desktop_macos_relaunchable_fixup(
             )
         print(f"  (warning: stable macOS signing failed ({exc}); using legacy ad-hoc sign)")
     try:
-        subprocess.run([codesign, "--force", "--deep", "--sign", "-", str(app)], check=False)
+        # Legacy ad-hoc fallback: re-sign, but NEVER delete the safeStorage
+        # keychain item. Deleting it would permanently orphan every
+        # credential encrypted under it (gateway token, native OAuth access/
+        # refresh tokens) — and this path is reached exactly when the
+        # entitlement-preserving signer failed, so there is no verified
+        # successor identity to hand the key to. The keychain prompt macOS
+        # shows instead is recoverable ("Always Allow" updates the item's ACL
+        # partition list and preserves the key); deletion is not. The real
+        # fix (proof-carrying rotation/migration) belongs in Electron, where
+        # safeStorage can read the old key. Tracked as follow-up.
+        result = subprocess.run(
+            [codesign, "--force", "--deep", "--sign", "-", str(app)],
+            check=False, capture_output=True, text=True,
+        )
+        if result.returncode != 0:
+            print(
+                f"  (warning: legacy ad-hoc re-sign failed (exit {result.returncode}); "
+                "leaving safeStorage keychain item untouched)"
+            )
+            return False
+        verify = subprocess.run(
+            [codesign, "--verify", "--deep", "--strict", str(app)],
+            check=False, capture_output=True, text=True,
+        )
+        if verify.returncode != 0:
+            print(
+                f"  (warning: legacy ad-hoc re-sign did not pass strict verification; "
+                "leaving safeStorage keychain item untouched)"
+            )
+            return False
+        print("  → macOS desktop re-signed (legacy ad-hoc); safeStorage keychain item left untouched")
+        return True
     except Exception as exc:
         print(f"  (warning: macOS relaunch fixup skipped: {exc})")
     return False
+
+
+def _macos_codesigning_identity_valid(security: str, identity: str) -> bool:
+    """True when `identity` appears among VALID code-signing identities.
+
+    ``security find-identity -p codesigning`` (without ``-v``) also lists
+    certificates macOS will refuse to sign with — e.g. a self-signed cert that
+    was imported but never trusted for the codeSign policy. Only the ``-v``
+    listing proves codesign can actually use it, so this is both the
+    idempotency probe and the success postcondition for
+    ``--setup-tcc-identity``. Never raises.
+    """
+    try:
+        result = subprocess.run(
+            [security, "find-identity", "-v", "-p", "codesigning"],
+            capture_output=True, text=True, check=False,
+        )
+    except Exception:
+        return False
+
+    return f'"{identity}"' in (result.stdout or "")
+
+
+def _desktop_macos_setup_tcc_identity(identity: str = "Hermes Local Signing") -> bool:
+    """Create/import a self-signed code-signing cert and configure Hermes to use it.
+
+    One-shot setup for ``hermes desktop --setup-tcc-identity``. Creates a
+    self-signed "Code Signing" certificate in the login keychain (the same
+    artifact the docs describe creating manually via Keychain Access), grants
+    ``codesign`` access to it, writes ``desktop.macos_signing_identity`` to
+    config.yaml, and re-signs the already-packaged app so the next launch uses
+    the certificate-anchored identity.
+
+    Why this matters: macOS TCC grants (Full Disk Access, Accessibility,
+    Automation, Files and Folders, microphone) persist against the app's
+    code-signing identity, not its path. A plain ad-hoc signature gets a
+    cdhash-only Designated Requirement, so every rebuild looks like a new app
+    and the user must re-grant everything. A certificate-anchored identity is
+    stable across rebuilds — the same mechanism yabai/skhd users rely on.
+
+    Idempotent: re-running after an update finds the existing certificate and
+    only re-points the config + re-signs. Returns True on success (or when
+    already configured), False on failure. Never raises.
+    """
+    if sys.platform != "darwin":
+        print("  (--setup-tcc-identity is macOS-only; skipping)")
+        return False
+
+    openssl = shutil.which("openssl")
+    security = shutil.which("security")
+    codesign = shutil.which("codesign")
+    if not (openssl and security and codesign):
+        print(
+            "  (--setup-tcc-identity requires openssl, security, and codesign; "
+            f"found openssl={bool(openssl)} security={bool(security)} codesign={bool(codesign)})"
+        )
+        return False
+
+    keychain = str(Path.home() / "Library" / "Keychains" / "login.keychain-db")
+    # A certificate that merely EXISTS in the keychain is not enough — macOS
+    # only treats it as a code-signing identity once it is trusted for the
+    # codeSign policy. Probe with `-v` (valid identities only) so a previously
+    # imported-but-untrusted cert is repaired rather than reported as done.
+    already_imported = _macos_codesigning_identity_valid(security, identity)
+
+    if not already_imported:
+        # Create a self-signed code-signing cert (valid 10 years) and import it
+        # into the login keychain with codesign access so signing works without
+        # an interactive unlock prompt.
+        tmp_dir = Path(tempfile.mkdtemp(prefix="hermes-tcc-"))
+        try:
+            key = tmp_dir / "sign.key"
+            crt = tmp_dir / "sign.crt"
+            p12 = tmp_dir / "sign.p12"
+            subprocess.run(
+                [
+                    openssl, "req", "-x509", "-newkey", "rsa:2048",
+                    "-keyout", str(key), "-out", str(crt),
+                    "-days", "3650", "-nodes",
+                    "-subj", f"/CN={identity}",
+                    "-addext", "basicConstraints=critical,CA:TRUE",
+                    "-addext", "keyUsage=critical,digitalSignature,keyCertSign",
+                    "-addext", "extendedKeyUsage=codeSigning",
+                ],
+                capture_output=True, check=True,
+            )
+            # OpenSSL 3 defaults to AES/SHA-2 PKCS#12 encryption that macOS
+            # `security import` rejects with "MAC verification failed during
+            # PKCS12 import (wrong password?)". The `-legacy` flag restores the
+            # RC2/SHA-1 format the importer accepts, but only exists on
+            # OpenSSL 3 — so try the plain export first and fall back to
+            # `-legacy` when the IMPORT fails with that signature. (Verified
+            # E2E on macOS 26.3.1 / OpenSSL 3.6.3 by @ctaylor86 on PR #77189.)
+            def _export_p12(extra_args: list) -> None:
+                subprocess.run(
+                    [
+                        openssl, "pkcs12", "-export", *extra_args,
+                        "-inkey", str(key), "-in", str(crt),
+                        "-out", str(p12), "-passout", "pass:hermeslocal",
+                    ],
+                    capture_output=True, check=True,
+                )
+
+            def _import_p12():
+                return subprocess.run(
+                    [
+                        security, "import", str(p12), "-k", keychain,
+                        "-P", "hermeslocal",
+                        "-T", codesign, "-T", "/usr/bin/codesign_allocate",
+                    ],
+                    capture_output=True, text=True, check=False,
+                )
+
+            _export_p12([])
+            imported = _import_p12()
+            if imported.returncode != 0 and "MAC verification failed" in (imported.stderr or ""):
+                try:
+                    _export_p12(["-legacy"])
+                    imported = _import_p12()
+                except subprocess.CalledProcessError:
+                    # Older OpenSSL without -legacy: keep the original failure.
+                    pass
+            if imported.returncode != 0:
+                print(f"  (could not import signing identity into keychain: {imported.stderr.strip()})")
+                return False
+
+            # Importing is still not enough: without explicit trust for the
+            # codeSign policy, `security find-identity -v -p codesigning`
+            # reports 0 valid identities and codesign refuses the cert. Trust
+            # the self-signed root for code signing. This writes to the user's
+            # trust settings, so macOS may prompt for the login password ONCE
+            # here — that is the one-time setup cost this command exists to
+            # front-load.
+            trusted = subprocess.run(
+                [security, "add-trusted-cert", "-r", "trustRoot", "-p", "codeSign", "-k", keychain, str(crt)],
+                capture_output=True, text=True, check=False,
+            )
+            if trusted.returncode != 0:
+                print(
+                    "  (could not trust the certificate for code signing: "
+                    f"{(trusted.stderr or trusted.stdout).strip()})"
+                )
+                return False
+            print(f"  → created, imported, and trusted self-signed identity: {identity!r}")
+        except Exception as exc:
+            print(f"  (certificate creation failed: {exc})")
+            return False
+        finally:
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+    else:
+        print(f"  → identity {identity!r} already valid in keychain")
+
+    # Postcondition gate: only report success once macOS actually agrees the
+    # identity is usable for code signing. Name-in-output checks pass for
+    # invalid identities; this is the check that failed silently before.
+    if not _macos_codesigning_identity_valid(security, identity):
+        print(
+            f"  (identity {identity!r} was imported but is not a VALID code-signing identity; "
+            "run `security find-identity -v -p codesigning` to inspect, and see the manual "
+            "Keychain Access steps in the desktop docs)"
+        )
+        return False
+
+    # Point Hermes at the identity (config.yaml, not .env — it's not a secret).
+    try:
+        from hermes_cli.config import set_config_value
+
+        set_config_value("desktop.macos_signing_identity", identity)
+        print(f"  → set desktop.macos_signing_identity = {identity!r}")
+    except Exception as exc:
+        print(f"  (could not write desktop.macos_signing_identity: {exc})")
+        return False
+
+    # Re-sign the packaged app so the current build already uses the identity.
+    desktop_dir = PROJECT_ROOT / "apps" / "desktop"
+    if _desktop_packaged_executable(desktop_dir) is not None:
+        try:
+            if _desktop_macos_relaunchable_fixup(desktop_dir):
+                print(
+                    "  → packaged app re-signed with certificate-anchored identity; "
+                    "TCC grants persist across rebuilds"
+                )
+        except Exception as exc:
+            print(f"  (could not re-sign packaged app: {exc})")
+
+    print(
+        "\n  Note: macOS will re-prompt for permissions ONE final time (the identity "
+        "changed). Grant them and they persist from then on. If a permission gets "
+        "stuck, reset it with:  tccutil reset All com.nousresearch.hermes"
+    )
+    return True
 
 
 def _force_adhoc_macos_signing(env: dict, *, source_mode: bool) -> bool:
@@ -8077,6 +8302,13 @@ def cmd_gui(args: argparse.Namespace):
     source_mode = getattr(args, "source", False)
     skip_build = getattr(args, "skip_build", False)
     force_build = getattr(args, "force_build", False)
+
+    # macOS-only one-shot: create a self-signed code-signing identity so TCC
+    # grants survive rebuilds, then exit without building/launching.
+    if getattr(args, "setup_tcc_identity", False):
+        identity = getattr(args, "identity", None) or "Hermes Local Signing"
+        ok = _desktop_macos_setup_tcc_identity(identity)
+        sys.exit(0 if ok else 1)
 
     packaged_executable = _desktop_packaged_executable(desktop_dir)
 

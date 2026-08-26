@@ -15618,9 +15618,15 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
                 else:
                     logger.warning("✗ %s failed to connect (profile: %s)", platform.value, profile_name)
                     await self._safe_adapter_disconnect(adapter, platform)
+                    self._schedule_secondary_profile_startup_reconnect(
+                        profile_name, platform, adapter
+                    )
             except Exception as e:
                 logger.error("✗ %s error (profile: %s): %s", platform.value, profile_name, e)
                 await self._safe_adapter_disconnect(adapter, platform)
+                self._schedule_secondary_profile_startup_reconnect(
+                    profile_name, platform, adapter
+                )
         return connected
 
     def _configure_profile_adapter(
@@ -15766,6 +15772,75 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
                         if not profile_pending:
                             pending.pop(profile_name, None)
 
+    def _schedule_secondary_profile_startup_reconnect(
+        self, profile_name: str, platform: Platform, adapter: BasePlatformAdapter
+    ) -> None:
+        """Queue a cold-start reconnect for a secondary adapter.
+
+        Startup failure branches run BEFORE ``self._running`` flips True
+        (``_start_secondary_profile_adapters()`` is called mid-``start()``,
+        while ``self._running`` is still False), so the regular scheduler's
+        ``not self._running`` guard would silently drop the request and the
+        runner's ``while self._running`` loop would exit immediately. This
+        bridge parks a background task across the remainder of startup and
+        hands off to the regular scheduler once the gateway is live (the
+        scheduler's own ``_profile_failed_platforms`` slot dedupes at
+        handoff); if shutdown begins first, the request is released.
+        Non-retryable failures are dropped here exactly as the regular
+        scheduler would.
+        """
+        if not getattr(adapter, "fatal_error_retryable", True):
+            return
+
+        async def _await_running_then_schedule() -> None:
+            if self._running:
+                try:
+                    self._schedule_secondary_profile_reconnect(
+                        profile_name, platform, adapter
+                    )
+                except Exception:
+                    # Same GC-time-exception hazard as the post-poll handoff
+                    # below; surface it in gateway.log instead.
+                    logger.exception(
+                        "secondary-startup-reconnect handoff failed "
+                        "(profile=%s platform=%s)",
+                        profile_name,
+                        platform.value,
+                    )
+                return
+            # Modest poll interval: startup completion has no dedicated event,
+            # and the reconnect runner's own backoff makes sub-100ms precision
+            # irrelevant. Bounded so a wedged startup cannot spin the loop.
+            while not self._running and not self._shutdown_event.is_set():
+                await asyncio.sleep(0.1)
+            if self._running and not self._shutdown_event.is_set():
+                try:
+                    self._schedule_secondary_profile_reconnect(
+                        profile_name, platform, adapter
+                    )
+                except Exception:
+                    # The handoff touches live registries; if it raises, the
+                    # parked task would otherwise die as an unretrieved-task
+                    # exception logged only at GC time. Surface it where
+                    # operators look.
+                    logger.exception(
+                        "secondary-startup-reconnect handoff failed "
+                        "(profile=%s platform=%s)",
+                        profile_name,
+                        platform.value,
+                    )
+
+        task = asyncio.create_task(
+            _await_running_then_schedule(),
+            name=f"secondary-startup-reconnect:{profile_name}:{platform.value}",
+        )
+        background_tasks = getattr(self, "_background_tasks", None)
+        if not isinstance(background_tasks, set):
+            background_tasks = set()
+            self._background_tasks = background_tasks
+        background_tasks.add(task)
+        task.add_done_callback(background_tasks.discard)
+
     def _schedule_secondary_profile_reconnect(
         self, profile_name: str, platform: Platform, adapter: BasePlatformAdapter
     ) -> None:
@@ -15879,10 +15954,48 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
         return _handler
 
     def _make_default_profile_message_handler(self):
-        """Scope a multiplexed default-profile message from ingress onward."""
-        profile_home = Path(get_hermes_home())
+        """Scope primary-adapter messages to their routed multiplex profile.
+
+        Profile routes are normally stamped on ``event.source`` before this
+        handler runs. Resolve the home per event so session lookup and transcript
+        loading use the same profile store as the later agent run and persistence
+        path. Authorization still belongs to the primary transport profile: a
+        shared Discord/Telegram adapter can route the turn to a profile that
+        intentionally has no bot credential or platform allowlist. Preserve that
+        transport home on the live source so the auth gate does not re-check the
+        sender against the routed runtime's unrelated secret scope. Sources that
+        bypass adapter routing are resolved here; genuinely unrouted events retain
+        the gateway's launch/default home.
+        """
+        default_home = Path(get_hermes_home())
 
         async def _handler(event):
+            source = event.source
+            # In-process only (SessionSource serialization ignores dynamic attrs).
+            # The route selects agent/session state, not which bot admitted the
+            # message. Keep those two trust domains separate.
+            source._authorization_profile_home = default_home
+            if (
+                not getattr(source, "profile", None)
+                and getattr(source, "profile_route_rejected", False) is not True
+            ):
+                from gateway.profile_routing import ProfileRouteRejected
+
+                try:
+                    source.profile = self._profile_name_for_source(source)
+                except ProfileRouteRejected:
+                    # NOT write-only: ``_handle_message``'s ingress gate reads
+                    # this exact marker and drops the message fail-closed
+                    # ("explicit profile route targets an unserved profile").
+                    # Setting it here also stops that gate from re-running
+                    # routing for the same source.
+                    source.profile_route_rejected = True
+
+            profile_home = (
+                self._resolve_profile_home_for_source(source)
+                if getattr(source, "profile", None)
+                else default_home
+            )
             with _profile_runtime_scope(profile_home):
                 return await self._handle_message(event)
 
@@ -15901,7 +16014,7 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
 
             if not has_hook("gateway_platform_event"):
                 return
-            if not self._is_user_authorized(source):
+            if not self._is_user_authorized_for_source(source):
                 return
             invoke_hook("gateway_platform_event", **event)
         except Exception:
@@ -15929,12 +16042,45 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
 
     def _make_default_profile_platform_event_handler(self):
         """Scope primary-transport events to their routed multiplex profile."""
+        default_home = Path(get_hermes_home())
 
         async def _handler(event, source):
+            source._authorization_profile_home = default_home
             with _profile_runtime_scope(self._resolve_profile_home_for_source(source)):
                 return await self._handle_gateway_platform_event(event, source)
 
         return _handler
+
+    def _is_user_authorized_for_source(
+        self,
+        source: SessionSource,
+        *,
+        allow_adapter_delegation: bool = True,
+    ) -> bool:
+        """Authorize under the live transport's profile, not the routed runtime.
+
+        A primary adapter may route one chat into another profile's agent/session
+        namespace. That runtime profile need not (and normally should not) copy the
+        shared bot token or allowlist. The primary message/platform-event handlers
+        stamp the transport home as an in-process-only attribute before entering
+        the routed scope; consult it here for the narrow authorization read, then
+        restore the routed scope for the remainder of the turn.
+        """
+        def _check() -> bool:
+            # Preserve the historical one-argument seam used by plugins/tests;
+            # only pass the keyword for the explicit delegation-disabled path.
+            if allow_adapter_delegation:
+                return self._is_user_authorized(source)
+            return self._is_user_authorized(
+                source,
+                allow_adapter_delegation=False,
+            )
+
+        authorization_home = getattr(source, "_authorization_profile_home", None)
+        if authorization_home is not None:
+            with _profile_runtime_scope(Path(authorization_home)):
+                return _check()
+        return _check()
 
     def _primary_platform_event_handler(self):
         if getattr(self.config, "multiplex_profiles", False):
@@ -16849,10 +16995,10 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
             # chat-scoped allowlist (e.g. TELEGRAM_GROUP_ALLOWED_CHATS
             # authorizes every member of the listed chat regardless of
             # sender). Defer to _is_user_authorized so that path runs.
-            if not self._is_user_authorized(source):
+            if not self._is_user_authorized_for_source(source):
                 logger.debug("Ignoring message with no user_id from %s", source.platform.value)
                 return None
-        elif not self._is_user_authorized(source):
+        elif not self._is_user_authorized_for_source(source):
             logger.warning("Unauthorized user: %s (%s) on %s", source.user_id, source.user_name, source.platform.value)
             # In DMs: offer pairing code. In groups: silently ignore.
             if (
