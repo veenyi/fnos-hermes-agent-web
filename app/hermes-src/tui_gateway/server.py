@@ -1187,6 +1187,19 @@ def _session_has_active_delegations(sid: str, session: dict | None = None) -> bo
         return True
 
 
+_ws_orphan_reap_timers: dict = {}
+
+
+def _cancel_ws_orphan_reap(sid: str) -> None:
+    """Cancel a pending ws-orphan reap timer for "sid".
+
+    Official upstream calls this from session.resume but never defined it
+    (NameError: name '_cancel_ws_orphan_reap' is not defined). Fixed here by
+    pairing it with a sid->Timer registry in _schedule_ws_orphan_reap.
+    """
+    timer = _ws_orphan_reap_timers.pop(sid, None)
+    if timer is not None:
+        timer.cancel()
 def _schedule_ws_orphan_reap(sid: str) -> None:
     """After a grace window, reap session ``sid`` iff it's still orphaned.
 
@@ -1198,6 +1211,7 @@ def _schedule_ws_orphan_reap(sid: str) -> None:
         return
 
     def _reap() -> None:
+        _ws_orphan_reap_timers.pop(sid, None)
         # Serialize the orphan re-check against session.resume (which re-binds a
         # live transport under _session_resume_lock and would make this session
         # non-orphaned). Claim teardown by popping under both lifecycle locks,
@@ -1223,8 +1237,10 @@ def _schedule_ws_orphan_reap(sid: str) -> None:
             return
         _teardown_popped_session(session, end_reason="ws_orphan_reap")
 
+    _cancel_ws_orphan_reap(sid)
     timer = threading.Timer(_WS_ORPHAN_REAP_GRACE_S, _reap)
     timer.daemon = True
+    _ws_orphan_reap_timers[sid] = timer
     timer.start()
 
 
