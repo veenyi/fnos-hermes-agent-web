@@ -1,11 +1,11 @@
 name: Sync Upstream & Build & Release
 
 on:
-  # 手动触发
+  # 仅手动触发（workflow_dispatch / 或由同步脚本 --push 触发）。
+  # 已取消定时自动同步上游：自动构建发布未经真机核验会带病上线
+  # （0.20.5.02 缺 web_dist 全量用户网关失败、官方 _cancel_ws_orphan_reap 未定义等），
+  # 上游更新改为人工确认后手动触发。
   workflow_dispatch:
-  # 定时检查上游（每天凌晨 3 点，UTC+8）
-  schedule:
-    - cron: '0 19 * * *'
 
 permissions:
   contents: write
