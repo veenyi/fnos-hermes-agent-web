@@ -592,13 +592,128 @@ def _wsl_windows_path_to_posix(path: str) -> str:
     return os.path.join("/mnt", drive, *(str(part) for part in win.parts[1:]))
 
 
+def _resolve_cua_driver_app_path(driver_cmd: str) -> Optional[str]:
+    """Return the CuaDriver.app bundle that CARRIES *driver_cmd*, if any.
+
+    Deliberately derived from the resolved driver binary path only — no
+    /Applications or ~/Applications fallback. A fallback candidate can be a
+    DIFFERENT install than the driver the manifest resolved (stale copy,
+    side-by-side version), and launching it would run code the resolution
+    chain never validated. If the resolved driver does not live inside an
+    app bundle, the caller fails closed with install guidance.
+    """
+    marker = ".app/Contents/MacOS/"
+    marker_index = driver_cmd.find(marker)
+    if marker_index < 0:
+        return None
+    candidate = driver_cmd[: marker_index + len(".app")]
+    executable = os.path.join(candidate, "Contents", "MacOS", "cua-driver")
+    if os.path.isfile(executable) and os.access(executable, os.X_OK):
+        return candidate
+    return None
+
+
+# The only bundle identity the private daemon may launch through, and the
+# team that signs official cua-driver releases. Exact matches only: a
+# suffixed identifier ("com.trycua.driver.evil") or a different non-empty
+# team is an impostor bundle, not a variant.
+_CUA_DRIVER_BUNDLE_ID = "com.trycua.driver"
+_CUA_DRIVER_TEAM_ID = "4YEC26S9KF"
+
+
+def _validate_cua_driver_app_signature(app_path: str) -> None:
+    """Fail closed unless *app_path* is the genuinely-signed CuaDriver.app.
+
+    Launching via ``/usr/bin/open`` hands LaunchServices whatever bundle sits
+    at the path, so the TCC-identity fix must not become a launcher for
+    arbitrary apps: require ``codesign -dv`` to report EXACTLY
+    ``Identifier=com.trycua.driver`` and the expected TeamIdentifier.
+    ``TeamIdentifier=not set`` (unsigned/ad-hoc dev builds) is allowed only
+    when ``computer_use.allow_unsigned_driver: true`` is set in config.yaml —
+    the escape hatch for local driver development, never the default. Raises
+    RuntimeError on any mismatch or when codesign is unavailable/fails.
+    """
+    codesign = shutil.which("codesign")
+    if not codesign:
+        raise RuntimeError(
+            "codesign is required to verify CuaDriver.app before launching it."
+        )
+    try:
+        proc = subprocess.run(
+            [codesign, "-dv", app_path],
+            capture_output=True,
+            text=True,
+            timeout=15,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise RuntimeError(f"could not verify CuaDriver.app signature: {exc}") from exc
+    if proc.returncode != 0:
+        raise RuntimeError(
+            f"CuaDriver.app at {app_path} is not code-signed; refusing to launch it "
+            f"({(proc.stderr or '').strip()})"
+        )
+    # codesign -dv reports on stderr.
+    fields = {}
+    for line in (proc.stderr or "").splitlines():
+        key, sep, value = line.partition("=")
+        if sep:
+            fields.setdefault(key.strip(), value.strip())
+    identifier = fields.get("Identifier", "")
+    team = fields.get("TeamIdentifier", "")
+    if identifier != _CUA_DRIVER_BUNDLE_ID:
+        raise RuntimeError(
+            f"CuaDriver.app at {app_path} has identifier {identifier!r}, "
+            f"expected {_CUA_DRIVER_BUNDLE_ID!r}; refusing to launch it."
+        )
+    if team == _CUA_DRIVER_TEAM_ID:
+        return
+    if team in ("", "not set") and _computer_use_cfg().get("allow_unsigned_driver") is True:
+        return
+    raise RuntimeError(
+        f"CuaDriver.app at {app_path} is signed by team {team!r}, expected "
+        f"{_CUA_DRIVER_TEAM_ID!r}; refusing to launch it. (Set "
+        "computer_use.allow_unsigned_driver: true in config.yaml only for "
+        "local unsigned driver builds.)"
+    )
+
+
+def _embedded_daemon_spawn_command(
+    driver_cmd: str,
+    serve_args: List[str],
+    *,
+    platform: str,
+    app_path: Optional[str] = None,
+) -> List[str]:
+    """Build the private-daemon launch while preserving macOS TCC identity."""
+    if platform != "darwin":
+        return [driver_cmd, *serve_args]
+    resolved_app = app_path or _resolve_cua_driver_app_path(driver_cmd)
+    if not resolved_app:
+        raise RuntimeError(
+            "CuaDriver.app is required for private computer-use sessions on macOS. "
+            "Run `hermes computer-use install` to restore it."
+        )
+    _validate_cua_driver_app_signature(resolved_app)
+    return [
+        "/usr/bin/open",
+        "-n",
+        "-g",
+        "-a",
+        resolved_app,
+        "--args",
+        *serve_args,
+    ]
+
+
 class _EmbeddedCuaDaemon:
-    """Private host-owned daemon for a non-standard permission mode.
+    """Private daemon for a non-standard permission mode.
 
     Cua Driver permission mode is immutable after daemon startup.  Reusing the
     machine-wide daemon would therefore let one Hermes session's YOLO choice
     affect another session.  A private embedded daemon gives the requesting
-    session its own socket, process, and launch-time authorization:
+    session its own socket, runtime, and launch-time authorization. On macOS
+    the runtime is launched through CuaDriver.app so TCC remains attached to
+    ``com.trycua.driver`` instead of the embedding host's ad-hoc signature:
 
     * ``unrestricted`` — explicit Hermes YOLO; launch-time risk
       acknowledgement via ``--dangerously-bypass-approvals``.
@@ -661,6 +776,9 @@ class _EmbeddedCuaDaemon:
         self._command = driver_cmd
         self._mcp_args: List[str] = list(_CUA_DRIVER_ARGS)
         self._process: Any = None
+        self._owns_runtime = False
+        self._running = False
+        self._launch_via_app = False
         self._stderr_tail: deque[str] = deque(maxlen=20)
         self._stderr_thread: Optional[threading.Thread] = None
         token = uuid.uuid4().hex[:12]
@@ -692,7 +810,7 @@ class _EmbeddedCuaDaemon:
             pass
 
     def start(self) -> None:
-        if self._process is not None and self._process.poll() is None:
+        if self._running:
             return
         from tools.environments.local import _sanitize_subprocess_env
 
@@ -702,8 +820,7 @@ class _EmbeddedCuaDaemon:
             raise RuntimeError(cua_driver_install_hint())
         self._command, self._mcp_args = _resolve_mcp_invocation(self._driver_cmd)
         env = _sanitize_subprocess_env(self.child_env())
-        command = [
-            self._command,
+        serve_args = [
             "serve",
             "--embedded",
             "--socket",
@@ -713,7 +830,7 @@ class _EmbeddedCuaDaemon:
             self.permission_mode,
         ]
         if self.permission_mode == "unrestricted":
-            command.append("--dangerously-bypass-approvals")
+            serve_args.append("--dangerously-bypass-approvals")
         # A v3 manifest is a ceiling, not a mode: cua-driver accepts it
         # alongside any permission mode and it "can narrow a profile but never
         # widen it". Attaching it to unrestricted is what bounds an
@@ -721,7 +838,7 @@ class _EmbeddedCuaDaemon:
         # applies — not only for bounded, which used to drop it for every
         # other mode.
         if self.manifest_applies:
-            command.extend(
+            serve_args.extend(
                 [
                     "--capability-manifest",
                     str(self.capability_manifest),
@@ -731,7 +848,15 @@ class _EmbeddedCuaDaemon:
         # The private daemon owns the platform cursor overlay. Applying the
         # policy only to its MCP proxy leaves this long-lived serve process
         # free to create a full-screen overlay before session tuning runs.
-        command = _mcp_args_with_overlay_flag(command, driver_cmd=self._command)
+        # Must be appended BEFORE the macOS app-launch wrapping so the flag
+        # travels inside `open ... --args` with the rest of the serve args.
+        serve_args = _mcp_args_with_overlay_flag(serve_args, driver_cmd=self._command)
+        self._launch_via_app = sys.platform == "darwin"
+        command = _embedded_daemon_spawn_command(
+            self._command,
+            serve_args,
+            platform=sys.platform,
+        )
         self._process = subprocess.Popen(
             command,
             stdin=subprocess.DEVNULL,
@@ -740,6 +865,7 @@ class _EmbeddedCuaDaemon:
             text=True,
             env=env,
         )
+        self._owns_runtime = True
         self._stderr_thread = threading.Thread(
             target=self._drain_stderr,
             args=(self._process,),
@@ -750,7 +876,10 @@ class _EmbeddedCuaDaemon:
 
         deadline = time.monotonic() + self._START_TIMEOUT_SECONDS
         while time.monotonic() < deadline:
-            if self._process.poll() is not None:
+            return_code = self._process.poll()
+            if return_code is not None and (
+                not self._launch_via_app or return_code != 0
+            ):
                 detail = "; ".join(self._stderr_tail) or "no diagnostic output"
                 raise RuntimeError(
                     f"embedded cua-driver exited during startup: {detail}"
@@ -767,6 +896,7 @@ class _EmbeddedCuaDaemon:
             except (OSError, subprocess.SubprocessError):
                 probe = None
             if probe is not None and probe.returncode == 0:
+                self._running = True
                 return
             time.sleep(0.1)
 
@@ -775,7 +905,7 @@ class _EmbeddedCuaDaemon:
         raise RuntimeError(f"embedded cua-driver startup timed out: {detail}")
 
     def proxy_invocation(self) -> Tuple[str, List[str]]:
-        if self._process is None or self._process.poll() is not None:
+        if not self._running:
             raise RuntimeError("embedded cua-driver daemon is not running")
         return self._command, [
             *self._mcp_args,
@@ -787,7 +917,10 @@ class _EmbeddedCuaDaemon:
     def stop(self) -> None:
         process = self._process
         self._process = None
-        if process is not None and process.poll() is None:
+        owns_runtime = self._owns_runtime
+        self._owns_runtime = False
+        self._running = False
+        if owns_runtime:
             from tools.environments.local import _sanitize_subprocess_env
 
             try:
@@ -801,6 +934,7 @@ class _EmbeddedCuaDaemon:
                 )
             except (OSError, subprocess.SubprocessError):
                 pass
+        if process is not None:
             try:
                 process.wait(timeout=5.0)
             except subprocess.TimeoutExpired:
