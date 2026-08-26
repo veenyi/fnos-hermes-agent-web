@@ -80,7 +80,12 @@ ignored/
 environments/benchmarks/evals/
 
 # Web UI build output
-hermes_cli/web_dist/
+# 例外：fnos 包必须随包分发 web_dist（dashboard 无 npm 环境直接 serve 构建产物，
+# 缺失会导致 "Web UI frontend not built and npm is not available" → 网关连不上）。
+# 强制跟踪，CI 构建时才有 web_dist 可用。
+hermes_cli/web_dist/*
+!hermes_cli/web_dist/
+!hermes_cli/web_dist/**
 # Cross-process web UI build lock (flock target, always empty)
 .web_ui_build.lock
 apps/desktop/build/

@@ -42,6 +42,7 @@ mkdir -p "$DIST" "$BUILD_DIR"
 [ -d "app/server" ]      || { echo "✗ 缺少 app/server" >&2; exit 1; }
 [ -d "app/desktop-app" ] || { echo "✗ 缺少 app/desktop-app" >&2; exit 1; }
 [ -d "app/hermes-src" ]  || { echo "✗ 缺少 app/hermes-src（含本地修复，必须存在）" >&2; exit 1; }
+[ -f "app/hermes-src/hermes_cli/web_dist/index.html" ] || { echo "✗ 缺少 app/hermes-src/hermes_cli/web_dist（dashboard 无 npm 环境必须随包分发构建产物，缺失会导致网关连不上）" >&2; exit 1; }
 [ -f "fpk/venv-bundle.tar.gz" ] || { echo "✗ 缺少 fpk/venv-bundle.tar.gz" >&2; exit 1; }
 [ -d "fpk/cmd" ]         || { echo "✗ 缺少 fpk/cmd" >&2; exit 1; }
 [ -f "fpk/config/bootstrap/hermes-version.env" ] || { echo "✗ 缺少 fpk/config/bootstrap/hermes-version.env" >&2; exit 1; }
