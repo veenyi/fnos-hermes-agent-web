@@ -5353,11 +5353,12 @@ async function handleFetch(req) {
         const tmpArchive = `/tmp/hot-patch-${Date.now()}.tar.gz`;
         writeFileSync(tmpArchive, archiveBuf);
         const { execSync } = await import("child_process");
-        // 判断是否需要重启（tar 内容含 server/ 或 manifest）
+        // 判断是否需要重启（tar 内容含 server/、manifest，或 web_dist——web_dist 缺失/更新时
+        // dashboard 需重启才能 serve 新构建产物，否则源码模式无 npm 起不来）
         let needRestart = false;
         try {
           const tarList = execSync(`tar tzf "${tmpArchive}" 2>/dev/null || echo ""`, { stdio: ["pipe","pipe","ignore"] }).toString();
-          needRestart = /(^|\/)server\//.test(tarList) || /(^|\/)manifest$/.test(tarList);
+          needRestart = /(^|\/)server\//.test(tarList) || /(^|\/)manifest$/.test(tarList) || /hermes-src\/hermes_cli\/web_dist\//.test(tarList);
         } catch { needRestart = true; }
         // 备份 manifest 与 server 目录（回滚用）
         try {
