@@ -1,0 +1,107 @@
+/* ═══════════════════════════════════════════════════════════════════
+   Hermes desktop-app — 移动端适配层 (mobile adaptation layer)
+   -------------------------------------------------------------------
+   背景：desktop-app 是官方 Hermes Desktop 的编译产物（无源码随包），
+   主界面是「左侧列表 + 右侧会话」的 master-detail 布局，在手机宽度
+   （<768px）下会硬挤成两栏：列表 260px 固定 + 会话只剩 ~150px，
+   文字被截断、几乎无法操作 —— 这是用户反馈「手机端没法用」的根因。
+
+   方案：注入纯 CSS + 原生 JS 适配层（仅 ≤768px 生效，桌面端零影响）：
+     1. 会话区(DETAIL) 占满全宽；
+     2. 列表区(LIST) 变为左侧抽屉（默认收起，汉堡按钮打开）；
+     3. 点列表项/导航后自动收起抽屉；点遮罩关闭；
+     4. 视口高度用 100dvh、底部状态条加安全区、输入框 ≥16px
+        （避免 iOS 聚焦自动放大）、放大顶部工具按钮触控区。
+
+   依赖：mobile.js 给布局打标 data-hm-root / data-hm-shell /
+         data-hm-list / data-hm-detail，并在 html 上切换
+         .hm-nav-open，配合 .hm-nav-toggle 按钮与 .hm-overlay 遮罩。
+   ═══════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+  /* ── 视口级修正 ─────────────────────────────────────────────── */
+  html, body {
+    overflow-x: hidden;
+  }
+
+  /* 根容器 h-screen(100vh) → 100dvh：手机浏览器地址栏收起/展开时
+     不再出现底部被吞或布局跳动。 */
+  [data-hm-root] {
+    height: 100dvh !important;
+  }
+
+  /* ── master-detail：列表抽屉化 + 会话全宽 ───────────────────── */
+  [data-hm-list] {
+    position: fixed !important;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: min(84vw, 360px) !important;
+    max-width: 84vw !important;
+    min-width: 0 !important;
+    z-index: 65;
+    transform: translateX(-104%);
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 12px 0 40px rgba(0, 0, 0, 0.45);
+  }
+
+  html.hm-nav-open [data-hm-list] {
+    transform: translateX(0);
+  }
+
+  [data-hm-detail] {
+    flex: 1 1 100% !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  /* ── 遮罩（z-60：盖住正文，但不盖原生顶栏，原生按钮始终可点）── */
+  .hm-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    background: rgba(0, 0, 0, 0.45);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+  }
+
+  html.hm-nav-open .hm-overlay {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* 原生左侧顶栏（隐藏/显示侧边栏）在手机上保留，作为抽屉开关；
+     第二个「交换侧边栏位置」按钮在窄屏无意义，隐藏。 */
+  [class*="titlebar-controls-left"] button:nth-child(2) {
+    display: none !important;
+  }
+
+  /* 顶部右侧工具按钮（设置/HUD 等）：加大触控区 */
+  [class*="titlebar-tools-right"] button {
+    width: 36px;
+    height: 32px;
+  }
+
+  /* ── 底部状态条：安全区 + 不压高 ────────────────────────────── */
+  footer {
+    height: auto !important;
+    min-height: 24px;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  /* ── 输入框 ≥16px：避免 iOS 聚焦时自动放大页面 ──────────────── */
+  input:not([type="checkbox"]):not([type="radio"]),
+  textarea,
+  [contenteditable="true"] {
+    font-size: 16px !important;
+  }
+
+  /* ── 通用触控优化 ───────────────────────────────────────────── */
+  button,
+  [role="button"],
+  a {
+    touch-action: manipulation;
+  }
+}
