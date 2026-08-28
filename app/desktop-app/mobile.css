@@ -36,6 +36,7 @@
     top: 0;
     bottom: 0;
     left: 0;
+    right: auto !important;
     width: min(84vw, 360px) !important;
     max-width: 84vw !important;
     min-width: 0 !important;
@@ -78,10 +79,25 @@
     display: none !important;
   }
 
-  /* 顶部右侧工具按钮（设置/HUD 等）：加大触控区 */
+  /* ── 顶部工具栏触控优化（44px 拇指友好标准）─────────────────── */
+  /* 左侧栏开关（隐藏/显示侧边栏，被 mobile.js 接管为抽屉开关）：
+     原生只有 24px，手机上太小，加宽到 44px 触控区（高度控制在工具条
+     34px 内，避免下压会话区）。 */
+  [class*="titlebar-controls-left"] button {
+    min-width: 44px;
+    min-height: 32px;
+  }
+
+  /* 右侧工具按钮（布局/HUD/静音/设置等）：加大触控区 */
   [class*="titlebar-tools-right"] button {
-    width: 36px;
-    height: 32px;
+    min-width: 36px;
+    min-height: 32px;
+  }
+
+  /* 隐藏「显示右侧栏」开关：右侧详情面板在窄屏会把会话再次挤窄，
+     手机端无价值，禁用入口保证会话始终全宽。 */
+  [class*="titlebar-tools-right"] button:has(i.codicon-layout-sidebar-right) {
+    display: none !important;
   }
 
   /* ── 底部状态条：安全区 + 不压高 ────────────────────────────── */
