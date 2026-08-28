@@ -29,9 +29,11 @@
   var shell = null;     // master-detail flex 行（data-hm-shell）
   var list = null;      // 列表区（data-hm-list）
   var detail = null;    // 会话区（data-hm-detail）
+  var right = null;     // 右侧面板（data-hm-right，定时/详情）
   var root = null;      // 根容器（data-hm-root）
   var overlay = null;
-  var nativeBtn = null; // 原生「隐藏/显示侧边栏」按钮
+  var nativeBtn = null; // 原生「隐藏/显示侧边栏」按钮（左）
+  var rightBtn = null;  // 原生「显示右侧栏」按钮
   var stateWatcher = null;
   var nativeInert = false; // 接管模式：官方按钮在移动端被禁用
   var bootUntil = 0;
@@ -59,6 +61,13 @@
     }
     if (!det) return false;
 
+    // 右侧面板：master 里既不是列表 wrapper 也不是 detail 的那个（定时/详情栏）
+    var rp = null;
+    for (var j = 0; j < master.children.length; j++) {
+      var c = master.children[j];
+      if (c !== wrapper && c !== det) { rp = c; break; }
+    }
+
     var r = master.parentElement
       ? master.parentElement.parentElement
       : null;
@@ -71,10 +80,12 @@
     shell = master;
     list = wrapper;
     detail = det;
+    right = rp;
     root = r;
     tag(shell, "data-hm-shell");
     tag(list, "data-hm-list");
     tag(detail, "data-hm-detail");
+    if (right) tag(right, "data-hm-right");
     if (root) tag(root, "data-hm-root");
     return true;
   }
@@ -87,8 +98,9 @@
     if (shell) try { shell.removeAttribute("data-hm-shell"); } catch (e) {}
     if (list) try { list.removeAttribute("data-hm-list"); } catch (e) {}
     if (detail) try { detail.removeAttribute("data-hm-detail"); } catch (e) {}
+    if (right) try { right.removeAttribute("data-hm-right"); } catch (e) {}
     if (root) try { root.removeAttribute("data-hm-root"); } catch (e) {}
-    shell = list = detail = root = null;
+    shell = list = detail = right = root = null;
   }
 
   /* ── 原生「隐藏/显示侧边栏」按钮 ─────────────────────────────── */
@@ -105,9 +117,41 @@
     return found;
   }
 
+  /* 原生「显示右侧栏」按钮（codicon-layout-sidebar-right） */
+  function findRightBtn() {
+    var found = null;
+    var btns = document.querySelectorAll("button");
+    for (var i = 0; i < btns.length; i++) {
+      var ic = btns[i].querySelector("i");
+      if (ic && (ic.className || "").indexOf("codicon-layout-sidebar-right") >= 0) {
+        found = btns[i];
+        break;
+      }
+    }
+    return found;
+  }
+
   /* 应用原生侧边栏状态：原生隐藏时列表容器带内联 display:none */
   function appSidebarHidden() {
     return !!(list && list.style && list.style.display === "none");
+  }
+
+  /* ── 右侧面板开关（定时/详情栏，浮层从右滑入）───────────────── */
+  function setRightOpen(open) {
+    var html = document.documentElement;
+    if (open) html.classList.add("hm-right-open");
+    else html.classList.remove("hm-right-open");
+  }
+  function isRightOpen() {
+    return document.documentElement.classList.contains("hm-right-open");
+  }
+  /* 接管「显示右侧栏」按钮：移动端官方可能禁用它，且面板需浮层化，
+     故由我们切 hm-right-open（CSS 用 fixed 右侧浮层，不挤会话）。 */
+  function onRightClick() {
+    if (!isMobile()) return; // 桌面保持原生
+    var willOpen = !isRightOpen();
+    if (willOpen) setOpen(false); // 开右面板时收起左抽屉（互斥）
+    setRightOpen(willOpen);
   }
 
   /* ── 抽屉开关（纯 class，视觉由 mobile.css 控制） ────────────── */
@@ -165,13 +209,38 @@
     }
   }
 
-  /* ── 接管原生按钮点击（移动端抽屉开关） ─────────────────────── */
-  function onNativeClick() {
-    if (!isMobile()) return; // 桌面宽度保持原生行为
-    if (nativeInert) {
-      setOpen(!isOpen());
+  /* ── 顶栏按钮点击：事件委托（应对 React 重渲染导致节点替换）────
+     移动端 app 把左/右侧栏切换按宽度禁用了，这里统一用 document 捕获
+     委托，按被点按钮内的 codicon 图标判断意图，稳定不受节点重建影响。 */
+  function closestBtnWithIcon(target, iconPart) {
+    var el = target;
+    while (el && el !== document.body) {
+      if (el.tagName === "BUTTON") {
+        var ic = el.querySelector("i");
+        if (ic && (ic.className || "").indexOf(iconPart) >= 0) return el;
+      }
+      el = el.parentElement;
     }
-    // 非接管模式：官方按钮自己会切状态，观察器负责同步
+    return null;
+  }
+
+  function onToolbarClick(e) {
+    if (!isMobile()) return; // 桌面保持原生
+    var t = e.target;
+    // 左侧栏开关 → 切抽屉（app 原生在 ≤768 已禁用，由我们接管）
+    if (closestBtnWithIcon(t, "codicon-layout-sidebar-left")) {
+      var willOpen = !isOpen();
+      if (willOpen) setRightOpen(false);
+      setOpen(willOpen);
+      return;
+    }
+    // 右侧栏开关：app 移动端不渲染面板内容，强制只会空壳黑屏 →
+    // 阻止原生（它会 fallthrough 去开终端），不做无意义的空面板。
+    if (closestBtnWithIcon(t, "codicon-layout-sidebar-right")) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
   }
 
   /* ── 遮罩 ────────────────────────────────────────────────────── */
@@ -182,6 +251,7 @@
     overlay.setAttribute("aria-hidden", "true");
     overlay.addEventListener("click", function () {
       closeDrawer();
+      setRightOpen(false);
     });
     document.body.appendChild(overlay);
     overlay.style.display = isMobile() ? "block" : "none";
@@ -191,6 +261,11 @@
   function shouldAutoClose(target) {
     var el = target;
     while (el && el !== list && el !== document.body) {
+      // pane-header 是「机器人 / SESSIONS」页签切换区：点它只切视图，
+      // 不能收抽屉（否则用户切到机器人页签抽屉就关了，看不到「新建智能体」）。
+      if (el.className && String(el.className).indexOf("pane-header") >= 0) {
+        return false;
+      }
       if (el.getAttribute && el.hasAttribute("aria-expanded")) return false;
       if (el.classList && el.classList.contains("group/disclosure-row")) return false;
       if (el.tagName === "INPUT" || el.tagName === "TEXTAREA") return false;
@@ -249,12 +324,17 @@
   /* ── 初始化 ──────────────────────────────────────────────────── */
   var retry = 0;
   var MAX_RETRY = 60;
+  var toolbarDelegated = false;
   function initOnce() {
     if (!findAndTag()) return false;
     nativeBtn = findNativeBtn();
     ensureOverlay();
     watchState();
-    if (nativeBtn) nativeBtn.addEventListener("click", onNativeClick, true);
+    // 顶栏按钮用 document 捕获委托（不受 React 重建按钮节点影响），只挂一次
+    if (!toolbarDelegated) {
+      document.addEventListener("click", onToolbarClick, true);
+      toolbarDelegated = true;
+    }
     if (list) list.addEventListener("click", onListClick, true);
     MQ.addEventListener
       ? MQ.addEventListener("change", onMobileChange)
@@ -289,7 +369,7 @@
       nativeBtn = findNativeBtn();
       ensureOverlay();
       watchState();
-      if (nativeBtn) nativeBtn.addEventListener("click", onNativeClick, true);
+      // 顶栏按钮走 document 委托，无需重挂；列表点击监听需重挂到新节点
       if (list) list.addEventListener("click", onListClick, true);
       syncFromAppState();
     }

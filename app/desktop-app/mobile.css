@@ -57,6 +57,13 @@
     min-width: 0 !important;
   }
 
+  /* 右侧栏（定时/详情面板）：官方 app 在 ≤768px 架构上不渲染其内容
+     （view.toggleRightSidebar 会 fallthrough 去开终端），强开只会是空壳
+     黑屏。移动端隐藏其入口开关；定时任务改走左抽屉「定时任务」整屏视图。 */
+  [class*="titlebar-tools-right"] button:has(i.codicon-layout-sidebar-right) {
+    display: none !important;
+  }
+
   /* ── 遮罩（z-60：盖住正文，但不盖原生顶栏，原生按钮始终可点）── */
   .hm-overlay {
     position: fixed;
@@ -68,7 +75,8 @@
     transition: opacity 0.25s ease;
   }
 
-  html.hm-nav-open .hm-overlay {
+  html.hm-nav-open .hm-overlay,
+  html.hm-right-open .hm-overlay {
     opacity: 1;
     pointer-events: auto;
   }
@@ -88,16 +96,10 @@
     min-height: 32px;
   }
 
-  /* 右侧工具按钮（布局/HUD/静音/设置等）：加大触控区 */
+  /* 右侧工具按钮（布局/HUD/静音/设置/显示右侧栏等）：加大触控区 */
   [class*="titlebar-tools-right"] button {
     min-width: 36px;
     min-height: 32px;
-  }
-
-  /* 隐藏「显示右侧栏」开关：右侧详情面板在窄屏会把会话再次挤窄，
-     手机端无价值，禁用入口保证会话始终全宽。 */
-  [class*="titlebar-tools-right"] button:has(i.codicon-layout-sidebar-right) {
-    display: none !important;
   }
 
   /* ── 底部状态条：安全区 + 不压高 ────────────────────────────── */
