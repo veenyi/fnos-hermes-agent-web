@@ -958,6 +958,7 @@ def _dispatch_nonstreaming_api_request(agent, api_kwargs: dict, *, make_client):
             invalidate_runtime_client,
             is_stale_connection_error,
             normalize_converse_response,
+            recover_from_cache_point_rejection,
         )
         region = api_kwargs.pop("__bedrock_region__", "us-east-1")
         api_kwargs.pop("__bedrock_converse__", None)
@@ -965,6 +966,15 @@ def _dispatch_nonstreaming_api_request(agent, api_kwargs: dict, *, make_client):
         try:
             raw_response = client.converse(**api_kwargs)
         except Exception as _bedrock_exc:
+            # A model that refuses cachePoint in one section (Nova rejects it
+            # inside toolConfig.tools, #97281) fails every turn otherwise —
+            # drop that marker and resend before surfacing the error.
+            _retry_kwargs = recover_from_cache_point_rejection(
+                _bedrock_exc, api_kwargs
+            )
+            if _retry_kwargs is not None:
+                raw_response = client.converse(**_retry_kwargs)
+                return normalize_converse_response(raw_response)
             # Evict the cached client on stale-connection failures
             # so the outer retry loop builds a fresh client/pool.
             if is_stale_connection_error(_bedrock_exc):
@@ -2664,6 +2674,7 @@ def try_activate_fallback(agent, reason: "FailoverReason | None" = None) -> bool
 
         old_model = agent.model
         old_provider = agent.provider
+        old_base_url = agent.base_url
 
         # Clear the per-config context_length override so the fallback
         # model's actual context window is resolved instead of inheriting
@@ -2832,6 +2843,62 @@ def try_activate_fallback(agent, reason: "FailoverReason | None" = None) -> bool
             )
             # Keep whatever reasoning_config was active — don't break the fallback swap.
 
+        # Re-resolve extra_body for the fallback provider (Closes #75091).
+        # The OLD provider's custom_providers-contributed extra_body (e.g. a
+        # vendor-specific reasoning toggle) must not ride along onto the
+        # fallback provider, which is a different API that may reject those
+        # fields.  Removal is KEY-SCOPED: only keys the old provider's
+        # custom_providers entry contributed (value unchanged since init)
+        # are dropped; the fallback provider's own extra_body is then merged
+        # back in.  Caller/profile-provided extra_body keys
+        # (request_overrides passed at init, which win over provider config
+        # per _merge_custom_provider_extra_body precedence) MUST survive the
+        # swap untouched.
+        try:
+            from agent.agent_init import (
+                _custom_provider_extra_body_for_agent,
+                _merge_custom_provider_extra_body,
+            )
+            _custom_providers = getattr(agent, "_custom_providers", None) or []
+            # What did the OLD provider's config contribute?
+            _old_provider_eb = _custom_provider_extra_body_for_agent(
+                provider=old_provider,
+                model=old_model,
+                base_url=old_base_url,
+                custom_providers=_custom_providers,
+            ) or {}
+            _overrides = dict(getattr(agent, "request_overrides", {}) or {})
+            _existing_eb = _overrides.get("extra_body")
+            if isinstance(_existing_eb, dict) and _old_provider_eb:
+                _scrubbed = dict(_existing_eb)
+                for _k, _v in _old_provider_eb.items():
+                    # Drop only keys the old provider contributed: the value
+                    # must still match what its config injected — a caller
+                    # override of the same key would have won at init and
+                    # differ, so it survives.  Keys the new provider
+                    # redefines are re-added with the NEW provider's value
+                    # by the merge below.
+                    if _k in _scrubbed and _scrubbed[_k] == _v:
+                        _scrubbed.pop(_k)
+                if _scrubbed:
+                    _overrides["extra_body"] = _scrubbed
+                else:
+                    _overrides.pop("extra_body", None)
+                agent.request_overrides = _overrides
+            # Merge in the fallback provider's own extra_body (existing
+            # caller-provided keys win on conflict inside the merge helper).
+            _merge_custom_provider_extra_body(agent, _custom_providers)
+            logger.info(
+                "Fallback %s: extra_body resolved: %s",
+                agent.model,
+                (getattr(agent, "request_overrides", {}) or {}).get("extra_body"),
+            )
+        except Exception as _eb_err:
+            logger.debug(
+                "Failed to resolve extra_body for fallback %s; keeping current: %s",
+                agent.model, _eb_err,
+            )
+
         # Keep the prompt's self-identity in sync with the model actually
         # answering, so "what model are you?" doesn't report the primary.
         rewrite_prompt_model_identity(agent, fb_model, fb_provider)
@@ -2865,6 +2932,13 @@ def try_activate_fallback(agent, reason: "FailoverReason | None" = None) -> bool
         # short-circuit the freshly activated fallback before it gets a
         # single stream attempt.
         _reset_stale_streak(agent)
+        from agent.native_compaction import resolve_native_compaction_capabilities
+        agent.runtime_capabilities = resolve_native_compaction_capabilities(
+            model=agent.model,
+            base_url=agent.base_url,
+            provider=fb_provider,
+            is_codex_backend=fb_provider == "openai-codex",
+        )
         return True
     except Exception as e:
         if fb_provider == "nous":
@@ -3438,6 +3512,7 @@ def interruptible_streaming_api_call(agent, api_kwargs: dict, *, on_first_delta=
                     is_stale_connection_error,
                     is_streaming_access_denied_error,
                     normalize_converse_response,
+                    recover_from_cache_point_rejection,
                     stream_converse_with_callbacks,
                 )
                 intercepted_events = []
@@ -3451,6 +3526,17 @@ def interruptible_streaming_api_call(agent, api_kwargs: dict, *, on_first_delta=
                     try:
                         raw_response = client.converse_stream(**final_kwargs)
                     except Exception as _bedrock_exc:
+                        # Bedrock refuses a cachePoint block in one section for
+                        # some families (Nova: toolConfig.tools, #97281) and
+                        # fails the whole request. Drop that marker and reopen
+                        # the stream inside the same Relay attempt.
+                        _retry_kwargs = recover_from_cache_point_rejection(
+                            _bedrock_exc, final_kwargs
+                        )
+                        if _retry_kwargs is not None:
+                            return client.converse_stream(**_retry_kwargs).get(
+                                "stream", []
+                            )
                         # InvokeModel-only policies cannot open a stream. Keep
                         # the fallback inside the same managed Relay attempt so
                         # the real provider request and terminal response still
@@ -4184,13 +4270,16 @@ def interruptible_streaming_api_call(agent, api_kwargs: dict, *, on_first_delta=
                 _fire_first_delta()
                 agent._fire_reasoning_delta(reasoning_text)
 
-            # Accumulate text content — fire callback only when no tool calls
-            delta_content = getattr(delta, "content", None)
+            # Accumulate text content — fire callback only when no tool calls.
+            # Some OpenAI-compatible providers emit a text delta as a list of
+            # content blocks.  Convert it once so callbacks and the synthetic
+            # completion message always receive plain text.
+            delta_content = flatten_message_text(getattr(delta, "content", None), sep="")
             if delta_content:
                 content_parts.append(delta_content)
                 if not tool_calls_acc:
-                    if pending_text_parts or _provider_stream_text_may_be_sse(delta.content):
-                        pending_text_parts.append(delta.content)
+                    if pending_text_parts or _provider_stream_text_may_be_sse(delta_content):
+                        pending_text_parts.append(delta_content)
                         pending_text = "".join(pending_text_parts)
                         if _provider_stream_text_may_be_sse(pending_text):
                             continue

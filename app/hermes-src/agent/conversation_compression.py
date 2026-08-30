@@ -2428,18 +2428,49 @@ def _strip_stale_todo_snapshot(content: Any) -> Any:
             return content
         return content[:idx].rstrip()
     if isinstance(content, list):
-        return [
-            part
-            for part in content
-            if not (
-                isinstance(part, dict)
-                and part.get("type") == "text"
-                and str(part.get("text") or "")
-                .lstrip()
-                .startswith(TODO_INJECTION_HEADER)
-            )
-        ]
+        cleaned = []
+        for part in content:
+            if not isinstance(part, dict):
+                cleaned.append(part)
+                continue
+            if part.get("type") == "text":
+                text = str(part.get("text") or "")
+                idx = text.find(TODO_INJECTION_HEADER)
+                if idx != -1:
+                    stripped = text[:idx].rstrip()
+                    if stripped:
+                        p = dict(part)
+                        p["text"] = stripped
+                        cleaned.append(p)
+                else:
+                    cleaned.append(part)
+            else:
+                cleaned.append(part)
+        return cleaned
     return content
+
+
+def _todo_snapshot_is_only_content(content: Any, stripped: Any) -> bool:
+    """Return whether stripping the snapshot leaves no structured content.
+
+    Text snapshots are appended at the end of a string. Structured snapshots
+    occupy their own text part, so only an empty remainder proves that the row
+    was synthetic scaffolding alone. Text extraction is deliberately not used:
+    image, audio, and future non-text parts are content that must survive.
+    """
+    if isinstance(content, str) and isinstance(stripped, str):
+        return not stripped.strip()
+    if isinstance(content, list) and isinstance(stripped, list):
+        return not stripped
+    return False
+
+
+def _replace_message_content(message: dict, content: Any) -> None:
+    """Rewrite message content without allowing an old API sidecar to replay."""
+    from agent.turn_context import drop_stale_api_content
+
+    message["content"] = content
+    drop_stale_api_content(message)
 
 
 # Retention-parity notice (#84718): compaction re-injects the todo list
@@ -2513,10 +2544,10 @@ def _merge_anchor_into_user_message(target: dict, anchor: dict) -> None:
             if isinstance(target_content, list)
             else [{"type": "text", "text": str(target_content or "")}]
         )
-        target["content"] = anchor_parts + target_parts
+        _replace_message_content(target, anchor_parts + target_parts)
     else:
         merged = f"{anchor_content or ''}\n\n{target_content or ''}".strip()
-        target["content"] = merged
+        _replace_message_content(target, merged)
     for flag in _SYNTHETIC_USER_FLAGS:
         target.pop(flag, None)
 
@@ -3816,6 +3847,53 @@ def compress_context(
                     )
 
         todo_snapshot = agent._todo_store.format_for_injection()
+        # A non-empty store is authoritative even when every item is already
+        # completed/cancelled and format_for_injection() therefore returns an
+        # empty string. In that case remove the previous snapshot so completed
+        # work is not resurrected. A truly empty store is different: fresh
+        # gateway agents may be unable to rehydrate todo tool results after a
+        # prior compaction, so the retained snapshot is the only surviving
+        # record of pending work and must stay in place.
+        _todo_has_items = getattr(agent._todo_store, "has_items", None)
+        try:
+            _todo_store_is_authoritative = bool(
+                _todo_has_items()
+            ) if callable(_todo_has_items) else False
+        except Exception:
+            # A plugin/test double may implement only format_for_injection().
+            # Unknown authority must preserve pending snapshot state rather than
+            # risk deleting it during compression.
+            _todo_store_is_authoritative = False
+        if _todo_store_is_authoritative:
+            for _todo_idx in range(len(compressed) - 1, -1, -1):
+                _todo_message = compressed[_todo_idx]
+                if not isinstance(_todo_message, dict) or _todo_message.get("role") != "user":
+                    continue
+                _todo_content = _todo_message.get("content")
+                _todo_stripped = _strip_stale_todo_snapshot(_todo_content)
+                if _todo_stripped == _todo_content:
+                    continue
+                if (
+                    _todo_message.get("_todo_snapshot_synthetic")
+                    and _todo_snapshot_is_only_content(
+                        _todo_content, _todo_stripped
+                    )
+                ):
+                    compressed.pop(_todo_idx)
+                    if _todo_idx < len(compressed):
+                        # A standalone snapshot can move away from the tail
+                        # after later turns arrive. Deleting it may expose two
+                        # assistant rows; use the normal replay repair so their
+                        # content/tool-call metadata is preserved consistently.
+                        agent._repair_message_sequence(compressed)
+                else:
+                    _replace_message_content(_todo_message, _todo_stripped)
+                    # The row is no longer todo-only scaffolding. Other
+                    # synthetic flags, if any, remain authoritative and
+                    # _is_real_user_message() recomputes provenance from the
+                    # surviving content plus those flags.
+                    _todo_message.pop("_todo_snapshot_synthetic", None)
+                break
         if todo_snapshot:
             # Retention parity (#84718): the snapshot below re-injects the
             # imperative verbatim. If this same boundary pruned skill bodies
@@ -3857,8 +3935,9 @@ def compress_context(
                         if isinstance(_stripped, str) and _stripped
                         else todo_snapshot
                     )
-                    _tail["content"] = _append_text_to_content(
-                        _stripped, _snapshot_text
+                    _replace_message_content(
+                        _tail,
+                        _append_text_to_content(_stripped, _snapshot_text),
                     )
                     merged = True
                 elif _stripped != _tail.get("content") and not _message_text(
@@ -3866,7 +3945,7 @@ def compress_context(
                 ).strip():
                     # The tail was nothing but an earlier snapshot row —
                     # refresh it in place instead of stacking a duplicate.
-                    _tail["content"] = todo_snapshot
+                    _replace_message_content(_tail, todo_snapshot)
                     _tail["_todo_snapshot_synthetic"] = True
                     merged = True
             if not merged:
@@ -3900,29 +3979,21 @@ def compress_context(
                 exc_info=True,
             )
 
-        # Built-in memory is the only system-prompt input that a normal
-        # compaction reloads. When the cached prompt already embeds the
-        # freshly-reloaded memory blocks verbatim, keep the exact cached
-        # prompt so local backends retain their KV-cache prefix. Containment
-        # (not before/after snapshot equality) is required: fresh-agent
-        # surfaces restore the cached prompt from the session DB, where it
-        # can predate mid-session memory writes the in-memory snapshot has
-        # already absorbed. External providers can change their own prompt
-        # block during on_pre_compress(), so they retain the rebuild path.
-        if (
-            cached_system_prompt is not None
-            and getattr(agent, "_memory_manager", None) is None
-            and _cached_prompt_reflects_builtin_memory(agent, cached_system_prompt)
-        ):
+        # ALWAYS rebuild the prompt at the admitted-commit boundary
+        # (maintainer-directed, #95681 arc). The previous "keep-prompt"
+        # containment branch put the OLD bytes back whenever the reloaded
+        # memory blocks were already embedded — which meant prompt-builder
+        # changes (guidance diets, new blocks, renames) NEVER reached a
+        # long-lived session. The cache argument for keeping bytes was
+        # hollow: when nothing changed, the rebuild is byte-identical and
+        # local KV prefixes survive on equality; when something changed,
+        # the cache was stale by definition and propagation is the point.
+        # Preserve OBJECT identity on byte-equality for backends that key
+        # on it.
+        rebuilt_system_prompt = agent._build_system_prompt(system_message)
+        if cached_system_prompt is not None and rebuilt_system_prompt == cached_system_prompt:
             new_system_prompt = cached_system_prompt
             agent._cached_system_prompt = cached_system_prompt
-            # _invalidate_system_prompt() above also cleared the
-            # cross-session-stable prefix marker boundary. The kept prompt
-            # is byte-identical, so reconstruct the stable tier and reuse
-            # it ONLY when the kept prompt still literally starts with it
-            # (same startswith gate as the restore path); otherwise the
-            # request layer falls back to the legacy single-breakpoint
-            # layout with the prompt bytes untouched.
             from agent.system_prompt import reconstruct_static_prefix
 
             reconstruct_static_prefix(
@@ -3931,8 +4002,18 @@ def compress_context(
                 log_label="compression keep-prompt",
             )
         else:
-            new_system_prompt = agent._build_system_prompt(system_message)
+            new_system_prompt = rebuilt_system_prompt
             agent._cached_system_prompt = new_system_prompt
+            if cached_system_prompt is not None:
+                logger.info(
+                    "Compaction rebuilt a drifted system prompt "
+                    "(session=%s, %d -> %d chars): builder output changed "
+                    "since the stored snapshot (update, config change, or "
+                    "memory/skills growth)",
+                    agent.session_id or "none",
+                    len(cached_system_prompt),
+                    len(new_system_prompt),
+                )
 
         _session_commit_succeeded = False
         _commit_started_at = time.monotonic()
@@ -4626,6 +4707,12 @@ def compress_context(
         agent.context_compressor.last_prompt_tokens = -1
         agent.context_compressor.last_completion_tokens = 0
         agent.context_compressor.awaiting_real_usage_after_compression = True
+        # Compaction rewrote the transcript, so the usage anchor's base
+        # message-list snapshot no longer describes what will be sent —
+        # invalidate it. Context checks fall back to full estimation until
+        # the next response with usage re-anchors (its structural id/index
+        # check would also fail closed, but explicit is safer).
+        agent._usage_anchor = None
         # Arm the effectiveness verdict only after a completed rewrite crosses
         # the full compaction boundary. Exceptions, aborts, and no-op attempts
         # leave this false, so unrelated later usage cannot be charged to an
@@ -4693,6 +4780,46 @@ def compress_context(
                 commit_fence.finish_commit()
 
 
+def _codex_compaction_cooldown_remaining(agent: Any) -> float:
+    """Seconds left on this session's compaction-failure cooldown (0 = clear)."""
+    compressor = getattr(agent, "context_compressor", None)
+    getter = getattr(compressor, "get_active_compression_failure_cooldown", None)
+    if not callable(getter):
+        return 0.0
+    try:
+        state = getter(refresh=True)
+    except Exception:
+        logger.debug("codex compaction cooldown lookup failed", exc_info=True)
+        return 0.0
+    if not state:
+        return 0.0
+    try:
+        return max(0.0, float(state.get("remaining_seconds") or 0.0))
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _record_codex_compaction_failure(agent: Any, error: str) -> None:
+    """Arm the shared compression-failure cooldown after a failed compaction.
+
+    The codex path returns the transcript unchanged on failure, so the session
+    is still above threshold and the next turn retries immediately. Every other
+    compression path records a cooldown, an ineffective-compression strike, or
+    both; this one recorded neither, so an interrupted compaction retried once
+    per turn for as long as the condition persisted.
+    """
+    from agent.context_compressor import _SUMMARY_FAILURE_COOLDOWN_SECONDS
+
+    compressor = getattr(agent, "context_compressor", None)
+    recorder = getattr(compressor, "_record_compression_failure_cooldown", None)
+    if not callable(recorder):
+        return
+    try:
+        recorder(_SUMMARY_FAILURE_COOLDOWN_SECONDS, error)
+    except Exception:
+        logger.debug("codex compaction cooldown persist failed", exc_info=True)
+
+
 def _compress_context_via_codex_app_server(
     agent: Any,
     messages: list,
@@ -4727,6 +4854,25 @@ def _compress_context_via_codex_app_server(
         if not existing_prompt:
             existing_prompt = agent._build_system_prompt(system_message)
         return messages, existing_prompt
+
+    # Automatic entrypoints must honor the compressor-owned cooldown, the same
+    # way the Hermes path below does. An active cooldown means a recent
+    # compaction already failed; retrying every turn is what thrashes.
+    if not force:
+        _cooldown_remaining = _codex_compaction_cooldown_remaining(agent)
+        if _cooldown_remaining > 0:
+            logger.info(
+                "codex app-server compaction skipped: failure cooldown active "
+                "for %.0fs (session=%s messages=%d tokens=~%s)",
+                _cooldown_remaining,
+                getattr(agent, "session_id", None) or "none",
+                len(messages),
+                f"{approx_tokens:,}" if approx_tokens else "unknown",
+            )
+            existing_prompt = getattr(agent, "_cached_system_prompt", None)
+            if not existing_prompt:
+                existing_prompt = agent._build_system_prompt(system_message)
+            return messages, existing_prompt
 
     codex_session = getattr(agent, "_codex_session", None)
     if codex_session is None:
@@ -4781,6 +4927,12 @@ def _compress_context_via_codex_app_server(
             )
         except Exception:
             pass
+        # The transcript is returned unchanged, so the session is still over
+        # threshold. Without a brake the next turn retries immediately.
+        _record_codex_compaction_failure(
+            agent,
+            str(getattr(result, "error", None) or "compaction interrupted"),
+        )
         existing_prompt = getattr(agent, "_cached_system_prompt", None)
         if not existing_prompt:
             existing_prompt = agent._build_system_prompt(system_message)

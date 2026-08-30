@@ -1963,11 +1963,29 @@ def read_file_tool(path: str, offset: int = 1, limit: int = 2000, task_id: str =
         # truncated (large file with more content than limit covered).
         # Outside the _read_tracker_lock so the registry's own locking
         # isn't nested under ours.
+        _partial = (offset > 1) or bool(result_dict.get("truncated"))
         try:
-            _partial = (offset > 1) or bool(result_dict.get("truncated"))
             file_state.record_read(task_id, resolved_str, partial=_partial)
         except Exception:
             logger.debug("file_state.record_read failed", exc_info=True)
+
+        # Background-review read-before-write guard integration (#61521):
+        # when the self-improvement review fork reads a skill file with
+        # read_file (now whitelisted dispatch-side), register the read the
+        # same way skill_view does, so a follow-up
+        # skill_manage(action='patch') on the loaded file is accepted.
+        # A partial read doesn't count — the guard requires the CURRENT
+        # full content to have been seen. No-op outside review forks
+        # (mark_background_review_skill_read gates on is_background_review).
+        if not _partial:
+            try:
+                from tools.skill_manager_tool import mark_background_review_skill_read
+
+                mark_background_review_skill_read(Path(resolved_str))
+            except Exception:
+                logger.debug(
+                    "background-review read-mark failed", exc_info=True
+                )
 
         if count >= 4:
             # Hard block: stop returning content to break the loop
@@ -2648,7 +2666,15 @@ def _check_file_reqs():
 
 READ_FILE_SCHEMA = {
     "name": "read_file",
-    "description": "Read a text file with line numbers and pagination. Use this instead of cat/head/tail in terminal. Output format: 'LINE_NUM|CONTENT'. Suggests similar filenames if not found. Use offset and limit for large files. Reads exceeding ~100K characters are truncated on a line boundary and return a next_offset; continue with offset to read the rest. Jupyter notebooks (.ipynb), Word documents (.docx), and Excel workbooks (.xlsx) are auto-extracted to readable text; PDF, legacy Office (.doc/.ppt/.xls), OpenDocument, RTF, and EPUB convert too when the optional anydoc converter is available (auto-installed on first use where installs are permitted). PDF conversion reads the text layer only: scanned/image pages yield no text, and when many pages come back empty the output ends with an EXTRACTION COVERAGE WARNING listing the affected pages — follow its instructions (render pages with pdftoppm and inspect via vision_analyze, or OCR) instead of treating the extraction as complete. NOTE: Cannot read images or other binary files — use vision_analyze for images.",
+    # Document formats are stated unconditionally: firecrawl-anydoc is a
+    # core dependency (bundled), so its absence is a broken install, not a
+    # configuration — the teaching error in read_extract handles that rare
+    # case with the pip-install fix. The ONE dynamic word: "PDF (text
+    # layer)" upgrades to "PDF (scanned or text)" when hosted OCR has a
+    # route we trust (_read_file_schema_overrides). Scanned-page coverage
+    # teaching lives in the response-time NEEDS-OCR warning
+    # (read_extract.py); the schema doesn't pre-teach it.
+    "description": "Read a text file with line numbers and pagination. Use this instead of cat/head/tail in terminal. Output format: 'LINE_NUM|CONTENT'. Suggests similar filenames if not found. Use offset and limit for large files. Reads exceeding ~100K characters are truncated on a line boundary and return a next_offset; continue with offset to read the rest. Documents auto-extract to readable text: .ipynb, Office (.docx/.xlsx/.pptx and legacy .doc/.ppt/.xls), PDF (text layer), OpenDocument, RTF, EPUB. Cannot read images/binary — use vision_analyze for images.",
     "parameters": {
         "type": "object",
         "properties": {
@@ -2680,51 +2706,100 @@ WRITE_FILE_SCHEMA = {
 
 PATCH_SCHEMA = {
     "name": "patch",
+    # BASE = replace-only (what nearly every model family was trained on).
+    # The V4A patch mode (mode + patch params, dual-mode description) is
+    # LAYERED ON dynamically for OpenAI-family mains only — V4A is the
+    # OpenAI apply_patch dialect their models emit natively; advertising
+    # it to everyone cost every other session ~148 tok/call
+    # (_patch_schema_overrides below). The handler accepts BOTH shapes
+    # from any model regardless (replay compat + strong models that know
+    # V4A anyway): mode defaults to 'replace' when omitted.
     "description": (
         "Targeted find-and-replace edits in files. Use this instead of sed/awk in terminal. "
         "Uses fuzzy matching (9 strategies) so minor whitespace/indentation differences won't break it. "
-        "Returns a unified diff. Auto-runs syntax checks after editing.\n\n"
-        "REPLACE MODE (mode='replace', default): find a unique string and replace it. "
-        "REQUIRED PARAMETERS: mode, path, old_string, new_string.\n"
-        "PATCH MODE (mode='patch'): apply V4A multi-file patches for bulk changes. "
-        "REQUIRED PARAMETERS: mode, patch."
+        "Returns a unified diff. Auto-runs syntax checks after editing. "
+        "Finds a unique string and replaces it."
     ),
     "parameters": {
         "type": "object",
         "properties": {
-            "mode": {
-                "type": "string",
-                "enum": ["replace", "patch"],
-                "description": "Edit mode. 'replace' (default): requires path + old_string + new_string. 'patch': requires patch content only.",
-                "default": "replace",
-            },
             "path": {
                 "type": "string",
-                "description": "REQUIRED when mode='replace'. File path to edit.",
+                "description": "File path to edit.",
             },
             "old_string": {
                 "type": "string",
-                "description": "REQUIRED when mode='replace'. Exact text to find and replace. Must be unique in the file unless replace_all=true. Include surrounding context lines to ensure uniqueness.",
+                "description": "Exact text to find and replace. Must be unique in the file unless replace_all=true. Include surrounding context lines to ensure uniqueness.",
             },
             "new_string": {
                 "type": "string",
-                "description": "REQUIRED when mode='replace'. Changed replacement text; it must differ from old_string. Pass empty string '' to delete the matched text.",
+                "description": "Changed replacement text; it must differ from old_string. Pass empty string '' to delete the matched text.",
             },
             "replace_all": {
                 "type": "boolean",
                 "description": "Replace all occurrences instead of requiring a unique match (default: false)",
                 "default": False,
             },
-            "patch": {
-                "type": "string",
-                "description": "REQUIRED when mode='patch'. V4A format patch content. Format:\n*** Begin Patch\n*** Update File: path/to/file\n@@ context hint @@\n context line\n-removed line\n+added line\n*** End Patch",
-            },
             # NOTE: handler still accepts `cross_profile` — see write_file's
             # NOTE (mirror-guard bypass only; unadvertised by design).
+            # NOTE: handler still accepts `mode` + `patch` (V4A) from ANY
+            # model — the schema just doesn't advertise them off-family.
         },
-        "required": ["mode"],
+        "required": ["path", "old_string", "new_string"],
     },
 }
+
+
+# V4A layer, rendered only for OpenAI-family main models (see PATCH_SCHEMA
+# comment). Kept as data so the override composes it deterministically.
+_PATCH_V4A_DESCRIPTION = (
+    "Targeted find-and-replace edits in files. Use this instead of sed/awk in terminal. "
+    "Uses fuzzy matching (9 strategies) so minor whitespace/indentation differences won't break it. "
+    "Returns a unified diff. Auto-runs syntax checks after editing.\n\n"
+    "REPLACE MODE (mode='replace', default): find a unique string and replace it. "
+    "REQUIRED PARAMETERS: mode, path, old_string, new_string.\n"
+    "PATCH MODE (mode='patch'): apply V4A multi-file patches for bulk changes. "
+    "REQUIRED PARAMETERS: mode, patch."
+)
+
+_PATCH_V4A_PARAMS = {
+    "mode": {
+        "type": "string",
+        "enum": ["replace", "patch"],
+        "description": "Edit mode. 'replace' (default): requires path + old_string + new_string. 'patch': requires patch content only.",
+        "default": "replace",
+    },
+    "patch": {
+        "type": "string",
+        "description": "REQUIRED when mode='patch'. V4A format patch content. Format:\n*** Begin Patch\n*** Update File: path/to/file\n@@ context hint @@\n context line\n-removed line\n+added line\n*** End Patch",
+    },
+}
+
+
+def _is_openai_family_main() -> bool:
+    """Whether the active main provider/model is the OpenAI/codex family —
+    the population trained on the V4A apply_patch dialect.
+
+    Provider-family-coarse on purpose (no per-model training-diet table to
+    go stale): direct OpenAI providers always qualify; on aggregators
+    (openrouter/nous/azure...) the MODEL slug decides (gpt-*/o-series/
+    codex). Fail-closed to the universal replace-only schema.
+    """
+    try:
+        from agent.auxiliary_client import _read_main_model, _read_main_provider
+
+        provider = (_read_main_provider() or "").strip().lower()
+        model = (_read_main_model() or "").strip().lower()
+    except Exception:  # noqa: BLE001
+        return False
+    if provider in {"openai", "openai-chat", "openai-codex", "azure-openai", "codex"}:
+        return True
+    # Aggregators: the model slug carries the family.
+    slug = model.split("/", 1)[-1]
+    if slug.startswith(("gpt-", "gpt.", "chatgpt", "codex", "o1", "o3", "o4", "o5")):
+        return True
+    return "openai/" in model
+
 
 SEARCH_FILES_SCHEMA = {
     "name": "search_files",
@@ -2800,7 +2875,50 @@ def _handle_search_files(args, **kw):
         output_mode=args.get("output_mode", "content"), context=args.get("context", 0), task_id=tid)
 
 
-registry.register(name="read_file", toolset="file", schema=READ_FILE_SCHEMA, handler=_handle_read_file, check_fn=_check_file_reqs, emoji="📖", max_result_size_chars=100_000)
+def _read_file_schema_overrides():
+    """One-word capability upgrade: "PDF (text layer)" → "PDF (scanned or
+    text)" when hosted OCR has a trusted route (see
+    read_extract.hosted_ocr_available). Config/env probe only — no
+    network at schema-build time. Compaction's tool refresh (#97073)
+    picks up a key added mid-session.
+    """
+    try:
+        from tools.read_extract import hosted_ocr_available
+
+        if hosted_ocr_available():
+            return {
+                "description": READ_FILE_SCHEMA["description"].replace(
+                    "PDF (text layer)", "PDF (scanned or text)"
+                )
+            }
+    except Exception:  # noqa: BLE001
+        pass
+    return {}
+
+
+registry.register(name="read_file", toolset="file", schema=READ_FILE_SCHEMA, handler=_handle_read_file, check_fn=_check_file_reqs, emoji="📖", max_result_size_chars=100_000, dynamic_schema_overrides=_read_file_schema_overrides)
 registry.register(name="write_file", toolset="file", schema=WRITE_FILE_SCHEMA, handler=_handle_write_file, check_fn=_check_file_reqs, emoji="✍️", max_result_size_chars=100_000)
-registry.register(name="patch", toolset="file", schema=PATCH_SCHEMA, handler=_handle_patch, check_fn=_check_file_reqs, emoji="🔧", max_result_size_chars=100_000)
+def _patch_schema_overrides():
+    """Layer the V4A patch mode onto the base replace-only schema for
+    OpenAI-family mains (see PATCH_SCHEMA comment). Config/context probe
+    only — no I/O at schema-build time; compaction's tool refresh
+    (#97073) re-evaluates on model switches."""
+    try:
+        if not _is_openai_family_main():
+            return {}
+        params = {
+            "type": "object",
+            "properties": {
+                "mode": _PATCH_V4A_PARAMS["mode"],
+                **PATCH_SCHEMA["parameters"]["properties"],
+                "patch": _PATCH_V4A_PARAMS["patch"],
+            },
+            "required": ["mode"],
+        }
+        return {"description": _PATCH_V4A_DESCRIPTION, "parameters": params}
+    except Exception:  # noqa: BLE001
+        return {}
+
+
+registry.register(name="patch", toolset="file", schema=PATCH_SCHEMA, handler=_handle_patch, check_fn=_check_file_reqs, emoji="🔧", max_result_size_chars=100_000, dynamic_schema_overrides=_patch_schema_overrides)
 registry.register(name="search_files", toolset="file", schema=SEARCH_FILES_SCHEMA, handler=_handle_search_files, check_fn=_check_file_reqs, emoji="🔎", max_result_size_chars=100_000)

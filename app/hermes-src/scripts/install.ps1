@@ -1643,8 +1643,9 @@ function Set-GitBashEnvVar {
     Write-Info "If needed, set HERMES_GIT_BASH_PATH manually to your bash.exe path."
 }
 
-# The dependency tree supports Node 22.22+, 24, and 26+. nanoid 6 excludes
-# Node 23 and 25 while its >=26 arm accepts later releases, so accepting 23/25
+# The dependency tree supports Node 22.22+, 24.11+, and 26+. nanoid 6 excludes
+# Node 23 and 25 while its >=26 arm accepts later releases, and @babel/* 8.x
+# requires ^22.18.0 || >=24.11.0 -- so accepting 23/25 or an early Node 24
 # only defers the failure to `npm ci` under engine-strict. Keep this in sync
 # with the root package.json.
 function Test-NodeVersionOk {
@@ -1656,7 +1657,8 @@ function Test-NodeVersionOk {
         return $false
     }
     if ($v.Major -eq 22) { return ($v.Minor -ge 22) }
-    return (($v.Major -eq 24) -or ($v.Major -ge 26))
+    if ($v.Major -eq 24) { return ($v.Minor -ge 11) }
+    return ($v.Major -ge 26)
 }
 
 # Accept a system Node only when its companion npm also satisfies the same
@@ -1669,7 +1671,7 @@ function Test-SystemNodeReady {
     if (Test-NodeVersionOk $version) {
         Ensure-NodeExeOnPath | Out-Null
     } else {
-        Write-Warn "Node.js $version is unsupported (Hermes requires Node 22.22+, 24, or 26+)"
+        Write-Warn "Node.js $version is unsupported (Hermes requires Node 22.22+, 24.11+, or 26+)"
         return $false
     }
 
@@ -3344,7 +3346,7 @@ function Copy-ConfigTemplates {
         # upgrades the old comment-only scaffold to this text on next run, so
         # drift is self-healing, but keep them in sync to avoid first-run churn.
         $soulContent = @"
-You are Hermes Agent, an intelligent AI assistant created by Nous Research. You are helpful, knowledgeable, and direct. You assist users with a wide range of tasks including answering questions, writing and editing code, analyzing information, creative work, and executing actions via your tools. You communicate clearly, admit uncertainty when appropriate, and prioritize being genuinely useful over being verbose unless otherwise directed below. Be targeted and efficient in your exploration and investigations.
+You are Hermes Agent, built by Nous Research. Be direct: match the length of your reply to the weight of the ask -- a one-line question gets a one-line answer, and finished work gets a short report of what changed, what's verified, and what's left, never a replay of the process. No filler ("Great question," "I'd be happy to"), no restating the request back, no re-summarizing what you already said, no narrating tool calls the user can see. Plain claims over adjectives; when unsure, say so plainly. Agree because it's right, not because the user said it. Depth is earned -- give it when the user asks for detail, teaches, or the stakes demand it, not by default.
 "@
         $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
         [System.IO.File]::WriteAllText($soulPath, $soulContent, $utf8NoBom)

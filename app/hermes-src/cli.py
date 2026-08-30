@@ -55,6 +55,7 @@ from hermes_cli.cli_agent_setup_mixin import CLIAgentSetupMixin
 from hermes_cli.cli_commands_mixin import CLICommandsMixin
 from hermes_cli.cli_billing_mixin import CLIBillingMixin
 from agent.interrupt_compat import request_hard_interrupt
+from agent.pet import render as pet_render
 
 # prompt_toolkit for fixed input area TUI
 from prompt_toolkit.history import FileHistory
@@ -5594,15 +5595,18 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
         self._command_running = False
         self._command_blocks_input = False
         self._command_status = ""
-        # Petdex mascot (opt-in via display.pet). The base CLI mirrors the TUI's
-        # PetPane: a half-block sprite above the prompt that reacts to agent
-        # activity. Lazily resolved; an invalidate timer drives the animation.
+        # Petdex mascot (opt-in via display.pet). Kitty/Ghostty use Unicode
+        # placeholders plus out-of-band image transmission; other terminals
+        # use the truecolor half-block fallback.
         self._pet_renderer = None  # agent.pet.render.PetRenderer | None
         self._pet_slug: str = ""
         self._pet_enabled: bool = False
         self._pet_cols: int = 18
         self._pet_scale: float = 0.7
         self._pet_frames_cache: dict = {}  # state -> list[grid]
+        self._pet_kitty_cache: dict = {}  # state -> kitty placeholder payload
+        self._pet_kitty_image_id: int = 0
+        self._pet_kitty_pending: str = ""
         self._pet_frame_idx: int = 0
         self._pet_lock = threading.Lock()
         self._pet_cfg_checked: float = 0.0
@@ -5675,6 +5679,14 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
         # Background task tracking: {task_id: threading.Thread}
         self._background_tasks: Dict[str, threading.Thread] = {}
         self._background_task_counter = 0
+
+        # Cache-hit ratio baseline — reset on model switch and on
+        # context compression so the bar reflects the *current* cache
+        # regime, not a lifetime average that survives invalidation.
+        self._cache_hit_baseline_prompt = 0
+        self._cache_hit_baseline_read = 0
+        self._cache_hit_baseline_model: Optional[str] = None
+        self._cache_hit_baseline_compressions = 0
 
     def _claim_active_session(self, surface: str = "cli", *, stderr: bool = False) -> bool:
         """Claim a global active-session slot for this CLI process."""
@@ -5813,6 +5825,7 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
         if getattr(self, "_terminal_io_broken", False):
             return
         _replay_output_history()
+        self._pet_queue_kitty_frame()
         try:
             app.invalidate()
         except OSError as exc:
@@ -6031,6 +6044,8 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
                 pass
         if new_width is not None:
             self._last_resize_width = new_width
+        if width_changed:
+            self._pet_queue_kitty_frame()
         original_on_resize()
         self._schedule_status_bar_unsuppress(app)
 
@@ -6170,6 +6185,35 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
         if percent_used >= 50:
             return "class:status-bar-warn"
         return "class:status-bar-good"
+
+    def _cache_hit_rate(self, snapshot: dict, precision: int = 1) -> "tuple[float, str] | None":
+        """Return (cache_pct, formatted_label) or None if no cache data.
+
+        Centralises the cache-hit-rate computation so both the plain-text
+        status bar and the prompt-toolkit fragment path share one formula.
+        Prefers the baseline-delta percentage computed in
+        ``_get_status_bar_snapshot`` (resets on model switch / compression,
+        so it reflects the *current* cache regime); falls back to the
+        session-lifetime ratio when no delta is available.
+        """
+        delta_pct = snapshot.get("cache_hit_pct")
+        if delta_pct is not None:
+            return float(delta_pct), f"◎ {float(delta_pct):.{precision}f}%"
+        cache_read = snapshot.get("session_cache_read_tokens", 0)
+        prompt_total = snapshot.get("session_prompt_tokens", 0)
+        if cache_read > 0 and prompt_total > 0:
+            cache_pct = cache_read / prompt_total * 100
+            return cache_pct, f"◎ {cache_pct:.{precision}f}%"
+        return None
+
+    def _cache_hit_rate_style(self, cache_pct: float) -> str:
+        """Style for cache hit rate — higher is better (opposite of context %)."""
+        if cache_pct >= 70:
+            return "class:status-bar-good"
+        if cache_pct >= 40:
+            return "class:status-bar-warn"
+        return "class:status-bar-bad"
+
 
     @staticmethod
     def _battery_status_style(category: str) -> str:
@@ -6389,7 +6433,7 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
             except Exception:
                 pass
 
-        # Count live /background tasks. The dict entry is removed in the
+        # Count live /bg tasks. The dict entry is removed in the
         # task thread's finally block, so len() reflects truly-running tasks.
         # len() on a CPython dict is atomic; safe to read without a lock.
         try:
@@ -6465,6 +6509,97 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
             snapshot["compressions"] = getattr(compressor, "compression_count", 0) or 0
             if context_length:
                 snapshot["context_percent"] = max(0, min(100, round((context_tokens / context_length) * 100)))
+
+        # -- Cache-hit ratio (delta since last reset) --
+        # Reset baseline on model switch and on compression — both invalidate
+        # the prompt cache. Formula verified against live logs:
+        #   hit = cache_read / prompt_tokens  (prompt = input+cache_read+cache_write)
+        #   see agent/conversation_loop.py:4314  cache=read/prompt (87%)
+        #   and CanonicalUsage.prompt_tokens = input+read+write
+        try:
+            base_model = getattr(self, "_cache_hit_baseline_model", None)
+            base_prompt = int(getattr(self, "_cache_hit_baseline_prompt", 0) or 0)
+            base_read = int(getattr(self, "_cache_hit_baseline_read", 0) or 0)
+            base_comps = int(getattr(self, "_cache_hit_baseline_compressions", 0) or 0)
+            cur_model = snapshot.get("model_name") or model_name
+            cur_comps = int(snapshot.get("compressions", 0) or 0)
+            cur_prompt = int(snapshot.get("session_prompt_tokens", 0) or 0)
+            cur_read = int(snapshot.get("session_cache_read_tokens", 0) or 0)
+            if base_model is None:
+                self._cache_hit_baseline_model = cur_model
+                self._cache_hit_baseline_compressions = cur_comps
+                base_model = cur_model
+                base_comps = cur_comps
+            if cur_model != base_model:
+                self._cache_hit_baseline_model = cur_model
+                self._cache_hit_baseline_prompt = cur_prompt
+                self._cache_hit_baseline_read = cur_read
+                self._cache_hit_baseline_compressions = cur_comps
+                base_prompt = cur_prompt
+                base_read = cur_read
+                base_comps = cur_comps
+            if cur_comps != base_comps:
+                self._cache_hit_baseline_compressions = cur_comps
+                self._cache_hit_baseline_prompt = cur_prompt
+                self._cache_hit_baseline_read = cur_read
+                base_prompt = cur_prompt
+                base_read = cur_read
+            delta_prompt = cur_prompt - base_prompt
+            delta_read = cur_read - base_read
+            # A zero-read regime hides the segment entirely (no cache data
+            # is not the same as a 0% hit worth alarming about), and the pct
+            # stays a float so renderers control their own precision.
+            if delta_prompt > 0 and delta_read > 0:
+                pct = max(0.0, min(100.0, (delta_read / delta_prompt) * 100))
+                snapshot["cache_hit_pct"] = pct
+                snapshot["cache_hit_label"] = f"{pct:.0f}%"
+            elif cur_prompt > 0 and cur_read > 0 and base_prompt == 0 and base_read == 0:
+                pct = max(0.0, min(100.0, (cur_read / cur_prompt) * 100))
+                snapshot["cache_hit_pct"] = pct
+                snapshot["cache_hit_label"] = f"{pct:.0f}%"
+            else:
+                snapshot["cache_hit_pct"] = None
+                snapshot["cache_hit_label"] = ""
+        except Exception:
+            snapshot["cache_hit_pct"] = None
+            snapshot["cache_hit_label"] = ""
+
+        # -- Rolling avg latency / velocity (last 10 calls) --
+        # Reads the deque maintained in agent/conversation_loop.py (and
+        # agent_init). Codex app-server has no latency, so it stays hidden there.
+        try:
+            agent_obj = getattr(self, "agent", None)
+            lhist = list(getattr(agent_obj, "_api_latency_history", []) or []) if agent_obj else []
+            ohist = list(getattr(agent_obj, "_api_output_history", []) or []) if agent_obj else []
+            # Keep the two histories aligned (they are appended together).
+            n = min(len(lhist), len(ohist))
+            if n:
+                lhist = lhist[-n:]
+                ohist = ohist[-n:]
+                # Simple mean for latency; sum/sum for velocity (true throughput, not mean of ratios).
+                avg_lat = sum(lhist) / len(lhist) if lhist else None
+                total_out = sum(ohist)
+                total_lat = sum(lhist)
+                avg_vel = (total_out / total_lat) if total_lat > 0 else None
+                # Guard against NaN / inf from weird provider timings (e.g. -0.8s in logs).
+                if avg_lat is not None and (avg_lat != avg_lat or avg_lat < 0 or avg_lat > 1e6):
+                    avg_lat = None
+                if avg_vel is not None and (avg_vel != avg_vel or avg_vel < 0 or avg_vel > 1e6):
+                    avg_vel = None
+                snapshot["avg_latency"] = float(avg_lat) if avg_lat is not None else None
+                snapshot["avg_latency_label"] = f"{avg_lat:.1f}s" if avg_lat is not None else ""
+                snapshot["avg_velocity"] = float(avg_vel) if avg_vel is not None else None
+                snapshot["avg_velocity_label"] = f"{avg_vel:.0f} t/s" if avg_vel is not None else ""
+            else:
+                snapshot["avg_latency"] = None
+                snapshot["avg_latency_label"] = ""
+                snapshot["avg_velocity"] = None
+                snapshot["avg_velocity_label"] = ""
+        except Exception:
+            snapshot["avg_latency"] = None
+            snapshot["avg_latency_label"] = ""
+            snapshot["avg_velocity"] = None
+            snapshot["avg_velocity_label"] = ""
 
         return snapshot
 
@@ -6777,15 +6912,23 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
 
     # ── Petdex mascot (base-CLI pet pane) ───────────────────────────────
     #
-    # Parity with the TUI: a half-block sprite rendered as a prompt_toolkit
-    # window above the prompt, reacting to agent state and animated by a timer
-    # that calls ``app.invalidate()``. Half-blocks only — the crisp Kitty image
-    # protocol can't coexist with prompt_toolkit's patch_stdout output layer
-    # (raw image escapes get swallowed/mangled), so we use truecolor styled
-    # text, which prompt_toolkit renders natively in any 24-bit terminal.
+    # Parity with the TUI: a sprite in a prompt_toolkit window above the
+    # prompt. Kitty/Ghostty use Unicode placeholders — prompt_toolkit owns
+    # the measurable grid; image bytes go out-of-band as a virtual placement
+    # via after_render + write_raw (cursor untouched). WezTerm/iTerm/sixel
+    # stay on half-blocks: they are not placeholder-capable.
 
     _PET_FRAME_INTERVAL = 0.16
     _PET_CFG_INTERVAL = 2.5
+
+    def _pet_clear_runtime(self) -> None:
+        """Drop renderer + queued Kitty state. Caller holds ``_pet_lock``."""
+        self._pet_enabled = False
+        self._pet_renderer = None
+        self._pet_frames_cache.clear()
+        self._pet_kitty_cache.clear()
+        self._pet_kitty_pending = ""
+        self._pet_kitty_image_id = 0
 
     def _pet_resolve_config(self) -> None:
         """(Re)resolve the active pet from config — picks up live enable/disable/
@@ -6795,7 +6938,6 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
         """
         try:
             from agent.pet import constants, store
-            from agent.pet.render import PetRenderer
             from hermes_cli.config import load_config
 
             cfg = load_config()
@@ -6808,43 +6950,48 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
             slug = str(pet_cfg.get("slug", "") or "")
             scale = float(pet_cfg.get("scale", constants.DEFAULT_SCALE) or constants.DEFAULT_SCALE)
             cols = constants.resolve_cols(scale, pet_cfg.get("unicode_cols", 0))
+            configured_mode = str(pet_cfg.get("render_mode", "auto") or "auto").lower()
+            # Placeholders only on kitty/Ghostty. WezTerm speaks kitty APC but
+            # not U+10EEEE — detect_terminal_graphics() still returns kitty
+            # there, which is why this gate is narrower.
+            use_kitty = configured_mode in ("", "auto", "kitty") and pet_render.supports_kitty_placeholders()
+            renderer_mode = "kitty" if use_kitty else "unicode"
 
-            if not enabled:
+            if not enabled or configured_mode == "off":
                 with self._pet_lock:
-                    self._pet_enabled = False
-                    self._pet_renderer = None
-                    self._pet_frames_cache.clear()
+                    self._pet_clear_runtime()
                 return
 
             pet = store.resolve_active_pet(slug)
             if pet is None or not pet.exists:
                 with self._pet_lock:
-                    self._pet_enabled = False
-                    self._pet_renderer = None
-                    self._pet_frames_cache.clear()
+                    self._pet_clear_runtime()
                 return
 
             with self._pet_lock:
-                # Rebuild only when the resolved pet or geometry changes.
+                # Rebuild only when the resolved pet, mode, or geometry changes.
                 if (
                     self._pet_renderer is None
                     or self._pet_slug != pet.slug
                     or self._pet_cols != cols
                     or self._pet_scale != scale
+                    or self._pet_renderer.mode != renderer_mode
                 ):
-                    self._pet_renderer = PetRenderer(
-                        str(pet.spritesheet), mode="unicode", scale=scale, unicode_cols=cols
+                    self._pet_renderer = pet_render.PetRenderer(
+                        str(pet.spritesheet), mode=renderer_mode, scale=scale, unicode_cols=cols
                     )
                     self._pet_slug = pet.slug
                     self._pet_cols = cols
                     self._pet_scale = scale
                     self._pet_frames_cache.clear()
+                    self._pet_kitty_cache.clear()
+                    self._pet_kitty_pending = ""
+                    self._pet_kitty_image_id = pet_render.kitty_image_id(pet.slug)
                     self._pet_frame_idx = 0
                 self._pet_enabled = True
         except Exception:
             with self._pet_lock:
-                self._pet_enabled = False
-                self._pet_renderer = None
+                self._pet_clear_runtime()
 
     def _pet_flash(self, state: str, secs: float = 1.6) -> None:
         """Briefly force a transient reaction (wave/jump/failed) before resting."""
@@ -6919,12 +7066,79 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
         self._pet_frames_cache[state] = grids
         return grids
 
+    def _pet_kitty_payload_for(self, state: str) -> dict | None:
+        """Return and cache a Kitty virtual-placeholder payload for *state*."""
+        with self._pet_lock:
+            cached = self._pet_kitty_cache.get(state)
+            if cached is not None:
+                return cached
+            renderer = self._pet_renderer
+            image_id = self._pet_kitty_image_id
+            if renderer is None or renderer.mode != "kitty":
+                return None
+        try:
+            # PNG encoding is outside _pet_lock: first visit of a state must
+            # not stall the prompt under the lock.
+            payload = renderer.kitty_payload(state, image_id=image_id)
+        except Exception:
+            payload = None
+        if payload is not None:
+            payload = {**payload, "image_id": image_id}
+            with self._pet_lock:
+                if self._pet_renderer is renderer and self._pet_kitty_image_id == image_id:
+                    self._pet_kitty_cache[state] = payload
+        return payload
+
+    def _pet_queue_kitty_frame(self, state: str | None = None) -> None:
+        """Queue one virtual Kitty frame for the next prompt_toolkit render.
+
+        No-op when the pet pane was never initialized (``__new__`` fixtures
+        and ``_force_full_redraw`` / resize recovery on a pet-less CLI).
+        """
+        if not getattr(self, "_pet_enabled", False):
+            return
+        if state is None:
+            state = self._derive_pet_state()
+        payload = self._pet_kitty_payload_for(state)
+        if not payload or not payload.get("frames"):
+            return
+        with self._pet_lock:
+            if self._pet_renderer is not None and self._pet_renderer.mode == "kitty":
+                self._pet_kitty_pending = payload["frames"][self._pet_frame_idx % len(payload["frames"])]
+
+    def _pet_flush_kitty_frame(self, app) -> None:
+        """Write a queued APC after prompt_toolkit has finished its screen diff."""
+        with self._pet_lock:
+            frame = self._pet_kitty_pending
+            self._pet_kitty_pending = ""
+        if not frame:
+            return
+        try:
+            # U=1/q=2 leaves the cursor and input stream untouched.
+            app.output.write_raw(frame)
+            app.output.flush()
+        except (OSError, ValueError):
+            pass
+
     def _pet_fragments(self):
         """Return prompt_toolkit FormattedText for the current pet frame, or []."""
         with self._pet_lock:
             if not self._pet_enabled or self._pet_renderer is None:
                 return []
             state = self._derive_pet_state()
+            kitty = self._pet_renderer.mode == "kitty"
+        if kitty:
+            payload = self._pet_kitty_payload_for(state)
+            if not payload:
+                return []
+            color = pet_render.kitty_color_hex(payload["image_id"])
+            frags = []
+            for y, row in enumerate(payload["placeholder"]):
+                if y:
+                    frags.append(("", "\n"))
+                frags.append((f"fg:{color}", row))
+            return frags
+        with self._pet_lock:
             grids = self._pet_frames_for(state)
             if not grids:
                 return []
@@ -6956,7 +7170,13 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
         with self._pet_lock:
             if not self._pet_enabled or self._pet_renderer is None:
                 return 0
-            grids = self._pet_frames_for(self._derive_pet_state())
+            state = self._derive_pet_state()
+            kitty = self._pet_renderer.mode == "kitty"
+        if kitty:
+            payload = self._pet_kitty_payload_for(state)
+            return int(payload.get("rows", 0)) if payload else 0
+        with self._pet_lock:
+            grids = self._pet_frames_for(state)
             if not grids or not grids[0]:
                 return 0
             return len(grids[0])
@@ -6976,6 +7196,9 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
                 continue
             with self._pet_lock:
                 self._pet_frame_idx += 1
+                kitty = self._pet_renderer is not None and self._pet_renderer.mode == "kitty"
+            if kitty:
+                self._pet_queue_kitty_frame()
             app = getattr(self, "_app", None)
             if app is not None:
                 try:
@@ -6991,6 +7214,10 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
         if self._pet_anim_running:
             return
         self._pet_resolve_config()
+        with self._pet_lock:
+            kitty = self._pet_enabled and self._pet_renderer is not None and self._pet_renderer.mode == "kitty"
+        if kitty:
+            self._pet_queue_kitty_frame()
         self._pet_anim_running = True
         self._pet_anim_thread = threading.Thread(target=self._pet_anim_loop, daemon=True)
         self._pet_anim_thread.start()
@@ -7071,6 +7298,36 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
             return f"⊙ goal {used}/{max_turns}"
         return "⊙ goal"
 
+    def _get_status_bar_field_set(self) -> Optional[frozenset]:
+        """Return the set of visible status-bar fields from config.
+
+        Reads ``display.status_bar.fields`` from the module-level
+        ``CLI_CONFIG`` (no per-render YAML parse — the status bar repaints
+        every frame). Returns ``None`` when the user has not customized the
+        bar (use built-in defaults, i.e. show everything), or a
+        ``frozenset`` of field names when the list is non-empty.
+
+        Available fields: model, context_detail, context_pct, cache_hit,
+        latency, tps, compressions, bg_tasks, bg_processes, bg_subagents,
+        goal, duration, prompt_elapsed, idle_since, focus, yolo, stash,
+        battery, title, total_tokens.
+        ``total_tokens`` is opt-in only (never shown by default).
+        The field order is fixed; the config controls visibility only.
+        """
+        if hasattr(self, "_status_bar_field_set_cache"):
+            return self._status_bar_field_set_cache
+        result = None
+        try:
+            display = CLI_CONFIG.get("display") if isinstance(CLI_CONFIG, dict) else None
+            status_bar = (display or {}).get("status_bar") if isinstance(display, dict) else None
+            fields = status_bar.get("fields") if isinstance(status_bar, dict) else None
+            if isinstance(fields, list) and fields:
+                result = frozenset(str(f) for f in fields)
+        except Exception:
+            result = None
+        self._status_bar_field_set_cache = result
+        return result
+
     def _build_status_bar_text(self, width: Optional[int] = None) -> str:
         """Return a compact one-line session status string for the TUI footer."""
         try:
@@ -7087,75 +7344,124 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
 
             yolo_active = self._is_session_yolo_active()
             goal_segment = self._status_bar_goal_segment(snapshot)
+            field_set = self._get_status_bar_field_set()
+
+            def _ok(name: str) -> bool:
+                return field_set is None or name in field_set
+
+            if not _ok("title"):
+                session_title = ""
+
+            if not _ok("goal"):
+                goal_segment = ""
+            if not _ok("focus"):
+                focus_label = ""
             if width < 52:
-                text = f"{battery_prefix}⚕ {snapshot['model_short']} · {duration_label}"
+                segs = []
+                if _ok("model"):
+                    segs.append(f"⚕ {snapshot['model_short']}")
+                if _ok("duration"):
+                    segs.append(duration_label)
                 if goal_segment:
-                    text += f" · {goal_segment}"
+                    segs.append(goal_segment)
                 if focus_label:
-                    text += f" · {focus_label}"
-                if yolo_active:
-                    text += " · ⚠ YOLO"
+                    segs.append(focus_label)
+                if yolo_active and _ok("yolo"):
+                    segs.append("⚠ YOLO")
+                text = battery_prefix + " · ".join(segs) if segs else f"{battery_prefix}⚕ {snapshot['model_short']}"
                 return self._right_align_status_title(text, session_title, width)
             if width < 76:
-                parts = [f"⚕ {snapshot['model_short']}", percent_label]
+                parts = []
+                if _ok("model"):
+                    parts.append(f"⚕ {snapshot['model_short']}")
+                if _ok("context_pct"):
+                    parts.append(percent_label)
+                cache = self._cache_hit_rate(snapshot, precision=0)
+                if cache and _ok("cache_hit"):
+                    parts.append(cache[1])
                 if battery_label:
                     parts.insert(0, battery_label)
                 compressions = snapshot.get("compressions", 0)
-                if compressions:
+                if compressions and _ok("compressions"):
                     parts.append(f"🗜️ {compressions}")
                 bg_count = snapshot.get("active_background_tasks", 0)
-                if bg_count:
+                if bg_count and _ok("bg_tasks"):
                     parts.append(f"▶ {bg_count}")
                 bg_proc_count = snapshot.get("active_background_processes", 0)
-                if bg_proc_count:
+                if bg_proc_count and _ok("bg_processes"):
                     parts.append(f"⚙ {bg_proc_count}")
                 bg_subagent_count = snapshot.get("active_background_subagents", 0)
-                if bg_subagent_count:
+                if bg_subagent_count and _ok("bg_subagents"):
                     parts.append(f"⛓ {bg_subagent_count}")
                 if goal_segment:
                     parts.append(goal_segment)
-                parts.append(duration_label)
+                if _ok("duration"):
+                    parts.append(duration_label)
                 if focus_label:
                     parts.append(focus_label)
-                if yolo_active:
+                if yolo_active and _ok("yolo"):
                     parts.append("⚠ YOLO")
+                if not parts:
+                    parts = [f"⚕ {snapshot['model_short']}"]
                 return self._right_align_status_title(" · ".join(parts), session_title, width)
 
-            if snapshot["context_length"]:
-                ctx_total = _format_context_length(snapshot["context_length"])
-                ctx_used = format_token_count_compact(snapshot["context_tokens"])
-                context_label = f"{ctx_used}/{ctx_total}"
-            else:
-                context_label = "ctx --"
-
-            compressions = snapshot.get("compressions", 0)
-            parts = [f"⚕ {snapshot['model_short']}", context_label, percent_label]
+            parts = []
+            if _ok("model"):
+                parts.append(f"⚕ {snapshot['model_short']}")
+            if _ok("context_detail"):
+                if snapshot["context_length"]:
+                    ctx_total = _format_context_length(snapshot["context_length"])
+                    ctx_used = format_token_count_compact(snapshot["context_tokens"])
+                    context_label = f"{ctx_used}/{ctx_total}"
+                else:
+                    context_label = "ctx --"
+                parts.append(context_label)
+            if _ok("context_pct"):
+                parts.append(percent_label)
             if battery_label:
                 parts.insert(0, battery_label)
-            if compressions:
+            compressions = snapshot.get("compressions", 0)
+            cache = self._cache_hit_rate(snapshot)
+            if cache and _ok("cache_hit"):
+                parts.append(cache[1])
+            _avg_lat = snapshot.get("avg_latency_label") or ""
+            if _avg_lat and _ok("latency"):
+                parts.append(f"◷ {_avg_lat}")
+            _avg_vel = snapshot.get("avg_velocity_label") or ""
+            if _avg_vel and _ok("tps"):
+                parts.append(f"↑ {_avg_vel}")
+            if compressions and _ok("compressions"):
                 parts.append(f"🗜️ {compressions}")
             bg_count = snapshot.get("active_background_tasks", 0)
-            if bg_count:
+            if bg_count and _ok("bg_tasks"):
                 parts.append(f"▶ {bg_count}")
             bg_proc_count = snapshot.get("active_background_processes", 0)
-            if bg_proc_count:
+            if bg_proc_count and _ok("bg_processes"):
                 parts.append(f"⚙ {bg_proc_count}")
             bg_subagent_count = snapshot.get("active_background_subagents", 0)
-            if bg_subagent_count:
+            if bg_subagent_count and _ok("bg_subagents"):
                 parts.append(f"⛓ {bg_subagent_count}")
             if goal_segment:
                 parts.append(goal_segment)
-            parts.append(duration_label)
+            if _ok("duration"):
+                parts.append(duration_label)
             prompt_elapsed = snapshot.get("prompt_elapsed")
-            if prompt_elapsed:
+            if prompt_elapsed and _ok("prompt_elapsed"):
                 parts.append(prompt_elapsed)
             idle_since = snapshot.get("idle_since")
-            if idle_since:
+            if idle_since and _ok("idle_since"):
                 parts.append(idle_since)
             if focus_label:
                 parts.append(focus_label)
-            if yolo_active:
+            if yolo_active and _ok("yolo"):
                 parts.append("⚠ YOLO")
+            # Session token total (Σ) — opt-in only via an explicit fields
+            # list, so default bars never widen.
+            total_tokens = snapshot.get("session_total_tokens", 0)
+            if total_tokens and field_set is not None and "total_tokens" in field_set:
+                parts.append(f"Σ{format_token_count_compact(total_tokens)}")
+            if not parts:
+                parts = [f"⚕ {snapshot['model_short']}"]
             return self._right_align_status_title(" │ ".join(parts), session_title, width)
         except Exception:
             return f"⚕ {self.model if getattr(self, 'model', None) else 'Hermes'}"
@@ -7178,23 +7484,42 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
             battery_style = self._battery_status_style(snapshot.get("battery_category", "dim"))
             focus_label = snapshot.get("focus_label") or ""
             session_title = snapshot.get("session_title") or ""
+            field_set = self._get_status_bar_field_set()
+
+            def _ok(name: str) -> bool:
+                return field_set is None or name in field_set
+
+            if not _ok("title"):
+                session_title = ""
+
+            if not _ok("goal"):
+                goal_segment = ""
+            if not _ok("focus"):
+                focus_label = ""
+
+            def _append(frag_list, sep, *pieces):
+                if frag_list:
+                    frag_list.append(("class:status-bar-dim", sep))
+                frag_list.extend(pieces)
 
             if width < 52:
-                frags = [
-                    ("class:status-bar", " ⚕ "),
-                    ("class:status-bar-strong", snapshot["model_short"]),
-                    ("class:status-bar-dim", " · "),
-                    ("class:status-bar-dim", duration_label),
-                ]
+                frags = []
+                if _ok("model"):
+                    frags.append(("class:status-bar", " ⚕ "))
+                    frags.append(("class:status-bar-strong", snapshot["model_short"]))
+                if _ok("duration"):
+                    _append(frags, " · ", ("class:status-bar-dim", duration_label))
                 if goal_segment:
-                    frags.append(("class:status-bar-dim", " · "))
-                    frags.append(("class:status-bar-strong", goal_segment))
+                    _append(frags, " · ", ("class:status-bar-strong", goal_segment))
                 if focus_label:
-                    frags.append(("class:status-bar-dim", " · "))
-                    frags.append(("class:status-bar-strong", focus_label))
-                if yolo_active:
-                    frags.append(("class:status-bar-dim", " · "))
-                    frags.append(("class:status-bar-yolo", "⚠ YOLO"))
+                    _append(frags, " · ", ("class:status-bar-strong", focus_label))
+                if yolo_active and _ok("yolo"):
+                    _append(frags, " · ", ("class:status-bar-yolo", "⚠ YOLO"))
+                if not frags:
+                    frags = [
+                        ("class:status-bar", " ⚕ "),
+                        ("class:status-bar-strong", snapshot["model_short"]),
+                    ]
                 frags.append(("class:status-bar", " "))
             else:
                 percent = snapshot["context_percent"]
@@ -7204,98 +7529,108 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
                     bg_count = snapshot.get("active_background_tasks", 0)
                     bg_proc_count = snapshot.get("active_background_processes", 0)
                     bg_subagent_count = snapshot.get("active_background_subagents", 0)
-                    frags = [
-                        ("class:status-bar", " ⚕ "),
-                        ("class:status-bar-strong", snapshot["model_short"]),
-                        ("class:status-bar-dim", " · "),
-                        (self._status_bar_context_style(percent), percent_label),
-                    ]
-                    if compressions:
-                        frags.append(("class:status-bar-dim", " · "))
-                        frags.append((self._compression_count_style(compressions), f"🗜️ {compressions}"))
-                    if bg_count:
-                        frags.append(("class:status-bar-dim", " · "))
-                        frags.append(("class:status-bar-strong", f"▶ {bg_count}"))
-                    if bg_proc_count:
-                        frags.append(("class:status-bar-dim", " · "))
-                        frags.append(("class:status-bar-strong", f"⚙ {bg_proc_count}"))
-                    if bg_subagent_count:
-                        frags.append(("class:status-bar-dim", " · "))
-                        frags.append(("class:status-bar-strong", f"⛓ {bg_subagent_count}"))
+                    frags = []
+                    if _ok("model"):
+                        frags.append(("class:status-bar", " ⚕ "))
+                        frags.append(("class:status-bar-strong", snapshot["model_short"]))
+                    if _ok("context_pct"):
+                        _append(frags, " · ", (self._status_bar_context_style(percent), percent_label))
+                    cache = self._cache_hit_rate(snapshot, precision=0)
+                    if cache and _ok("cache_hit"):
+                        _append(frags, " · ", (self._cache_hit_rate_style(cache[0]), cache[1]))
+                    if compressions and _ok("compressions"):
+                        _append(frags, " · ", (self._compression_count_style(compressions), f"🗜️ {compressions}"))
+                    if bg_count and _ok("bg_tasks"):
+                        _append(frags, " · ", ("class:status-bar-strong", f"▶ {bg_count}"))
+                    if bg_proc_count and _ok("bg_processes"):
+                        _append(frags, " · ", ("class:status-bar-strong", f"⚙ {bg_proc_count}"))
+                    if bg_subagent_count and _ok("bg_subagents"):
+                        _append(frags, " · ", ("class:status-bar-strong", f"⛓ {bg_subagent_count}"))
                     if goal_segment:
-                        frags.append(("class:status-bar-dim", " · "))
-                        frags.append(("class:status-bar-strong", goal_segment))
-                    frags.extend([
-                        ("class:status-bar-dim", " · "),
-                        ("class:status-bar-dim", duration_label),
-                    ])
+                        _append(frags, " · ", ("class:status-bar-strong", goal_segment))
+                    if _ok("duration"):
+                        _append(frags, " · ", ("class:status-bar-dim", duration_label))
                     if focus_label:
-                        frags.append(("class:status-bar-dim", " · "))
-                        frags.append(("class:status-bar-strong", focus_label))
-                    if yolo_active:
-                        frags.append(("class:status-bar-dim", " · "))
-                        frags.append(("class:status-bar-yolo", "⚠ YOLO"))
+                        _append(frags, " · ", ("class:status-bar-strong", focus_label))
+                    if yolo_active and _ok("yolo"):
+                        _append(frags, " · ", ("class:status-bar-yolo", "⚠ YOLO"))
+                    if not frags:
+                        frags = [
+                            ("class:status-bar", " ⚕ "),
+                            ("class:status-bar-strong", snapshot["model_short"]),
+                        ]
                     frags.append(("class:status-bar", " "))
                 else:
-                    if snapshot["context_length"]:
-                        ctx_total = _format_context_length(snapshot["context_length"])
-                        ctx_used = format_token_count_compact(snapshot["context_tokens"])
-                        context_label = f"{ctx_used}/{ctx_total}"
-                    else:
-                        context_label = "ctx --"
-
                     bar_style = self._status_bar_context_style(percent)
                     compressions = snapshot.get("compressions", 0)
                     bg_count = snapshot.get("active_background_tasks", 0)
                     bg_proc_count = snapshot.get("active_background_processes", 0)
                     bg_subagent_count = snapshot.get("active_background_subagents", 0)
-                    frags = [
-                        ("class:status-bar", " ⚕ "),
-                        ("class:status-bar-strong", snapshot["model_short"]),
-                        ("class:status-bar-dim", " │ "),
-                        ("class:status-bar-dim", context_label),
-                        ("class:status-bar-dim", " │ "),
-                        (bar_style, self._build_context_bar(percent)),
-                        ("class:status-bar-dim", " "),
-                        (bar_style, percent_label),
-                    ]
-                    if compressions:
-                        frags.append(("class:status-bar-dim", " │ "))
-                        frags.append((self._compression_count_style(compressions), f"🗜️ {compressions}"))
-                    if bg_count:
-                        frags.append(("class:status-bar-dim", " │ "))
-                        frags.append(("class:status-bar-strong", f"▶ {bg_count}"))
-                    if bg_proc_count:
-                        frags.append(("class:status-bar-dim", " │ "))
-                        frags.append(("class:status-bar-strong", f"⚙ {bg_proc_count}"))
-                    if bg_subagent_count:
-                        frags.append(("class:status-bar-dim", " │ "))
-                        frags.append(("class:status-bar-strong", f"⛓ {bg_subagent_count}"))
+                    frags = []
+                    if _ok("model"):
+                        frags.append(("class:status-bar", " ⚕ "))
+                        frags.append(("class:status-bar-strong", snapshot["model_short"]))
+                    if _ok("context_detail"):
+                        if snapshot["context_length"]:
+                            ctx_total = _format_context_length(snapshot["context_length"])
+                            ctx_used = format_token_count_compact(snapshot["context_tokens"])
+                            context_label = f"{ctx_used}/{ctx_total}"
+                        else:
+                            context_label = "ctx --"
+                        _append(frags, " │ ", ("class:status-bar-dim", context_label))
+                    if _ok("context_pct"):
+                        _append(
+                            frags,
+                            " │ ",
+                            (bar_style, self._build_context_bar(percent)),
+                            ("class:status-bar-dim", " "),
+                            (bar_style, percent_label),
+                        )
+                    cache = self._cache_hit_rate(snapshot)
+                    if cache and _ok("cache_hit"):
+                        _append(frags, " │ ", (self._cache_hit_rate_style(cache[0]), cache[1]))
+                    _avg_lat = snapshot.get("avg_latency_label") or ""
+                    if _avg_lat and _ok("latency"):
+                        _append(frags, " │ ", ("class:status-bar-dim", f"◷ {_avg_lat}"))
+                    _avg_vel = snapshot.get("avg_velocity_label") or ""
+                    if _avg_vel and _ok("tps"):
+                        _append(frags, " │ ", ("class:status-bar-dim", f"↑ {_avg_vel}"))
+                    if compressions and _ok("compressions"):
+                        _append(frags, " │ ", (self._compression_count_style(compressions), f"🗜️ {compressions}"))
+                    if bg_count and _ok("bg_tasks"):
+                        _append(frags, " │ ", ("class:status-bar-strong", f"▶ {bg_count}"))
+                    if bg_proc_count and _ok("bg_processes"):
+                        _append(frags, " │ ", ("class:status-bar-strong", f"⚙ {bg_proc_count}"))
+                    if bg_subagent_count and _ok("bg_subagents"):
+                        _append(frags, " │ ", ("class:status-bar-strong", f"⛓ {bg_subagent_count}"))
                     if goal_segment:
-                        frags.append(("class:status-bar-dim", " │ "))
-                        frags.append(("class:status-bar-strong", goal_segment))
-                    frags.extend([
-                        ("class:status-bar-dim", " │ "),
-                        ("class:status-bar-dim", duration_label),
-                    ])
+                        _append(frags, " │ ", ("class:status-bar-strong", goal_segment))
+                    if _ok("duration"):
+                        _append(frags, " │ ", ("class:status-bar-dim", duration_label))
                     # Position 7: per-prompt elapsed timer (live or frozen)
                     prompt_elapsed = snapshot.get("prompt_elapsed")
-                    if prompt_elapsed:
-                        frags.append(("class:status-bar-dim", " │ "))
-                        frags.append(("class:status-bar-dim", prompt_elapsed))
+                    if prompt_elapsed and _ok("prompt_elapsed"):
+                        _append(frags, " │ ", ("class:status-bar-dim", prompt_elapsed))
                     # Position 8: idle time since the last final agent response
                     idle_since = snapshot.get("idle_since")
-                    if idle_since:
-                        frags.append(("class:status-bar-dim", " │ "))
-                        frags.append(("class:status-bar-dim", idle_since))
+                    if idle_since and _ok("idle_since"):
+                        _append(frags, " │ ", ("class:status-bar-dim", idle_since))
                     # Persistent focus-view badge — so the reduced-output mode
                     # is never invisible (mirrors the YOLO badge convention).
                     if focus_label:
-                        frags.append(("class:status-bar-dim", " │ "))
-                        frags.append(("class:status-bar-strong", focus_label))
-                    if yolo_active:
-                        frags.append(("class:status-bar-dim", " │ "))
-                        frags.append(("class:status-bar-yolo", "⚠ YOLO"))
+                        _append(frags, " │ ", ("class:status-bar-strong", focus_label))
+                    if yolo_active and _ok("yolo"):
+                        _append(frags, " │ ", ("class:status-bar-yolo", "⚠ YOLO"))
+                    # Session token total (Σ) — opt-in only via an explicit
+                    # fields list, so default bars never widen.
+                    total_tokens = snapshot.get("session_total_tokens", 0)
+                    if total_tokens and field_set is not None and "total_tokens" in field_set:
+                        _append(frags, " │ ", ("class:status-bar-dim", f"Σ{format_token_count_compact(total_tokens)}"))
+                    if not frags:
+                        frags = [
+                            ("class:status-bar", " ⚕ "),
+                            ("class:status-bar-strong", snapshot["model_short"]),
+                        ]
                     frags.append(("class:status-bar", " "))
 
             # Stash indicator (📌 N) — appended after all width tiers so the
@@ -7307,7 +7642,7 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
                 stash_indicator = self._prompt_stash.indicator()
             except Exception:
                 stash_indicator = ""
-            if stash_indicator:
+            if stash_indicator and _ok("stash"):
                 # Insert before the trailing pad fragment so the bar keeps its
                 # one-cell right margin.
                 if frags and frags[-1] == ("class:status-bar", " "):
@@ -7321,7 +7656,7 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
 
             # Battery is the first status-bar element when enabled: prepend it
             # ahead of the leading ⚕ marker in whichever width tier ran above.
-            if battery_label:
+            if battery_label and _ok("battery"):
                 frags[0:0] = [
                     ("class:status-bar", " "),
                     (battery_style, battery_label),
@@ -9971,6 +10306,9 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
                             api_key=_reset_result.api_key,
                             base_url=_reset_result.base_url,
                             api_mode=_reset_result.api_mode,
+                            capabilities=getattr(
+                                _reset_result, "runtime_capabilities", None
+                            ),
                         )
                     self.model = _reset_result.new_model
                     self.provider = _reset_result.target_provider
@@ -11145,6 +11483,7 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
                     api_key=snapshot.get("api_key", ""),
                     base_url=snapshot.get("base_url", ""),
                     api_mode=snapshot.get("api_mode", ""),
+                    capabilities=snapshot.get("capabilities"),
                 )
             except Exception as exc:
                 logger.warning("CLI one-turn model restore failed: %s", exc)
@@ -11289,6 +11628,7 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
                     api_key=result.api_key,
                     base_url=result.base_url,
                     api_mode=result.api_mode,
+                    capabilities=getattr(result, "runtime_capabilities", None),
                 )
             except Exception as exc:
                 # The agent rolled itself back to the old working model/client.
@@ -11679,6 +12019,7 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
                     api_key=result.api_key,
                     base_url=result.base_url,
                     api_mode=result.api_mode,
+                    capabilities=getattr(result, "runtime_capabilities", None),
                 )
             except Exception as exc:
                 # Agent rolled itself back; roll the CLI back too and abort so a
@@ -11848,20 +12189,20 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
     def _should_handle_background_command_inline(
         self, text: str, has_images: bool = False
     ) -> bool:
-        """Return True when /background should be dispatched while the agent runs.
+        """Return True when /bg or /btw should be dispatched while the agent runs.
 
-        Same queue problem /steer had. ``/background`` (``/bg``, ``/btw``)
-        exists to start independent work *without* waiting for the current
-        turn, but a slash command typed while the agent is busy goes into
-        ``_pending_input``, and ``process_loop`` is blocked inside
-        ``self.chat()`` for the whole run. The background task therefore only
-        starts once the foreground turn has finished, which is the one moment
-        it was not needed.
+        Same queue problem /steer had. ``/bg`` exists to start independent
+        work *without* waiting for the current turn, and ``/btw`` exists to
+        answer a side question about the in-flight conversation, but a slash
+        command typed while the agent is busy goes into ``_pending_input``,
+        and ``process_loop`` is blocked inside ``self.chat()`` for the whole
+        run. The side task would therefore only start once the foreground
+        turn has finished, which is the one moment it was not needed.
 
-        The command's own ``CommandDef`` already declares
+        Both commands' ``CommandDef`` entries already declare
         ``busy_policy="dispatch"``; the gateway honours that, the classic CLI
         never consulted it. Dispatching inline on the UI thread starts the
-        background session immediately and leaves the foreground turn running
+        side session immediately and leaves the foreground turn running
         untouched: no interrupt, no steer.
         """
         if not text or has_images or not _looks_like_slash_command(text):
@@ -11872,7 +12213,7 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
             from hermes_cli.commands import resolve_command
             base = text.split(None, 1)[0].lower().lstrip('/')
             cmd = resolve_command(base)
-            return bool(cmd and cmd.name == "background")
+            return bool(cmd and cmd.name in ("bg", "btw"))
         except Exception:
             return False
 
@@ -12476,8 +12817,10 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
             self._handle_agents_command()
         elif canonical == "journey":
             self._handle_journey_command(cmd_original)
-        elif canonical == "background":
+        elif canonical == "bg":
             self._handle_background_command(cmd_original)
+        elif canonical == "btw":
+            self._handle_btw_command(cmd_original)
         elif canonical == "queue":
             # Extract prompt after "/queue " or "/q "
             parts = cmd_original.split(None, 1)
@@ -12525,6 +12868,8 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
             self._handle_review_command(cmd_original)
         elif canonical == "loop":
             self._handle_loop_command(cmd_original)
+        elif canonical == "plan":
+            self._handle_plan_command(cmd_original)
         elif canonical == "moa":
             # /moa is one-shot sugar only: run a single prompt through the
             # default MoA preset, then restore the prior model. To *switch* to a
@@ -18114,12 +18459,12 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
                     event.app.invalidate()
                     return
 
-                # Same treatment for /background (/bg, /btw) while the agent is
-                # running.  Queuing it defeats the entire point of the command:
-                # process_loop is blocked inside self.chat(), so the background
-                # task would only start once the foreground turn it was meant to
-                # run alongside has already finished (#75221).  The foreground
-                # turn is left alone: no interrupt, no steer.
+                # Same treatment for /bg and /btw while the agent is
+                # running.  Queuing them defeats the entire point of the
+                # commands: process_loop is blocked inside self.chat(), so the
+                # side task would only start once the foreground turn it was
+                # meant to run alongside has already finished (#75221).  The
+                # foreground turn is left alone: no interrupt, no steer.
                 if self._should_handle_background_command_inline(
                     text, has_images=has_images
                 ):
@@ -19485,10 +19830,10 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
             wrap_lines=True,
         )
 
-        # Petdex mascot — right-aligned half-block sprite above the prompt,
-        # mirroring the TUI's PetPane. Collapses to height 0 when no pet is
-        # enabled, so it's a no-op for everyone else. The _pet_anim_loop thread
-        # advances frames + invalidates; align=RIGHT pins it to the edge.
+        # Petdex mascot — right-aligned Kitty placeholder or half-block sprite
+        # above the prompt. Collapses to height 0 when no pet is enabled.
+        # The animation thread queues virtual Kitty frames; after_render
+        # writes them out-of-band while prompt_toolkit owns the placeholder grid.
         self._pet_widget = Window(
             content=FormattedTextControl(self._pet_fragments),
             height=self._pet_widget_height,
@@ -20275,7 +20620,17 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
         # in _strip_leaked_terminal_responses still guards residual leaks.
         _cpr_disabled_output = _select_classic_cli_pt_output(sys.stdout)
 
-        # Create the application
+        # Kitty placeholders encode their image id in exact foreground RGB, so
+        # placeholder-capable terminals (kitty/Ghostty) use 24-bit color for
+        # the whole prompt_toolkit application — quantizing only that pane
+        # is not supported. WezTerm is excluded: it is not placeholder-capable.
+        # ColorDepth is imported here (not at module load) so tests that stub
+        # ``prompt_toolkit`` as a MagicMock can still import cli.
+        color_depth_kw = {}
+        if pet_render.supports_kitty_placeholders():
+            from prompt_toolkit.output import ColorDepth
+
+            color_depth_kw = {"color_depth": ColorDepth.DEPTH_24_BIT}
         app = Application(
             layout=layout,
             key_bindings=kb,
@@ -20283,6 +20638,7 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
             full_screen=False,
             mouse_support=False,
             **({"output": _cpr_disabled_output} if _cpr_disabled_output is not None else {}),
+            **color_depth_kw,
             # Read from display.cli_refresh_interval (default 0 = disabled).
             # When non-zero, prompt_toolkit redraws the UI on this cadence
             # during idle, keeping wall-clock status-bar read-outs ticking.
@@ -20304,6 +20660,7 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
             **({'cursor': _STEADY_CURSOR} if _STEADY_CURSOR is not None else {}),
         )
         _disable_prompt_toolkit_cpr_warning(app)
+        app.after_render += self._pet_flush_kitty_frame
         self._app = app  # Store reference for clarify_callback
 
         # ── Fix ghost status-bar lines on terminal resize ──────────────

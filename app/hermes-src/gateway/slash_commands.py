@@ -1950,6 +1950,9 @@ class GatewaySlashCommandsMixin:
                                     api_key=result.api_key,
                                     base_url=result.base_url,
                                     api_mode=result.api_mode,
+                                    capabilities=getattr(
+                                        result, "runtime_capabilities", None
+                                    ),
                                 )
                             except Exception as exc:
                                 # The in-place swap rolled the agent back to the
@@ -2009,6 +2012,8 @@ class GatewaySlashCommandsMixin:
                             "api_key": result.api_key,
                             "base_url": result.base_url,
                             "api_mode": result.api_mode,
+                            "request_overrides": dict(result.request_overrides or {}),
+                            "capabilities": dict(result.runtime_capabilities or {}),
                         }
 
                         # Write-through the non-secret parts to the session
@@ -2263,6 +2268,7 @@ class GatewaySlashCommandsMixin:
                         api_key=result.api_key,
                         base_url=result.base_url,
                         api_mode=result.api_mode,
+                        capabilities=getattr(result, "runtime_capabilities", None),
                     )
                 except Exception as exc:
                     # In-place swap rolled the agent back to the OLD working
@@ -2321,6 +2327,8 @@ class GatewaySlashCommandsMixin:
                 "api_key": result.api_key,
                 "base_url": result.base_url,
                 "api_mode": result.api_mode,
+                "request_overrides": dict(result.request_overrides or {}),
+                "capabilities": dict(result.runtime_capabilities or {}),
             }
             if one_turn:
                 if not hasattr(self, "_pending_one_turn_model_restores"):
@@ -3609,7 +3617,7 @@ class GatewaySlashCommandsMixin:
         return f"```diff\n{diff}{note}\n```"
 
     async def _handle_background_command(self, event: MessageEvent) -> str:
-        """Handle /background <prompt> — run a prompt in a separate background session.
+        """Handle /bg <prompt> — run a prompt in a separate background session.
 
         Spawns a new AIAgent in a background thread with its own session.
         When it completes, sends the result back to the same chat without
@@ -3644,6 +3652,101 @@ class GatewaySlashCommandsMixin:
 
         preview = prompt[:60] + ("..." if len(prompt) > 60 else "")
         return t("gateway.background.started", preview=preview, task_id=task_id)
+
+    async def _handle_btw_command(self, event: MessageEvent) -> str:
+        """Handle /btw <question> — answer a side question about this conversation.
+
+        Snapshots the session transcript and answers the question with a
+        one-shot auxiliary LLM call (main model by default) — the live
+        session's history is never touched, so role alternation and the
+        prompt cache stay intact and the current turn keeps running. The
+        answer is delivered to the chat when ready.
+
+        Deliberately different from /bg, which spawns a fresh contextless
+        agent session for independent work.
+        """
+        question = event.get_command_args().strip()
+        if not question:
+            return t("gateway.btw.usage")
+
+        source = event.source
+        session_entry = await self.async_session_store.get_or_create_session(source)
+        history = await self.async_session_store.load_transcript(session_entry.session_id)
+        if not history:
+            return t("gateway.btw.no_history")
+
+        try:
+            model, runtime_kwargs = self._resolve_session_agent_runtime(
+                source=source,
+            )
+        except Exception:
+            model, runtime_kwargs = None, {}
+        if not runtime_kwargs.get("api_key"):
+            return t("gateway.btw.no_provider")
+
+        main_runtime = {
+            "model": model,
+            "provider": runtime_kwargs.get("provider"),
+            "base_url": runtime_kwargs.get("base_url"),
+            "api_key": runtime_kwargs.get("api_key"),
+            "api_mode": runtime_kwargs.get("api_mode"),
+        }
+        history_snapshot = list(history)
+        # Prefer the cache-parity fork when this chat has a live cached
+        # AIAgent: the fork replays the snapshot against the warm provider
+        # prefix cache (same mechanism as the background self-improvement
+        # review), giving the side answer FULL conversation context at
+        # cache-read prices. If no cached agent exists (evicted / first
+        # message), the provider cache is cold anyway — the one-shot digest
+        # fallback inside answer_side_question handles it.
+        parent_agent = None
+        try:
+            session_key = self._session_key_for_source(source)
+            _cache_lock = getattr(self, "_agent_cache_lock", None)
+            if _cache_lock is not None:
+                with _cache_lock:
+                    _cached = self._agent_cache.get(session_key)
+                    parent_agent = (
+                        _cached[0] if isinstance(_cached, tuple) else _cached
+                    ) or None
+        except Exception:
+            parent_agent = None
+        event_message_id = self._reply_anchor_for_event(event)
+        _thread_metadata = self._thread_metadata_for_source(source, event_message_id)
+        adapter = self._adapter_for_source(source)
+        preview = question[:60] + ("..." if len(question) > 60 else "")
+
+        async def _run_side_question() -> None:
+            from agent.side_question import answer_side_question
+            try:
+                answer = await asyncio.to_thread(
+                    answer_side_question,
+                    question,
+                    history_snapshot,
+                    parent_agent=parent_agent,
+                    main_runtime=main_runtime,
+                )
+            except Exception as e:
+                logger.warning("/btw side question failed: %s", e)
+                if adapter is not None:
+                    await adapter.send(
+                        source.chat_id,
+                        t("gateway.btw.failed", preview=preview, error=str(e)),
+                        metadata=_thread_metadata,
+                    )
+                return
+            if adapter is not None:
+                await adapter.send(
+                    source.chat_id,
+                    t("gateway.btw.answer", preview=preview, answer=answer or ""),
+                    metadata=_thread_metadata,
+                )
+
+        _task = asyncio.create_task(_run_side_question())
+        self._background_tasks.add(_task)
+        _task.add_done_callback(self._background_tasks.discard)
+
+        return t("gateway.btw.started", preview=preview)
 
     def _save_gateway_config_key(self, key_path: str, value) -> bool:
         """Save a dot-separated key to config.yaml (shared by /reasoning, /fast
@@ -4168,6 +4271,75 @@ class GatewaySlashCommandsMixin:
         except Exception as e:
             logger.warning("Failed to save tool_progress mode: %s", e)
             return f"{descriptions[new_mode]}\n" + t("gateway.verbose.save_failed", error=e)
+
+    async def _handle_busy_command(self, event: MessageEvent) -> Union[str, EphemeralReply]:
+        """Handle /busy — control what happens when messaging while Hermes is working.
+
+        Usage:
+            /busy               Show current busy input mode
+            /busy status        Show current busy input mode
+            /busy queue         Queue messages for the next turn
+            /busy steer         Inject messages mid-run without interrupting
+            /busy interrupt     Interrupt the current run (default)
+        """
+        arg = event.get_command_args().strip().lower()
+        if not arg or arg == "status":
+            mode = self._effective_busy_input_mode(event.source)
+            if mode == "queue":
+                behavior = "queues for next turn"
+            elif mode == "steer":
+                behavior = "steers into current run (after next tool call)"
+            else:
+                behavior = "interrupts current run"
+            return EphemeralReply(
+                f"**Busy input mode: `{mode}`" + "\n"
+                f"Messages while busy: _{behavior}_" + "\n"
+                f"Change with `/busy queue`, `/busy steer`, or `/busy interrupt`."
+            )
+
+        if arg not in {"queue", "interrupt", "steer"}:
+            return EphemeralReply(
+                f"Unknown mode `{arg}`. Use `/busy queue`, `/busy steer`, or `/busy interrupt`."
+            )
+
+        # Persist before mutate
+        from cli import save_config_value
+        if save_config_value("display.busy_input_mode", arg):
+            profile_name = self._busy_profile_name_for_source(event.source)
+            if profile_name:
+                from gateway.run import _load_gateway_runtime_config
+
+                self._snapshot_profile_busy_modes(
+                    profile_name,
+                    _load_gateway_runtime_config(),
+                )
+            else:
+                self._busy_input_mode = arg
+                # busy_input_mode is the source of truth for the text mode
+                # too (run.py:_load_busy_text_mode) — re-derive it so the
+                # adapter refresh below doesn't read a stale value and keep
+                # interrupting after e.g. /busy queue (config IS saved; only
+                # the live session lagged until restart).
+                self._busy_text_mode = self._load_busy_text_mode()
+
+            adapter = self._adapter_for_source(event.source)
+            if adapter is not None:
+                adapter._busy_text_mode = self._effective_busy_text_mode(event.source)
+
+            if arg == "queue":
+                behavior = "Messages will be queued for the next turn while Hermes is busy."
+            elif arg == "steer":
+                behavior = "Messages will be steered into the current run (after the next tool call)."
+            else:
+                behavior = "Messages will interrupt the current run while Hermes is busy."
+            return EphemeralReply(
+                f"Busy input mode set to **`{arg}`** (saved)." + "\n"
+                f"_{behavior}_"
+            )
+        else:
+            return EphemeralReply(
+                f"Busy input mode could not be saved to config. Mode unchanged."
+            )
 
     async def _handle_footer_command(self, event: MessageEvent) -> str:
         """Handle /footer command — toggle the runtime-metadata footer.
@@ -4799,9 +4971,16 @@ class GatewaySlashCommandsMixin:
         temp_dir = tempfile.mkdtemp(prefix="hermes_save_")
         temp_path = os.path.join(temp_dir, filename)
         try:
-            content = render_session_for_save(export_data, fmt)
-            with open(temp_path, "w", encoding="utf-8") as f:
-                f.write(content)
+            # Off-loop: rendering a long session and writing it to disk are
+            # CPU/disk-bound and scale with transcript size (multi-MB for
+            # long sessions). Inline they stall every other chat on the
+            # gateway event loop (Pattern A). One thread hop covers both.
+            def _render_and_write() -> None:
+                rendered = render_session_for_save(export_data, fmt)
+                with open(temp_path, "w", encoding="utf-8") as f:
+                    f.write(rendered)
+
+            await asyncio.to_thread(_render_and_write)
 
             adapter = self.get_adapter(source.platform)
             if adapter:

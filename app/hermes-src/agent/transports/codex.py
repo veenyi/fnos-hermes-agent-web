@@ -7,8 +7,11 @@ streaming, or the _run_codex_stream() call path.
 
 import hashlib
 import json
+import logging
 import re
 from typing import Any, Dict, List, Optional
+
+logger = logging.getLogger(__name__)
 
 # Cron fires build session_id as ``cron_<job_id>_<YYYYMMDD_HHMMSS>`` (see
 # cron/scheduler.py). The trailing timestamp is per-fire noise; stripped so
@@ -234,6 +237,52 @@ def _content_cache_key(
     content = f"{scope_id}\x00{instructions or ''}\x00{tools_part}"
     digest = hashlib.sha256(content.encode("utf-8", errors="replace")).hexdigest()[:24]
     return f"pck_{digest}"
+
+
+def _profile_declared_efforts(
+    provider: Any, model: Optional[str], base_url: Any = None
+) -> Optional[tuple]:
+    """Provider-profile-declared reasoning-effort vocabulary, or None.
+
+    Thin, fail-open wrapper around
+    ``ProviderProfile.supported_reasoning_efforts`` (see providers/base.py
+    for the tri-state contract). Lazy import: provider plugins import this
+    transport during registry discovery, so a module-level import of
+    ``providers`` would cycle.
+
+    Resolution is by provider name first, then by the endpoint's host: a
+    named custom provider pointed at a known provider's endpoint (e.g. a
+    ``providers.my-proxy`` entry with base_url ``https://api.router.com/v1``,
+    which the host mandate routes onto this transport) must get that
+    provider's declared vocabulary too — the host, not the config-entry
+    name, is what validates the request.
+    """
+    try:
+        from providers import get_provider_profile
+
+        name = str(provider or "").strip().lower()
+        profile = get_provider_profile(name) if name else None
+        declared = (
+            profile.supported_reasoning_efforts(model)
+            if profile is not None
+            else None
+        )
+        if declared is None and base_url:
+            from agent.model_metadata import _infer_provider_from_url
+
+            inferred = _infer_provider_from_url(str(base_url))
+            if inferred and inferred != name:
+                inferred_profile = get_provider_profile(inferred)
+                if inferred_profile is not None:
+                    declared = inferred_profile.supported_reasoning_efforts(model)
+    except Exception as exc:
+        # Fail-open by design: a broken profile hook must never block the
+        # request — the transport falls back to its default vocabulary.
+        logger.debug("profile-declared efforts lookup failed: %s", exc)
+        return None
+    if declared is None:
+        return None
+    return tuple(declared)
 
 
 def _is_azure_foundry_responses(params: Dict[str, Any]) -> bool:
@@ -513,10 +562,26 @@ class ResponsesApiTransport(ProviderTransport):
             # none/low/medium/high/max.
             _supported = ACTUAL_RELAY_EFFORTS
         else:
-            # OpenAI/Codex Responses backend — per-model vocabulary
-            # (live-verified: "max" is gpt-5.6-only, "minimal" always
-            # rejected). #68365 premise confirmed.
-            _supported = codex_supported_efforts(model)
+            # Profile-declared vocabulary first: gateways that validate
+            # reasoning.effort per model (Ramp Router reads its live catalog)
+            # declare it via ProviderProfile.supported_reasoning_efforts.
+            # ``()`` is the definitive "this model takes no reasoning
+            # parameters" verdict — such backends 400 on any reasoning field
+            # rather than ignoring it, so suppress reasoning entirely.
+            _supported = None
+            _declared = _profile_declared_efforts(
+                params.get("provider"), model, params.get("base_url")
+            )
+            if _declared is not None:
+                if not _declared:
+                    reasoning_enabled = False
+                else:
+                    _supported = _declared
+            if _supported is None:
+                # OpenAI/Codex Responses backend — per-model vocabulary
+                # (live-verified: "max" is gpt-5.6-only, "minimal" always
+                # rejected). #68365 premise confirmed.
+                _supported = codex_supported_efforts(model)
         reasoning_effort = clamp_effort(reasoning_effort, _supported)
 
         response_tools = _responses_tools(tools)

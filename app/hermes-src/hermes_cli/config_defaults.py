@@ -382,6 +382,15 @@ DEFAULT_CONFIG = {
         # preserves the historical error + traceback behavior.
         "degraded_mode": "warn",
         "cwd": ".",  # Use current directory
+        # Root directory for Hermes' terminal session temp files (background
+        # logs/pid/exit files, code-execution sandboxes, etc.). When empty,
+        # Hermes uses TMPDIR/TMP/TEMP if set, otherwise a managed dir on real
+        # storage at HERMES_HOME/cache/terminal (auto-pruned after 72h) — NOT
+        # tmpfs /tmp, which is RAM-capped and small on many distros (e.g.
+        # Arch-based setups) and fills up under load. Set this to redirect
+        # session temp anywhere else; must be an absolute POSIX path that
+        # exists. User-set paths are never auto-pruned.
+        "temp_dir": "",
         # Terminal font family for the desktop app's embedded xterm.js terminal.
         # When set (e.g. "'CaskaydiaCoveNerdFont', 'JetBrains Mono', monospace"),
         # the desktop terminal uses this as the CSS font-family value, with the
@@ -586,7 +595,7 @@ DEFAULT_CONFIG = {
         # never contends with the user's running browser. Turning this back off
         # deletes the snapshot store (~/.hermes/browser-profile/) so copied
         # credentials don't outlive consent. Only Chromium-family default
-        # browsers are supported (Chrome, Edge, Brave, Chromium); a non-Chromium
+        # browsers are supported (Chrome, Edge, Brave, Brave Origin, Chromium); a non-Chromium
         # default (e.g. Firefox) fails closed with a clear message. Default
         # false. Also gates the browser_exec ``local`` argument, which forces a
         # real-profile local session even under a cloud browser backend. Toggle
@@ -602,6 +611,14 @@ DEFAULT_CONFIG = {
         # retry. Still locked afterward → stays blocked, no loop, no auto-kill.
         # OFF by default. No effect on macOS/Linux (copy-while-running works).
         "real_profile_autoclose": False,
+        # Pin WHICH source browser profile directory gets snapshotted for
+        # real-profile browsing (e.g. "Profile 2"). Unset/empty: follows the
+        # browser's last-used profile (Local State → profile.last_used). On a
+        # machine with several profiles (work + personal), last-used roulette
+        # can silently hand the agent the wrong identity; a pin locks it. A pin
+        # naming a directory that doesn't exist FAILS CLOSED with a fixable
+        # message rather than falling back to last-used.
+        "real_profile_pin": "",
         "allow_unsafe_evaluate": False,  # Legacy override: when true, browser_console(expression=...) bypasses the restrict_evaluate denylist entirely
         "restrict_evaluate": False,  # Opt-in denylist blocking sensitive JS primitives (cookies/storage/clipboard/network/form values) in browser_console(expression=...)
         # CDP supervisor — dialog + frame detection via a persistent WebSocket.
@@ -892,6 +909,13 @@ DEFAULT_CONFIG = {
                                       # while tokens are still moving — bounds a degenerate
                                       # trickle stream. Clamped to >= hygiene_timeout_seconds.
         "hygiene_failure_cooldown_seconds": 300,  # skip repeated failed hygiene attempts for this session
+        "hygiene_max_turn_hold_seconds": 10,  # max seconds an ARRIVING user turn is held while a
+                                      # still-streaming hygiene summary finishes. Distinct from
+                                      # hygiene_timeout_seconds (compressor inactivity budget):
+                                      # this bounds user-visible latency once real input is
+                                      # waiting. Kept well under chat-transport idle timeouts
+                                      # (Telegram ~30s). On expiry the turn proceeds
+                                      # uncompressed — an availability boundary, not a failure.
         "context_timeout_seconds": 120,  # inactivity budget for in-agent compress_context
                                       # (conversation loop, /compress, preflight, etc.).
                                       # Same progress-aware semantics as hygiene_timeout_seconds:
@@ -960,10 +984,11 @@ DEFAULT_CONFIG = {
                                       # the ChatGPT Codex backend; every other
                                       # route/model is unaffected. Hermes' local
                                       # compression stays armed as the fallback.
-        "codex_responses_compact_threshold": 200000,  # Server-side compaction trigger
-                                      # (input tokens). Clamped below the local
-                                      # compression threshold at request time so
-                                      # the server compacts before Hermes does.
+        "codex_responses_compact_threshold": None,  # Optional absolute server compaction
+                                      # trigger in input tokens. None follows the
+                                      # resolved local compression trigger with a
+                                      # safety margin. Explicit values only clamp
+                                      # downward so the server compacts first.
         "in_place": True,             # When True, compaction rewrites the message
                                       # list and rebuilds the system prompt WITHOUT
                                       # rotating the session id — the conversation
@@ -1586,6 +1611,20 @@ DEFAULT_CONFIG = {
             "enabled": False,
             "fields": ["model", "context_pct", "cwd"],  # Order shown; drop any to hide
         },
+        # CLI/TUI interactive status bar field customization (mirrors the
+        # runtime_footer.fields pattern above). When the list is non-empty,
+        # only the listed fields appear; the built-in order is preserved
+        # (the config controls visibility, not ordering). Empty = show the
+        # default set. Available: model, context_detail, context_pct,
+        # cache_hit, latency, tps, compressions, bg_tasks, bg_processes,
+        # bg_subagents, goal, duration, prompt_elapsed, idle_since, focus,
+        # yolo, stash, battery, title, total_tokens.
+        # total_tokens (session Σ) is opt-in only — it never shows unless
+        # listed here. Narrow terminals still drop wide-mode-only fields
+        # (context_detail, prompt_elapsed, idle_since) regardless of config.
+        "status_bar": {
+            "fields": [],  # empty = built-in defaults (all fields)
+        },
         "copy_shortcut": "auto",  # "auto" (platform default) | "ctrl_c" | "ctrl_shift_c" | "disabled"
         # Petdex animated mascot (https://github.com/crafter-station/petdex).
         # A purely cosmetic sprite that reacts to agent activity across the
@@ -2039,6 +2078,15 @@ DEFAULT_CONFIG = {
                            # "codex_responses", or "anthropic_messages". Empty = auto-detect
                            # from URL (e.g. /anthropic suffix → anthropic_messages). Set this
                            # explicitly for non-standard endpoints the heuristic can't detect.
+        # Per-child request settings sent on every delegation API call, on all
+        # three resolution branches (direct base_url, named provider, and
+        # parent-inherit). Top-level keys are API kwargs (e.g. service_tier);
+        # an "extra_body" sub-dict is merged into the request's extra_body —
+        # e.g. {"extra_body": {"provider": {"sort": "throughput"}}} routes
+        # OpenRouter delegation children to the fastest provider. Precedence:
+        # these explicit values merge OVER runtime/parent-derived overrides
+        # (explicit keys win; extra_body deep-merged one level).
+        "request_overrides": {},
         # When delegate_task narrows child toolsets explicitly, preserve any
         # MCP toolsets the parent already has enabled. On by default so
         # narrowing (e.g. toolsets=["web","browser"]) expresses "I want these
@@ -3712,10 +3760,7 @@ DEFAULT_CONFIG = {
         #   False = always enable the overlay
         "no_overlay": None,
         # cua-driver permission mode for each Hermes computer-use runtime.
-        #   standard (default) — cua-driver's own approval boundary. Protected
-        #     operations (e.g. attaching to an existing signed-in browser
-        #     profile) fail closed unless grant_existing_profile is enabled
-        #     below.
+        #   standard (default) — cua-driver's own approval boundary.
         #   bounded — repeatable automation under a user-reviewed session
         #     capability manifest (set capability_manifest below). No runtime
         #     prompts; anything outside the manifest fails closed inside
@@ -3736,14 +3781,6 @@ DEFAULT_CONFIG = {
         # cua-driver identity (com.trycua.driver / an official signing team).
         # Enable only when developing the driver locally from source.
         "allow_unsigned_driver": False,
-        # Pre-authorize existing-profile browser attachment in standard mode
-        # (cua-driver's trusted-launcher `--grant existing-profile`). When
-        # true, the agent can attach to your already-running, signed-in
-        # Chrome/Edge window — exposing that profile's live pages, cookies,
-        # and storage to the browser protocol — without a per-use prompt.
-        # Leave false to keep existing-profile attachment failing closed;
-        # isolated driver-owned profiles work either way.
-        "grant_existing_profile": False,
     },
 
     # =========================================================================

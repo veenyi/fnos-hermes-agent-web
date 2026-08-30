@@ -1,6 +1,2 @@
 PREV_OFFICIAL="0.20.6"
-<<<<<<< HEAD
-PREV_SHA="00bbfc690060"
-=======
-PREV_SHA="eff97a8a0545"
->>>>>>> a3c0116 (sync: 上游 0.20.6.08 → 0.20.6.09（agent_cache 修复 + gateway slash 命令）)
+PREV_SHA="66666f6e2eca"

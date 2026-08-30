@@ -44,6 +44,7 @@ from agent.memory_manager import build_memory_context_block
 from agent.memory_provider import is_trivial_prompt
 from agent.message_metadata import append_message, stamp_message_timestamp
 from agent.model_metadata import (
+    anchored_context_tokens,
     estimate_messages_tokens_rough,
     estimate_request_tokens_rough,
 )
@@ -62,7 +63,18 @@ def _preflight_request_tokens(
     count the checkpoint-pruned wire payload rather than the full durable
     transcript. Auxiliary compression still uses the generic estimator
     (``native_compaction_eligible=False``).
+
+    Usage-anchored fast path: when a provider-reported usage anchor is
+    valid for ``messages`` (see ``anchored_context_tokens``), it already
+    covers system prompt + tool schemas + full history EXACTLY as the
+    provider counted them, with estimation confined to the messages
+    appended since that response. Prefer it over every heuristic.
     """
+    anchored = anchored_context_tokens(
+        messages, getattr(agent, "_usage_anchor", None)
+    )
+    if anchored is not None:
+        return anchored
     tools = getattr(agent, "tools", None) or None
     try:
         from agent.codex_responses_adapter import (
@@ -871,10 +883,15 @@ def build_turn_context(
         _idle_gap = time.time() - getattr(agent, "_last_activity_ts", time.time())
         if _idle_gap >= _idle_after:
             _compressor = agent.context_compressor
-            _idle_tokens = estimate_request_tokens_rough(
+            # Route-aware pressure (#96995/#97602 class): on a compacted
+            # native-Codex session the generic durable-history figure
+            # overstates the wire by orders of magnitude and would fire an
+            # idle compaction the next request never needed. Reuse the
+            # preflight estimator (anchor → native pruned → generic).
+            _idle_tokens = _preflight_request_tokens(
+                agent,
                 messages,
-                system_prompt=active_system_prompt or "",
-                tools=agent.tools or None,
+                active_system_prompt or "",
             )
             # Post-compression target size: don't summarise a thread already
             # below what compaction would reduce it to.
@@ -1285,10 +1302,16 @@ def build_turn_context(
                 if callable(_clear_warn):
                     _clear_warn()
             else:
-                _uncompressed_tokens = estimate_request_tokens_rough(
+                # Route-aware (#96995/#97602 class): the warn site in the
+                # conversation loop now measures the checkpoint-pruned wire
+                # payload on native-Codex sessions, so the re-arm must use
+                # the same figure — otherwise a compacted session that fits
+                # on the wire never clears the dedup and future genuine
+                # overflow warnings stay suppressed.
+                _uncompressed_tokens = _preflight_request_tokens(
+                    agent,
                     messages,
-                    system_prompt=active_system_prompt or "",
-                    tools=agent.tools or None,
+                    active_system_prompt or "",
                 )
                 if _uncompressed_tokens <= _ctx_len:
                     _clear_warn = getattr(
