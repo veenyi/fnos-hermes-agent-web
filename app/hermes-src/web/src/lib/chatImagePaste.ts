@@ -69,6 +69,43 @@ export function firstImageFromClipboard(
   return imageFilesFromTransfer(data)[0] ?? null;
 }
 
+/**
+ * Extract image blobs from HTML clipboard data (data URLs in <img> tags).
+ *
+ * Mobile browsers (iOS Safari, Android Chrome) often paste images as
+ * `text/html` data URLs rather than as file objects in `clipboardData.items`.
+ * This helper parses the HTML, finds <img> data-URL sources, and converts
+ * them to File objects so the normal upload pipeline can handle them.
+ */
+export async function extractImagesFromHtmlClipboard(
+  html: string,
+): Promise<File[]> {
+  const files: File[] = [];
+  try {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, "text/html");
+    const imgs = doc.querySelectorAll("img[src^='data:image/']");
+    for (const img of imgs) {
+      const src = img.getAttribute("src");
+      if (!src) continue;
+      const mimeMatch = src.match(/^data:(image\/[^;,]+);/);
+      const mime = mimeMatch ? mimeMatch[1] : "image/png";
+      const b64 = src.replace(/^data:[^;]+;base64,/, "");
+      if (!b64) continue;
+      try {
+        const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+        const ext = IMAGE_MIME_EXT[mime] || "png";
+        files.push(new File([bytes], `pasted.${ext}`, { type: mime }));
+      } catch {
+        // malformed base64 — skip
+      }
+    }
+  } catch {
+    // parse failure — return empty
+  }
+  return files;
+}
+
 /** True when a drag payload may contain an image (for dragover preventDefault). */
 export function transferMayContainImage(data: DataTransfer | null): boolean {
   if (!data) return false;

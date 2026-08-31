@@ -71,6 +71,7 @@ import {
   shouldFollowPtyOutput,
 } from "@/lib/pty-scroll";
 import {
+  extractImagesFromHtmlClipboard,
   imageFilesFromTransfer,
   transferMayContainImage,
   uploadChatImage,
@@ -660,10 +661,24 @@ export default function ChatPage({ isActive = true }: { isActive?: boolean }) {
     };
     const handleBrowserPaste = (ev: ClipboardEvent) => {
       const files = imageFilesFromTransfer(ev.clipboardData);
-      if (!files.length) return;
-      ev.preventDefault();
-      ev.stopPropagation();
-      uploadAndAttachImages(files);
+      if (files.length) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        uploadAndAttachImages(files);
+        return;
+      }
+      // Mobile browsers (iOS Safari, Android Chrome) paste images as HTML
+      // data URLs (<img src="data:...">) rather than file objects. Try
+      // parsing text/html clipboard to recover them.
+      const html = ev.clipboardData?.getData("text/html") || "";
+      if (!html) return;
+      void (async () => {
+        const mobileFiles = await extractImagesFromHtmlClipboard(html);
+        if (!mobileFiles.length) return;
+        ev.preventDefault();
+        ev.stopPropagation();
+        uploadAndAttachImages(mobileFiles);
+      })();
     };
     const handleBrowserDragOver = (ev: DragEvent) => {
       if (!transferMayContainImage(ev.dataTransfer)) return;
