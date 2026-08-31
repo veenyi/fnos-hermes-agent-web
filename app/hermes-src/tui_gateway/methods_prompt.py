@@ -335,6 +335,94 @@ def _(rid, params: dict) -> dict:
     session, err = _sess_nowait(params, rid)
     if err:
         return err
+    hosted_task = params.get("_hosted_task")
+    hosted_terminal_callback = params.get("_hosted_terminal_callback")
+    internal_hosted_submit = hosted_task is not None or hosted_terminal_callback is not None
+    if internal_hosted_submit:
+        if session.get("source") != "bot_room":
+            return _err(rid, 4120, "hosted room turns require a bot_room session")
+        if not isinstance(hosted_task, dict) or not callable(hosted_terminal_callback):
+            return _err(rid, 4120, "invalid hosted room turn proof")
+        required_hosted_fields = {
+            "room_id",
+            "task_id",
+            "thread_id",
+            "turn_id",
+            "execution_generation",
+        }
+        if set(hosted_task) != required_hosted_fields or not all(
+            isinstance(hosted_task.get(field), str) and hosted_task[field]
+            for field in required_hosted_fields - {"execution_generation"}
+        ) or not isinstance(hosted_task.get("execution_generation"), int):
+            return _err(rid, 4120, "invalid hosted room turn proof")
+    else:
+        # Older Desktop builds know the `Group: <room-id>` session title but
+        # not the hosted authority marker. Once a gateway owns that room, a
+        # direct prompt into its member session would start a second renderer
+        # driver. Fence it server-side instead of trusting client awareness.
+        title = str(session.get("title") or "")
+        if title.startswith("Group: "):
+            room_id = title.removeprefix("Group: ").strip()
+            if room_id:
+                try:
+                    from gateway.hosted_rooms import (
+                        HostedRoomError,
+                        RoomProbeUnavailableError,
+                        default_db_path,
+                        probe_hosted_room,
+                        probe_peer_room_reservation,
+                    )
+
+                    hosted = probe_hosted_room(default_db_path(), room_id=room_id)
+                    peer = False
+                    if not hosted:
+                        from hermes_constants import named_profile_home
+
+                        session_profile_home = named_profile_home(
+                            str(session.get("profile_home") or "")
+                        )
+                        requested_profile = (
+                            (
+                                session_profile_home.name
+                                if session_profile_home is not None
+                                else ""
+                            )
+                            or str(params.get("profile") or "").strip()
+                            or str(_current_profile_name() or "default").strip()
+                        )
+                        peer = probe_peer_room_reservation(
+                            default_db_path(),
+                            room_id=room_id,
+                            target_profile=requested_profile,
+                        )
+                except RoomProbeUnavailableError:
+                    return _err(
+                        rid,
+                        5122,
+                        "Could not verify this group. Try again after the gateway recovers.",
+                    )
+                except HostedRoomError:
+                    # Legacy Desktop sessions used the display name after
+                    # "Group: "; those names are not hosted room ids.
+                    pass
+                except Exception:
+                    return _err(
+                        rid,
+                        5122,
+                        "Could not verify this group. Try again after the gateway recovers.",
+                    )
+                else:
+                    if hosted or peer:
+                        return _err(
+                            rid,
+                            4122,
+                            (
+                                "This room is managed by its gateway. "
+                                if hosted
+                                else "This room is managed by its home host. "
+                            )
+                            + "Update Hermes Desktop to continue it.",
+                        )
     if (limit_message := _ensure_active_session_slot(sid, session)) is not None:
         return _err(rid, 4090, limit_message)
     # Which desktop window this message was typed into. Rewritten on every
@@ -357,6 +445,12 @@ def _(rid, params: dict) -> dict:
         )
     isolation_cfg = _load_dashboard_process_isolation_config()
     turn_isolation = _session_uses_compute_host(session, isolation_cfg)
+    if internal_hosted_submit and turn_isolation:
+        return _err(
+            rid,
+            4121,
+            "hosted room turns do not support isolated compute workers yet",
+        )
     # Re-bind to the current client transport for this request. This keeps
     # streaming events on the active websocket even if an earlier disconnect
     # or fallback moved the session transport to stdio.
@@ -366,6 +460,8 @@ def _(rid, params: dict) -> dict:
         busy_transport = None
         with session["history_lock"]:
             if session.get("running"):
+                if internal_hosted_submit:
+                    return _err(rid, 4091, "hosted room member session is busy")
                 # Don't reject a mid-turn prompt — queue it (and, by default,
                 # interrupt the live turn) so it runs as the next turn. The
                 # provider interrupt itself must happen after this lock is
@@ -812,6 +908,8 @@ def _(rid, params: dict) -> dict:
         session["running"] = True
         session["_turn_cancel_requested"] = False
         session["last_active"] = time.time()
+        if internal_hosted_submit:
+            session["_hosted_room_task"] = dict(hosted_task)
         _start_inflight_turn(session, text)
 
     if turn_isolation:
@@ -908,7 +1006,14 @@ def _(rid, params: dict) -> dict:
                     },
                 )
                 return
-        _run_prompt_submit(rid, sid, session, text, display_kind=display_kind)
+        _run_prompt_submit(
+            rid,
+            sid,
+            session,
+            text,
+            display_kind=display_kind,
+            terminal_callback=hosted_terminal_callback,
+        )
 
     run_thread = threading.Thread(target=run_after_agent_ready, daemon=True)
     # Keep a handle so session.interrupt can tell a live turn from a stuck

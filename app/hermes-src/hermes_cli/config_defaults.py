@@ -521,7 +521,7 @@ DEFAULT_CONFIG = {
         "extract_char_limit": 15000,  # per-page char budget for web_extract; larger pages truncate + store full text in cache/web
         # Keyless free-tier ring: with NO web backend configured or keyed,
         # web_search/web_extract rotate round-robin across five vendors'
-        # public free tiers (exa, parallel, tavily, firecrawl, keenable),
+        # public free tiers (exa, parallel, firecrawl, keenable),
         # failing over to the next ring vendor on rate limits. Never
         # pre-empts a configured or keyed backend. Set false to disable.
         "keyless_fallback": True,
@@ -531,7 +531,7 @@ DEFAULT_CONFIG = {
         # (no sticky failover). Off when keyless_fallback is false.
         "keyless_rescue": True,
         # Per-provider tier selection for ring vendors with both a keyless
-        # free endpoint and a keyed paid path (exa, parallel, tavily,
+        # free endpoint and a keyed paid path (exa, parallel,
         # firecrawl, keenable). Set by the `hermes tools` picker's
         # "Free (keyless)" / "Paid (API key)" rows.
         #   free  — always use the anonymous free endpoint (even with a key)
@@ -2521,6 +2521,16 @@ DEFAULT_CONFIG = {
     #             safe; mirrors cron_mode deny)
     #   approve — auto-approve all dangerous commands in single-query mode
     #
+    # unattended_mode — what to do when a session on an unattended
+    # programmatic platform (webhook, msgraph_webhook, api_server) hits a
+    # dangerous command. These surfaces bind a session platform like chat
+    # gateways do, but have no send_exec_approval and no /approve channel —
+    # a pending approval there just blocks for the full timeout with nobody
+    # to answer (#37284, #87509):
+    #   deny    — block the command instantly and let the agent find another
+    #             way (default, safe; mirrors cron_mode deny)
+    #   approve — auto-approve all dangerous commands on unattended platforms
+    #
     # timeout — seconds to wait for the user's approve/deny before failing
     # closed (deny). Shared by the CLI prompt and gateway/messaging waits.
     # Messaging approvals arrive as a push notification the user may not see
@@ -2531,6 +2541,7 @@ DEFAULT_CONFIG = {
         "timeout": 300,
         "cron_mode": "deny",
         "single_query_mode": "deny",
+        "unattended_mode": "deny",
         # Operator-customizable policy text for smart approvals. When
         # non-empty, this is appended to the smart-approval guardian's
         # SYSTEM prompt (trusted channel) as additional rules — e.g.
@@ -4426,14 +4437,6 @@ OPTIONAL_ENV_VARS = {
         "password": True,
         "category": "tool",
         "advanced": True,
-    },
-    "TAVILY_API_KEY": {
-        "description": "Tavily API key for AI-native web search and extract (optional — keyless works without it)",
-        "prompt": "Tavily API key",
-        "url": "https://app.tavily.com/home",
-        "tools": ["web_search", "web_extract"],
-        "password": True,
-        "category": "tool",
     },
     "KEENABLE_API_KEY": {
         "description": "Keenable API key for fast independent-index web search and page fetch (optional — keyless free tier works without it)",

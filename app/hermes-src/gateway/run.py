@@ -288,6 +288,161 @@ def hygiene_compaction_recovered(
     )
 
 
+def _hygiene_compression_timeout_message(
+    *,
+    total_exhausted: bool,
+    elapsed: float,
+    idle_timeout: float,
+    progress_observed: bool,
+) -> str:
+    """Describe the host timeout that actually ended hygiene compression."""
+    if total_exhausted:
+        progress = (
+            " after summary output was observed" if progress_observed else ""
+        )
+        return (
+            "⚠️ Context compression reached its total ceiling after "
+            f"{elapsed:.1f}s{progress}. No messages were dropped — continuing "
+            "without compression. Run /compress to retry or /reset for a clean "
+            "session."
+        )
+    return (
+        f"⚠️ Context compression timed out after {idle_timeout:.1f}s with no "
+        "output from the summary model. No messages were dropped — continuing "
+        "without compression. Run /compress to retry, /reset for a clean "
+        "session, or check your auxiliary.compression model configuration."
+    )
+
+
+async def run_codex_hygiene_compaction(
+    gateway,
+    session_key: str,
+    session_id: str,
+    *,
+    auto_mode: str,
+    history: list,
+    approx_tokens: int,
+    timeout_seconds: float,
+    failure_cooldown_seconds: float = 300.0,
+) -> str:
+    """Session hygiene for ``codex_app_server`` sessions (#73503).
+
+    On this runtime the model's real working context is the app-server's
+    server-side thread, not Hermes' transcript: ``CodexAppServerSession`` is
+    constructed with no history and each turn submits only the new user
+    message (agent/codex_runtime.py), so the persisted transcript is a mirror
+    that is never replayed into a thread. Two consequences drive this path:
+
+    * Rewriting the local mirror (the detached hygiene agent's normal
+      compression) shrinks nothing the model actually carries — it was a
+      permanent no-op ("compressed 150 -> 150 msgs").
+    * Evicting the cached live agent afterwards destroys the only real
+      context: the next turn spawns an EMPTY thread and the model starts
+      blank while Hermes still mirrors a full history (abrupt amnesia — the
+      user-facing damage documented on #73503).
+
+    So hygiene must compact the LIVE cached agent's thread via the
+    app-server's own ``thread/compact/start`` (through
+    ``_compress_context_via_codex_app_server``) and KEEP that agent cached.
+    Never build a detached compressor and never evict here.
+
+    Mode contract (``compression.codex_app_server_auto``): only ``hermes``
+    lets Hermes' threshold initiate app-server compaction; ``native`` leaves
+    the schedule to codex itself and ``off`` disables Hermes-initiated
+    automatic compaction entirely — both return without touching the thread
+    or the transcript, and neither may fall back to the local compressor.
+
+    Returns an outcome tag for logging/tests: ``compacted``,
+    ``skipped:<reason>`` or ``failed:<reason>``.
+    """
+    mode = str(auto_mode or "native").lower()
+    if mode not in {"native", "hermes", "off"}:
+        mode = "native"
+    if mode != "hermes":
+        # native: the app-server compacts on its own schedule; off: the
+        # operator disabled Hermes-initiated automatic compaction. A local
+        # transcript fallback is wrong in EVERY mode here (it cannot shrink
+        # the thread), so both modes are a clean skip — crucially without
+        # the detached-compressor path's cache eviction.
+        return f"skipped:mode={mode}"
+
+    agent = None
+    lock = getattr(gateway, "_agent_cache_lock", None)
+    cache = getattr(gateway, "_agent_cache", None)
+    if cache is not None:
+        try:
+            if lock:
+                with lock:
+                    entry = cache.get(session_key)
+            else:
+                entry = cache.get(session_key)
+        except Exception:
+            entry = None
+        agent = entry[0] if isinstance(entry, tuple) and entry else entry
+    if agent is None or agent is _AGENT_PENDING_SENTINEL:
+        # No live agent → no live thread → nothing real to compact. The
+        # mirror-only rewrite the detached path would perform is exactly the
+        # no-op this function exists to remove, so skip honestly instead.
+        return "skipped:no-cached-agent"
+    if getattr(agent, "_codex_session", None) is None:
+        return "skipped:no-live-thread"
+
+    loop = asyncio.get_running_loop()
+    compressor = getattr(agent, "context_compressor", None)
+    count_before = getattr(compressor, "compression_count", 0)
+    try:
+        await asyncio.wait_for(
+            loop.run_in_executor(
+                None,
+                lambda: agent._compress_context(
+                    history,
+                    "",
+                    approx_tokens=approx_tokens,
+                ),
+            ),
+            timeout=max(float(timeout_seconds), 1.0),
+        )
+    except asyncio.TimeoutError:
+        # The executor thread keeps running (compact_thread has its own RPC
+        # timeouts); brake per-turn retries so a wedged app-server does not
+        # re-trigger a compaction attempt on every message.
+        if failure_cooldown_seconds >= 0:
+            _record_hygiene_cooldown(
+                gateway,
+                session_id,
+                failure_cooldown_seconds,
+                "codex app-server thread compaction timed out",
+            )
+        logger.warning(
+            "Session hygiene: codex app-server thread compaction for "
+            "session %s timed out after %.1fs; continuing without compaction",
+            session_id,
+            timeout_seconds,
+        )
+        return "failed:timeout"
+    except Exception as exc:
+        logger.warning(
+            "Session hygiene: codex app-server thread compaction for "
+            "session %s failed: %s",
+            session_id,
+            exc,
+        )
+        return f"failed:{exc}"
+
+    count_after = getattr(compressor, "compression_count", 0)
+    if count_after > count_before:
+        # A native compaction boundary was recorded on the live agent
+        # (thread compacted server-side; transcript intentionally NOT
+        # rewritten — state.db records the boundary, the mirror stays
+        # intact and the agent stays cached).
+        _reset_hygiene_failure_streak(gateway, session_key)
+        return "compacted"
+    # compress_context returned without recording a boundary: an internal
+    # skip (its own failure cooldown) or a compaction error — the codex
+    # route already persisted its own failure cooldown in that case.
+    return "failed:no-boundary"
+
+
 def _record_hygiene_cooldown(
     gateway,
     session_id: str,
@@ -4435,6 +4590,36 @@ class TurnRunner:
     def progress_callback(self, event_type: str, tool_name: str = None, preview: str = None, args: dict = None, **kwargs):
         """Callback invoked by agent on tool lifecycle events."""
         ctx = self._ctx
+        # Failed subagent → one clean user-facing notice. Handled FIRST,
+        # before every progress-queue gate: platforms that keep
+        # tool_progress off (Telegram, Slack, ...) must still hear about a
+        # delegation that died — a silently-vanishing subagent looks like
+        # the agent just dropped the task (community report, Aug 2026).
+        # Success/interrupt completions stay quiet; only terminal failure
+        # statuses render, via the same notice rail as credit warnings.
+        if event_type == "subagent.complete":
+            _sub_status = kwargs.get("status")
+            try:
+                from tools.delegate_tool import (
+                    SUBAGENT_FAILURE_STATUSES,
+                    format_subagent_failure_line,
+                )
+                if _sub_status in SUBAGENT_FAILURE_STATUSES and ctx._run_still_current():
+                    _line = format_subagent_failure_line(
+                        kwargs.get("goal"),
+                        _sub_status,
+                        error=kwargs.get("summary") or preview,
+                        duration_seconds=kwargs.get("duration_seconds"),
+                    )
+                    safe_schedule_threadsafe(
+                        self._runner._deliver_platform_notice(ctx.source, _line),
+                        ctx._loop_for_step,
+                        logger=logger,
+                        log_message="subagent failure notice scheduling error",
+                    )
+            except Exception:
+                logger.debug("subagent failure notice failed", exc_info=True)
+            return
         # Live status line (Slack's assistant status): stash the current
         # tool phrase on the adapter; the _keep_typing refresh renders it
         # within a couple of seconds. Handled before every other gate
@@ -5953,15 +6138,12 @@ class TurnRunner:
         # who set thinking_progress:true but kept tool_progress:off got a
         # None callback — so _thinking scratch bubbles never relayed even
         # though the progress queue was created for them.
-        agent.tool_progress_callback = (
-            ctx.progress_callback
-            if (
-                ctx.needs_progress_queue
-                or ctx.log_mode_enabled
-                or ctx._live_status_adapter is not None
-            )
-            else None
-        )
+        # Always attached (previously gated to None when no progress surface
+        # was active): the callback body gates each event class itself, and
+        # subagent-failure notices must fire even on platforms with
+        # tool_progress/thinking off — the None gate was exactly why a dead
+        # subagent vanished silently there.
+        agent.tool_progress_callback = ctx.progress_callback
         # Compose ID-bearing lifecycle consumers: Discord's one-time voice
         # ack and Slack's native task cards both ride the authoritative
         # start callback, so neither has to infer identity from tool names.
@@ -12900,6 +13082,43 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
             logger.warning("Legacy session recovery on startup failed: %s", exc)
         return exact, fallback
 
+    @staticmethod
+    def _start_hosted_room_worker_sync():
+        """Start the local Group Chat worker without importing the dashboard."""
+
+        import tui_gateway.server  # noqa: F401
+        from tui_gateway import methods_groups
+
+        service = methods_groups.get_hosted_room_service()
+        if service is None:
+            service = methods_groups.start_hosted_room_service()
+        if service is None:
+            raise RuntimeError("Group Chat worker has no bound session backend")
+        status = service.runtime.status()
+        if not status.get("running") or status.get("stopping"):
+            raise RuntimeError("Group Chat worker did not start")
+        return service
+
+    async def _ensure_hosted_room_worker(self):
+        return await asyncio.to_thread(self._start_hosted_room_worker_sync)
+
+    async def _hosted_room_worker_watcher(self, interval: float = 1.0) -> None:
+        """Keep the room worker alive for the messaging gateway lifetime."""
+
+        while self._running:
+            await self._ensure_hosted_room_worker()
+            await asyncio.sleep(interval)
+
+    async def _stop_hosted_room_worker(self, timeout: float = 5.0) -> bool:
+        """Pause room execution durably without interrupting accepted turns."""
+
+        from tui_gateway import methods_groups
+
+        return await asyncio.to_thread(
+            methods_groups.stop_hosted_room_service,
+            timeout=timeout,
+        )
+
     def _start_loop_heartbeat_task(self) -> None:
         """Start the loop-liveness heartbeat task (#66892), idempotent.
 
@@ -13705,6 +13924,19 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
         self._running = True
         self._install_plugin_message_injector()
         self._update_runtime_status("running")
+
+        try:
+            await self._ensure_hosted_room_worker()
+        except Exception:
+            logger.error(
+                "Group Chat worker failed to start; mutating Group Chat commands "
+                "will fail closed until supervision recovers it",
+                exc_info=True,
+            )
+        self._spawn_supervised(
+            self._hosted_room_worker_watcher,
+            "hosted_room_worker",
+        )
 
         self._start_loop_heartbeat_task()
 
@@ -15561,6 +15793,22 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
             self._running = False
             self._clear_plugin_message_injector()
             self._draining = True
+
+            stop_room_worker = getattr(self, "_stop_hosted_room_worker", None)
+            if callable(stop_room_worker):
+                try:
+                    stopped = await stop_room_worker(timeout=5.0)
+                    if not stopped:
+                        logger.warning(
+                            "Group Chat worker is still settling durable work; "
+                            "the next gateway start will recover it"
+                        )
+                except Exception:
+                    logger.warning(
+                        "Group Chat worker could not stop cleanly; the next gateway "
+                        "start will recover durable work",
+                        exc_info=True,
+                    )
 
             stop_watchdog = getattr(self, "_stop_systemd_watchdog", None)
             if callable(stop_watchdog):
@@ -20486,7 +20734,51 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
                             session_key=session_key,
                             user_config=_hyg_data if isinstance(_hyg_data, dict) else None,
                         )
-                        if _hyg_runtime.get("api_key"):
+                        _hyg_api_mode = str(
+                            _hyg_runtime.get("api_mode") or ""
+                        ).lower()
+                        if _hyg_api_mode == "codex_app_server":
+                            # codex app-server runtime: the model's real
+                            # context is the app-server's server-side thread,
+                            # not the transcript mirror. The detached-agent
+                            # block below could only rewrite the mirror (a
+                            # guaranteed no-op for the thread) and its
+                            # finally-clause eviction would destroy the live
+                            # thread — the next turn then starts blank
+                            # (#73503). Route to the live cached agent's
+                            # thread/compact/start instead and KEEP it cached.
+                            _hyg_codex_auto = "native"
+                            _hyg_comp_cfg = (
+                                _hyg_data.get("compression")
+                                if isinstance(_hyg_data, dict)
+                                else None
+                            )
+                            if isinstance(_hyg_comp_cfg, dict):
+                                _hyg_codex_auto = str(
+                                    _hyg_comp_cfg.get(
+                                        "codex_app_server_auto", "native"
+                                    )
+                                    or "native"
+                                )
+                            _hyg_codex_outcome = await run_codex_hygiene_compaction(
+                                self,
+                                session_key,
+                                session_entry.session_id,
+                                auto_mode=_hyg_codex_auto,
+                                history=history,
+                                approx_tokens=_approx_tokens,
+                                timeout_seconds=_hyg_total_ceiling_seconds,
+                                failure_cooldown_seconds=_hyg_failure_cooldown_seconds,
+                            )
+                            logger.info(
+                                "Session hygiene (codex app-server): %s "
+                                "(session=%s, mode=%s, ~%s tokens)",
+                                _hyg_codex_outcome,
+                                session_entry.session_id,
+                                _hyg_codex_auto,
+                                f"{_approx_tokens:,}",
+                            )
+                        elif _hyg_runtime.get("api_key"):
                             # Pass the FULL transcript (tool results included).
                             # Filtering to user/assistant-only starved the
                             # compressor: tool results are usually the bulk of
@@ -20581,7 +20873,9 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
                                     _hyg_agent._print_fn = lambda *a, **kw: None
 
                                     loop = asyncio.get_running_loop()
-                                    _hyg_commit_fence = CompressionCommitFence()
+                                    _hyg_commit_fence = CompressionCommitFence(
+                                        total_ceiling_seconds=_hyg_total_ceiling_seconds
+                                    )
                                     _hyg_future = loop.run_in_executor(
                                         None,
                                         lambda: _hyg_agent._compress_context(
@@ -20609,10 +20903,20 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
                                             # from the start of this wait slice —
                                             # otherwise silence can approach 2x
                                             # the configured timeout.
-                                            _slice = max(
-                                                _hyg_timeout_seconds
-                                                - _hyg_commit_fence.seconds_since_progress(),
-                                                0.005,
+                                            _hyg_waited = (
+                                                time.monotonic() - _hyg_wait_started
+                                            )
+                                            _slice = min(
+                                                max(
+                                                    _hyg_timeout_seconds
+                                                    - _hyg_commit_fence.seconds_since_progress(),
+                                                    0.005,
+                                                ),
+                                                max(
+                                                    _hyg_total_ceiling_seconds
+                                                    - _hyg_waited,
+                                                    0.005,
+                                                ),
                                             )
                                             # Bounded turn-hold (#TKT-0029): cap
                                             # this slice at the remaining
@@ -20786,6 +21090,20 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
                                                 )
                                             raise
                                     except asyncio.TimeoutError:
+                                        _hyg_waited = time.monotonic() - _hyg_wait_started
+                                        _hyg_total_exhausted = (
+                                            _hyg_waited >= _hyg_total_ceiling_seconds
+                                            or _hyg_commit_fence.deadline_exceeded
+                                        )
+                                        if _hyg_total_exhausted:
+                                            # The worker cooperatively checks this
+                                            # deadline between digest calls. Keep
+                                            # its lease until it exits so an
+                                            # unchanged session cannot overlap a
+                                            # retry. Inactivity timeouts retain the
+                                            # established release behavior for a
+                                            # provider call that may never return.
+                                            _hyg_commit_fence.retain_compression_lock_until_worker_done()
                                         _cancelled = None
                                         while _cancelled is None:
                                             # #76354 F1: a hung commit retains the
@@ -20813,12 +21131,11 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
                                             # successful compaction as a timeout.
                                             _compressed, _ = await _hyg_future
                                         else:
-                                            # #76354 F4: release the timed-out
-                                            # worker's durable lease via the
-                                            # holder-qualified hook so the next
-                                            # compressor can acquire the lock
-                                            # immediately (no ABA against a new
-                                            # holder — release is holder-scoped).
+                                            # Release an inactivity-timed-out
+                                            # worker's holder-qualified lease
+                                            # promptly. Total-ceiling attempts
+                                            # retained it above, so this is a
+                                            # no-op until worker cleanup there.
                                             _hyg_commit_fence.release_cancelled_compression_lock()
                                             self._defer_agent_cleanup_until_future_done(
                                                 _hyg_future,
@@ -20833,12 +21150,18 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
                                                     session_key,
                                                     _hyg_failure_cooldown_seconds,
                                                 )
+                                                _timeout_reason = (
+                                                    "session hygiene compression total "
+                                                    "ceiling exhausted"
+                                                    if _hyg_total_exhausted
+                                                    else "session hygiene compression "
+                                                    "timed out with no output from the "
+                                                    "summary model"
+                                                )
                                                 _record_hygiene_cooldown(
                                                     self, session_entry.session_id,
                                                     _hyg_cooldown,
-                                                    "session hygiene compression "
-                                                    "timed out with no output from "
-                                                    "the summary model",
+                                                    _timeout_reason,
                                                 )
                                             from agent.session_activity import (
                                                 ActivityProvenance,
@@ -20850,24 +21173,39 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
                                                 "hygiene compression timeout "
                                                 "activity stamp failed",
                                             )
-                                            logger.warning(
-                                                "Session hygiene compression for session %s "
-                                                "made no progress for %.1fs "
-                                                "(total wait %.1fs, ceiling %.1fs); "
-                                                "continuing without compression",
-                                                session_entry.session_id,
-                                                _hyg_commit_fence.seconds_since_progress(),
-                                                time.monotonic() - _hyg_wait_started,
-                                                _hyg_total_ceiling_seconds,
+                                            _hyg_elapsed = (
+                                                time.monotonic() - _hyg_wait_started
                                             )
+                                            if _hyg_total_exhausted:
+                                                logger.warning(
+                                                    "Session hygiene compression for session %s "
+                                                    "reached its total ceiling after %.1fs "
+                                                    "(progress observed=%s); continuing without "
+                                                    "compression",
+                                                    session_entry.session_id,
+                                                    _hyg_elapsed,
+                                                    _hyg_commit_fence.progress_observed,
+                                                )
+                                            else:
+                                                logger.warning(
+                                                    "Session hygiene compression for session %s "
+                                                    "made no progress for %.1fs (total wait "
+                                                    "%.1fs, ceiling %.1fs); continuing without "
+                                                    "compression",
+                                                    session_entry.session_id,
+                                                    _hyg_commit_fence.seconds_since_progress(),
+                                                    _hyg_elapsed,
+                                                    _hyg_total_ceiling_seconds,
+                                                )
                                             _timeout_msg = (
-                                                "⚠️ Context compression timed out "
-                                                f"after {_hyg_timeout_seconds:.1f}s "
-                                                "with no output from the summary model. "
-                                                "No messages were dropped — continuing without "
-                                                "compression. Run /compress to retry, /reset for "
-                                                "a clean session, or check your "
-                                                "auxiliary.compression model configuration."
+                                                _hygiene_compression_timeout_message(
+                                                    total_exhausted=_hyg_total_exhausted,
+                                                    elapsed=_hyg_elapsed,
+                                                    idle_timeout=_hyg_timeout_seconds,
+                                                    progress_observed=(
+                                                        _hyg_commit_fence.progress_observed
+                                                    ),
+                                                )
                                             )
                                             try:
                                                 _adapter = self._adapter_for_source(source)
