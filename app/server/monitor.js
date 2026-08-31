@@ -902,6 +902,18 @@ try {
   console.log(`[monitor] WARNING: TUI shim init failed (${e.message}), non-fatal`);
 }
 
+// ─── Desktop-app symlink 自愈：fnOS 部署时 desktop-app 在 target/ 下 ──
+try {
+  const daDir = `${APP_DIR}/desktop-app`;
+  const daLinkTarget = `${APP_DIR}/target/desktop-app`;
+  if (!existsSync(daDir) && existsSync(daLinkTarget)) {
+    symlinkSync(daLinkTarget, daDir);
+    console.log(`[monitor] desktop-app symlink: ${daDir} -> ${daLinkTarget}`);
+  }
+} catch (e) {
+  console.log(`[monitor] WARNING: desktop-app symlink init failed (${e.message}), non-fatal`);
+}
+
 // ─── 启动清理：杀掉残留进程、清除旧 PID、重置日志 ─────────
 function readPidSync(path) {
   try { return Number(readFileSync(path, "utf8").trim()); } catch { return null; }
@@ -4380,7 +4392,7 @@ function createLogStream(req, lastOffset) {
 // 会注入 __HERMES_WEB_CONFIG__(同源代理前缀 + dashboard session token),
 // 供 web-shim.js 读取后直连 gateway(JSON-RPC over /proxy/dashboard/api/ws)。
 function serveDesktopAppFile(rel, req) {
-  const fp = `${APP_DIR}/desktop-app/${rel}`;
+  const fp = existsSync(`${APP_DIR}/desktop-app/${rel}`) ? `${APP_DIR}/desktop-app/${rel}` : `${APP_DIR}/target/desktop-app/${rel}`;
   if (!existsSync(fp)) return new Response("Not Found", { status: 404 });
   if (rel === "index.html") {
     try {
