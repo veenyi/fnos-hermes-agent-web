@@ -138,7 +138,14 @@
           resolve(paths.length ? paths : null);
         });
         input.addEventListener('cancel', function () { cleanup(); resolve(null); });
-        setTimeout(function () { input.click(); }, 0);
+        // iOS Safari refuses .click() on hidden (display:none) inputs. Make it
+        // briefly visible, trigger the click, then hide again — the picker opens
+        // regardless of whether the element is visible at click time.
+        input.style.display = 'block';
+        input.style.width = '1px';
+        input.style.height = '1px';
+        input.style.opacity = '0';
+        setTimeout(function () { input.click(); }, 50);
       } catch (e) { resolve(null); }
     });
   }
