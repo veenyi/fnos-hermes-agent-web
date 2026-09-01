@@ -236,14 +236,8 @@ TOOLSETS = {
 
     "project": {
         "description": "Desktop Projects — create/switch named workspaces (GUI sessions only)",
-        "tools": ["desktop_project"],
+        "tools": ["project_list", "project_create", "project_switch"],
         "includes": []
-    },
-
-    "bot_room": {
-        "description": "Verified text-only Group Chat turn capabilities",
-        "tools": [],
-        "includes": [],
     },
 
     # Affordances that only exist because a GUI renderer is on the other end of
@@ -259,7 +253,7 @@ TOOLSETS = {
         "description": "Desktop GUI affordances — in-app terminal/browser panes, pane focus, reactions (GUI sessions only)",
         "tools": [
             "read_terminal", "close_terminal",
-            "desktop_preview", "drive_preview", "annotate_preview",
+            "open_preview", "close_preview", "read_preview", "drive_preview", "annotate_preview",
             "read_window_below",
             "focus_pane", "react_to_message",
             "setup_mcp", "tour", "tip",

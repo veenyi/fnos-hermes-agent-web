@@ -112,33 +112,37 @@ _STEP_SCHEMA = {
     "properties": {
         "selector": {
             "type": "string",
-            "description": "Element to highlight; omit = centered narration.",
+            "description": "CSS selector of the element this step highlights. Omit for a centered narration-only step.",
         },
         "title": {"type": "string", "description": "Popover title."},
-        "text": {"type": "string", "description": "Popover body."},
+        "text": {"type": "string", "description": "Popover body text."},
         "side": {
             "type": "string",
             "enum": list(SIDES),
-            "description": "Popover side; omit to auto-place.",
+            "description": "Preferred popover side. Omit to auto-place.",
         },
     },
 }
 
 TOUR_SCHEMA = {
     "name": "tour",
-    # Dieted (#95681): targets-first flow + stable-selector preference kept
-    # (pre-effect: skipping them means guessed selectors on re-rendering UI).
     "description": (
-        "Guided tour in the desktop GUI: dim the screen, highlight an "
-        "element, attach a titled popover. Surfaces: 'app' (Hermes itself) "
-        "or 'preview' (the page in the preview pane). ALWAYS call "
-        "action='targets' first — prefer targets marked stable:true (their "
-        "selectors survive re-renders); re-scan if one stops matching. Then "
-        "narrate with action='show' (one highlight per call, replaces the "
-        "last — pair each with a chat message) or hand over with "
-        "action='start' + steps (user gets Next/Prev; 'next'/'prev' also "
-        "page it). 'stop' clears. Use for how-does-X-work / where-is-Y "
-        "walkthroughs."
+        "Give a live guided tour in the Hermes desktop GUI: dim the screen, "
+        "highlight an element, and attach a popover with your own title/text. "
+        "Works on two surfaces — 'app' (the Hermes app itself) and 'preview' "
+        "(whatever page is open in the in-app browser, so any web app can be "
+        "toured). ALWAYS call action='targets' first to discover what is on "
+        "screen instead of guessing selectors; each target reports "
+        "`stable: true` when its selector keys off identity (data-tour, id, "
+        "data-testid, aria-label) and survives a re-render — prefer those, and "
+        "re-scan if a selector stops matching. Then either narrate at your own "
+        "pace with action='show' (one highlight per call — replaces the "
+        "previous one; pair each with a chat message describing it), or hand "
+        "control to the user with action='start' + a steps array (driver.js "
+        "renders Next/Prev buttons; 'next'/'prev' also page it "
+        "programmatically). action='stop' clears the tour. Use when the user "
+        "asks how something works, where something is, or for a walkthrough of "
+        "an app or workflow."
     ),
     "parameters": {
         "type": "object",
@@ -146,32 +150,32 @@ TOUR_SCHEMA = {
             "action": {
                 "type": "string",
                 "enum": list(ACTIONS),
-                "description": "targets first; show narrates; start hands over.",
+                "description": "targets: list tourable elements. show: highlight one element. start: begin a multi-step user-paced tour. next/prev: page a started tour. stop: end the tour.",
             },
             "surface": {
                 "type": "string",
                 "enum": list(SURFACES),
-                "description": "'app' (default) or 'preview'.",
+                "description": "Where the tour runs: 'app' (Hermes desktop UI, default) or 'preview' (the page in the in-app browser pane).",
             },
             "selector": {
                 "type": "string",
-                "description": "show: selector from targets (prefer stable). Omit = centered narration.",
+                "description": "For show: CSS selector of the element to highlight (from action='targets', preferring a stable one). Omit for a centered narration popover.",
             },
-            "title": {"type": "string", "description": "show: popover title."},
-            "text": {"type": "string", "description": "show: popover body."},
+            "title": {"type": "string", "description": "For show: popover title."},
+            "text": {"type": "string", "description": "For show: popover body text."},
             "side": {
                 "type": "string",
                 "enum": list(SIDES),
-                "description": "show: popover side; omit to auto-place.",
+                "description": "For show: preferred popover side. Omit to auto-place.",
             },
             "steps": {
                 "type": "array",
                 "items": _STEP_SCHEMA,
-                "description": "start: ordered steps.",
+                "description": "For start: the ordered tour steps.",
             },
             "step_index": {
                 "type": "integer",
-                "description": "start: 0-indexed first step.",
+                "description": "For start: 0-indexed step to begin at (default 0).",
             },
         },
         "required": ["action"],

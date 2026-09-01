@@ -33,7 +33,6 @@ from agent.conversation_compression import (
     COMPRESSION_RETRY_TOKENS_STATUS_TEMPLATE,
     COMPRESSION_RETRY_TOO_LARGE_STATUS_TEMPLATE,
     PRE_API_COMPRESSION_STATUS_TEMPLATE,
-    compression_blocked_transiently,
     compression_skipped_due_to_lock,
     conversation_history_after_compression,
 )
@@ -63,7 +62,6 @@ from agent.message_sanitization import (
     _looks_like_image_content_rejection,
     _strip_images_from_messages,
     _strip_non_ascii,
-    serialized_messages_bytes,
 )
 # Must mirror _STALE_TOOL_CALL_MARKER_RE in hermes_state.py — kept local
 # to avoid importing hermes_state at module load time (its module-level
@@ -73,8 +71,6 @@ _STALE_MARKER_RE = re.compile(r"^\[[A-Za-z_][A-Za-z0-9_.-]*\]$")
 from agent.model_metadata import (
     MINIMUM_CONTEXT_LENGTH,
     _estimate_tools_tokens_rough,
-    anchored_context_tokens,
-    capture_usage_anchor,
     estimate_messages_tokens_rough,
     estimate_request_tokens_rough,
     get_context_length_from_provider_error,
@@ -125,51 +121,6 @@ RUN_BUDGET_WRAPUP_NOTICE = (
     "now. Produce the required final deliverable (answer/JSON/summary) from "
     "the state you already have, completing only mandatory writes."
 )
-
-
-def _midturn_request_pressure_tokens(
-    agent: Any,
-    api_messages: List[Dict[str, Any]],
-    effective_system: str,
-    approx_tokens: int,
-) -> int:
-    """Token figure the mid-turn pre-API compression guard compares.
-
-    When the upcoming request is eligible for native Responses compaction the
-    transport will checkpoint-prune the payload before sending, so the generic
-    durable-history estimate overstates the wire by orders of magnitude on a
-    compacted session and fires a 600s local compression the main request
-    never needed (#96995). Mirror the turn-prologue preflight (#96644 /
-    #96155): use the pruned estimate when native eligibility is proven, the
-    generic message+tools figure otherwise.
-
-    The native estimator adds the system prompt and tool schemas itself and
-    its converter skips system-role rows, so passing the assembled
-    ``api_messages`` (which carries the system row) alongside
-    ``effective_system`` counts the system prompt exactly once.
-    """
-    try:
-        from agent.codex_responses_adapter import (
-            estimate_native_responses_preflight_tokens,
-        )
-
-        native = estimate_native_responses_preflight_tokens(
-            agent,
-            api_messages,
-            system_prompt=effective_system or "",
-            tools=getattr(agent, "tools", None) or None,
-        )
-        if isinstance(native, int) and not isinstance(native, bool) and native >= 0:
-            return native
-    except Exception:
-        logger.debug(
-            "native Responses mid-turn estimate unavailable; "
-            "using generic transcript estimate",
-            exc_info=True,
-        )
-    return approx_tokens + (
-        _estimate_tools_tokens_rough(agent.tools) if agent.tools else 0
-    )
 
 
 def _review_input_budget_exhausted(agent: Any) -> bool:
@@ -1514,57 +1465,38 @@ def _compression_deferred_result(
     agent,
     messages: List[Dict],
     api_call_count: int,
-    reason: str = "lock",
 ) -> Dict[str, Any]:
-    """Build the soft turn result for a transiently-deferred compression.
+    """Build the soft turn result for a lock-contended compression defer.
 
-    Two transient shapes funnel here, and BOTH must end as a soft defer
+    Another path (a sibling turn, a background review fork, a manual
+    ``/compress``) holds this session's compression lock, so every
+    compression pass this turn no-oped and the request still does not fit.
+    This is a TEMPORARY condition — the lock winner is actively shrinking
+    the same session — so the turn must end as a soft defer
     (``compression_deferred``), never as ``compression_exhausted``: the
-    gateway auto-resets (wipes) the session on exhaustion (#9893/#35809).
-
-    * ``reason="lock"`` — another path (a sibling turn, a background review
-      fork, a manual ``/compress``) holds this session's compression lock,
-      so every compression pass this turn no-oped and the request still does
-      not fit. The lock winner is actively shrinking the same session.
-    * ``reason="transient_block"`` — the compressor is in a timed transient
-      guard (summary-failure cooldown / structural backoff, e.g. one just
-      recorded by the host ceiling timeout, #97488). The no-op says nothing
-      about compressibility; treating it as exhaustion falsely auto-reset
-      sessions whose compression was merely cooling down.
+    gateway auto-resets (wipes) the session on exhaustion (#9893/#35809),
+    which would destroy a session that the concurrent compressor is about
+    to make healthy again.
 
     ``failed`` stays False so the gateway persists the user turn (transient
     branch) and retry-next-message semantics apply.
     """
-    if reason == "transient_block":
-        block = getattr(agent, "_compression_blocked_transient", None)
-        logger.info(
-            "turn deferred: compression transiently blocked (%s) "
-            "(session=%s) — not counting as compression exhaustion",
-            block if isinstance(block, str) else "unknown guard",
-            agent.session_id or "none",
-        )
-        _final = (
-            "Context compression is temporarily paused after a recent "
-            "failed attempt. Please retry in a moment — compression will "
-            "resume automatically (or run /compress to force a retry now)."
-        )
-    else:
-        holder = getattr(agent, "_compression_skipped_due_to_lock", None)
-        logger.info(
-            "turn deferred: compression lock held by another path "
-            "(session=%s holder=%s) — not counting as compression exhaustion",
-            agent.session_id or "none",
-            holder if isinstance(holder, str) else "unconfirmed",
-        )
-        _final = (
-            "Context compression is already running for this session. "
-            "Please retry in a moment — your next message will be processed "
-            "once the concurrent compression finishes."
-        )
+    holder = getattr(agent, "_compression_skipped_due_to_lock", None)
+    logger.info(
+        "turn deferred: compression lock held by another path "
+        "(session=%s holder=%s) — not counting as compression exhaustion",
+        agent.session_id or "none",
+        holder if isinstance(holder, str) else "unconfirmed",
+    )
     try:
         agent._flush_status_buffer()
     except Exception:
         pass
+    _final = (
+        "Context compression is already running for this session. "
+        "Please retry in a moment — your next message will be processed "
+        "once the concurrent compression finishes."
+    )
     return {
         "final_response": _final,
         "messages": messages,
@@ -1731,8 +1663,6 @@ def _redecorate_prompt_cache_for_provider(
             "_direct_native_anthropic_tool_cache_capability",
             lambda: False,
         )()
-        from agent.prompt_caching import envelope_tool_part_cache_markers_supported
-
         plan = build_prompt_cache_plan(
             messages,
             planned_tools,
@@ -1746,11 +1676,6 @@ def _redecorate_prompt_cache_for_provider(
             native_anthropic=agent._use_native_cache_layout,
             static_system_prefix=static if isinstance(static, str) else None,
             direct_native_tool_cache=direct_tool_cache,
-            # LiteLLM-style envelope routes forward part-level markers into
-            # tool_result.content[] → non-retryable 400 (#89886).
-            tool_part_markers=envelope_tool_part_cache_markers_supported(
-                getattr(agent, "provider", ""), getattr(agent, "base_url", "")
-            ),
         )
         messages = plan.messages
         planned_tools = plan.tools
@@ -2613,10 +2538,6 @@ def run_conversation(
         # the thinking-only drop is about to remove or merge away.
         tools_for_api = agent.tools
         if agent._use_prompt_caching and agent.provider != "moa":
-            from agent.prompt_caching import (
-                envelope_tool_part_cache_markers_supported,
-            )
-
             _static_system_prefix = getattr(agent, "_cached_system_prompt_static", None)
             _initial_cache_plan = build_prompt_cache_plan(
                 api_messages,
@@ -2635,11 +2556,6 @@ def run_conversation(
                     else None
                 ),
                 direct_native_tool_cache=agent._direct_native_anthropic_tool_cache_capability(),
-                # LiteLLM-style envelope routes forward part-level markers into
-                # tool_result.content[] → non-retryable 400 (#89886).
-                tool_part_markers=envelope_tool_part_cache_markers_supported(
-                    getattr(agent, "provider", ""), getattr(agent, "base_url", "")
-                ),
             )
             api_messages = _initial_cache_plan.messages
             tools_for_api = _initial_cache_plan.tools
@@ -2672,40 +2588,10 @@ def run_conversation(
         # messages walk inside estimate_request_tokens_rough. Tools added
         # separately (compression needs them: 50+ tools = 20-30K tokens).
         # total_chars is a rough (~) proxy — verbose log + hook metric only.
-        # Charge stale thinking only when the active route actually replays
-        # it (#84371): on codex_responses the text keys never ship (the
-        # encrypted item sidecars — charged unconditionally — carry the
-        # chain), so counting them here re-created the trigger/tail-walk
-        # disagreement that dead-looped compaction.
-        from agent.turn_context import _agent_stale_thinking_on_wire
-
-        if _agent_stale_thinking_on_wire(agent):
-            approx_tokens = estimate_messages_tokens_rough(api_messages)
-        else:
-            approx_tokens = estimate_messages_tokens_rough(
-                api_messages, charge_stale_thinking=False
-            )
-        # Route-aware pressure: when the upcoming request is eligible for
-        # native Responses compaction the transport will checkpoint-prune
-        # the payload before sending — the generic durable-history figure
-        # overstates the wire by orders of magnitude on a compacted session
-        # and fires a 600s local compression the main request never needed
-        # (#96995, mirroring the turn-prologue preflight #96644/#96155).
-        request_pressure_tokens = _midturn_request_pressure_tokens(
-            agent, api_messages, effective_system or "", approx_tokens
+        approx_tokens = estimate_messages_tokens_rough(api_messages)
+        request_pressure_tokens = approx_tokens + (
+            _estimate_tools_tokens_rough(agent.tools) if agent.tools else 0
         )
-        # Usage-anchored override: when the last provider response's exact
-        # usage is still valid for the durable transcript, replace the
-        # whole-history heuristic with anchor + delta-estimate. The anchor's
-        # prompt_tokens already includes system prompt AND tool schemas as
-        # the provider counted them, so no tools add-on is needed. Falls
-        # back to the rough figures above when the anchor is stale/missing
-        # (first request, post-compaction, usage-less providers).
-        _anchored_pressure = anchored_context_tokens(
-            messages, getattr(agent, "_usage_anchor", None)
-        )
-        if _anchored_pressure is not None:
-            request_pressure_tokens = _anchored_pressure
         total_chars = approx_tokens * 4
         # Stash this request's rough estimate so update_from_response() can
         # pair it with the provider's real prompt count — the (rough, real)
@@ -2848,21 +2734,16 @@ def run_conversation(
                 approx_tokens=request_pressure_tokens,
                 task_id=effective_task_id,
             )
-            if messages is _pre_api_input and (
-                compression_skipped_due_to_lock(agent)
-                or compression_blocked_transiently(agent)
-            ):
-                # #69870 lock-skip / #97488 transient-block: this pass
-                # no-oped for a TEMPORARY reason (another path holds the
-                # compression lock, or a timed cooldown/backoff guard is
-                # active). That is a temporary DEFER, not evidence about
-                # compressibility — refund the attempt (it must not burn the
-                # shared overflow-recovery budget toward
-                # compression_exhausted → gateway auto-reset, #9893/#35809)
-                # and leave the insufficient-progress blocker unarmed.
-                # Proceed with the current request: if it truly does not
-                # fit, the provider's 413/overflow handler returns the soft
-                # compression_deferred result with that stronger signal.
+            if messages is _pre_api_input and compression_skipped_due_to_lock(agent):
+                # #69870 lock-skip: another path holds this session's
+                # compression lock, so this pass no-oped. That is a temporary
+                # DEFER, not evidence about compressibility — refund the
+                # attempt (it must not burn the shared overflow-recovery
+                # budget toward compression_exhausted → gateway auto-reset,
+                # #9893/#35809) and leave the insufficient-progress blocker
+                # unarmed. Proceed with the current request: if it truly does
+                # not fit, the provider's 413/overflow handler returns the
+                # soft compression_deferred result with that stronger signal.
                 compression_attempts -= 1
                 _last_preflight_pressure = None
                 if pending_moa_prepared_request is _moa_prepared_request:
@@ -4303,25 +4184,6 @@ def run_conversation(
                         )
                     )
                     agent.context_compressor.update_from_response(usage_dict)
-                    # Usage-anchored context accounting: snapshot this
-                    # response's exact provider-reported usage against the
-                    # durable transcript. Later context-size checks anchor on
-                    # this and estimate only the messages appended since,
-                    # instead of re-estimating the whole history with
-                    # heuristics. Main-loop responses ONLY — MoA advisor and
-                    # auxiliary calls never reach this site, so they cannot
-                    # pollute the anchor. A usage-less response leaves the
-                    # previous anchor in place (still valid for its base).
-                    # MoA note: use the pre-fold aggregator usage — the folded
-                    # canonical figure adds advisor fan-out tokens that were
-                    # never part of THIS conversation's prompt.
-                    _new_anchor = capture_usage_anchor(
-                        aggregator_usage.prompt_tokens,
-                        aggregator_usage.output_tokens,
-                        messages,
-                    )
-                    if _new_anchor is not None:
-                        agent._usage_anchor = _new_anchor
                     _compression_threshold = int(
                         getattr(agent.context_compressor, "threshold_tokens", 0)
                         or 0
@@ -4395,16 +4257,6 @@ def run_conversation(
                     agent.session_cache_read_tokens += canonical_usage.cache_read_tokens
                     agent.session_cache_write_tokens += canonical_usage.cache_write_tokens
                     agent.session_reasoning_tokens += canonical_usage.reasoning_tokens
-                    # Rolling history for status-bar averages (last 10).
-                    try:
-                        hist = getattr(agent, "_api_latency_history", None)
-                        if hist is not None:
-                            hist.append(float(api_duration))
-                        ohist = getattr(agent, "_api_output_history", None)
-                        if ohist is not None:
-                            ohist.append(int(canonical_usage.output_tokens or 0))
-                    except Exception:
-                        pass
 
                     # Log API call details for debugging/observability
                     _cache_pct = ""
@@ -5807,19 +5659,7 @@ def run_conversation(
                     agent._buffer_status(f"⚠️  Request payload too large (413) — compression attempt {compression_attempts}/{max_compression_attempts}...")
 
                     original_len = len(messages)
-                    # A 413 is a BYTE-size error, so this branch scores
-                    # progress in BYTES of the serialized messages payload —
-                    # exact and free — never the token estimate.  The
-                    # estimator prices every image at a flat per-image token
-                    # cost (see estimate_messages_tokens_rough) so screenshots
-                    # don't trigger premature compaction; that deliberate
-                    # byte-blindness means compaction can free megabytes of
-                    # base64 (real case: two vision results = 96.6% of the
-                    # request body but ~3.7% of the estimate) while the token
-                    # delta stays under any threshold.  Token-scored progress
-                    # here burned all attempts on "no progress" and wedged
-                    # the session permanently. (#88960 / #47339)
-                    original_bytes = serialized_messages_bytes(messages)
+                    original_tokens = estimate_messages_tokens_rough(messages)
                     _overflow_input = messages
                     # Option A (LCM issue 441): overhead-aware request size so recovery arms on the
                     # true request (msgs + tools + system), not the tool-blind message count.
@@ -5840,46 +5680,22 @@ def run_conversation(
                         return _compression_deferred_result(
                             agent, messages, api_call_count
                         )
-                    if messages is _overflow_input and compression_blocked_transiently(agent):
-                        # #97488 transient-block: compression no-oped because a
-                        # timed guard (host-timeout cooldown / structural
-                        # backoff) is active — a temporary defer, not evidence
-                        # of incompressibility. Never classify it as
-                        # compression_exhausted (gateway auto-reset).
-                        compression_attempts -= 1
-                        agent._persist_session(messages, conversation_history)
-                        return _compression_deferred_result(
-                            agent, messages, api_call_count,
-                            reason="transient_block",
-                        )
                     conversation_history = conversation_history_after_compression(
                         agent, messages, conversation_history
                     )
 
-                    # Re-measure after compression.  Same-message-count
+                    # Re-estimate tokens after compression.  Same-message-count
                     # compression (tool-result pruning, in-place summarization)
                     # can materially reduce request size without reducing the
-                    # message array (#39550), and — the image-dominated case —
-                    # compaction's historical-media aging (#97160) can free
-                    # megabytes of base64 that the token estimate never
-                    # counted.  Bytes are the yardstick for a 413; tokens are
-                    # kept only for status display.
+                    # message array.  (#39550)
                     new_tokens = estimate_messages_tokens_rough(messages)
                     approx_tokens = new_tokens  # update for downstream logging
-                    new_bytes = serialized_messages_bytes(messages)
 
-                    made_progress = (
-                        len(messages) < original_len
-                        or (new_bytes > 0 and new_bytes < original_bytes * 0.95)
-                    )
-                    if made_progress:
+                    if len(messages) < original_len or (new_tokens > 0 and new_tokens < original_tokens * 0.95):
                         if len(messages) < original_len:
                             agent._buffer_status(COMPRESSION_RETRY_MESSAGES_STATUS_TEMPLATE.format(before=original_len, after=len(messages)))
                         else:
-                            agent._buffer_status(
-                                f"🗜️ Compressed {original_bytes:,} → {new_bytes:,} "
-                                f"payload bytes, retrying..."
-                            )
+                            agent._buffer_status(COMPRESSION_RETRY_TOKENS_STATUS_TEMPLATE.format(before=original_tokens, after=new_tokens))
                         time.sleep(2)  # Brief pause between compression retries
                         _retry.restart_with_compressed_messages = True
                         break
@@ -6009,15 +5825,6 @@ def run_conversation(
                                 agent._persist_session(messages, conversation_history)
                                 return _compression_deferred_result(
                                     agent, messages, api_call_count
-                                )
-                            if messages is _overflow_input and compression_blocked_transiently(agent):
-                                # #97488: timed transient guard — defer, never
-                                # exhaustion (gateway auto-reset).
-                                compression_attempts -= 1
-                                agent._persist_session(messages, conversation_history)
-                                return _compression_deferred_result(
-                                    agent, messages, api_call_count,
-                                    reason="transient_block",
                                 )
                             conversation_history = conversation_history_after_compression(
                                 agent, messages, conversation_history
@@ -6178,17 +5985,6 @@ def run_conversation(
                         agent._persist_session(messages, conversation_history)
                         return _compression_deferred_result(
                             agent, messages, api_call_count
-                        )
-                    if messages is _overflow_input and compression_blocked_transiently(agent):
-                        # #97488 transient-block: a timed guard (host-timeout
-                        # cooldown / structural backoff) no-oped this pass —
-                        # defer softly, never compression_exhausted (which
-                        # would auto-reset the session).
-                        compression_attempts -= 1
-                        agent._persist_session(messages, conversation_history)
-                        return _compression_deferred_result(
-                            agent, messages, api_call_count,
-                            reason="transient_block",
                         )
                     conversation_history = conversation_history_after_compression(
                         agent, messages, conversation_history
@@ -7174,29 +6970,7 @@ def run_conversation(
                         or interim_has_codex_reasoning
                         or interim_has_codex_message_items
                     )
-                    # A replayable interim is not the same thing as a retry
-                    # that DIFFERS.  When the interim replays but carries no
-                    # new instruction, the continuation is byte-identical to
-                    # the request that just failed and returns the same empty
-                    # response until the budget is gone.  Live case (gpt-5.6
-                    # on the Codex backend, Aug 2026): the model answers with
-                    # a server-side ``compaction`` checkpoint and no message.
-                    # The checkpoint lands in ``codex_reasoning_items``, so
-                    # ``interim_replayable`` is True and no nudge is added —
-                    # meanwhile the checkpoint makes the wire converter prune
-                    # every pre-checkpoint item, so all three attempts send
-                    # the same checkpoint + retained user messages and end on
-                    # an empty assistant turn with nothing to answer.  The
-                    # provider's own prefix cache reports 99-100% on the
-                    # repeats, and the turn dies with "Codex response
-                    # remained incomplete after 3 continuation attempts",
-                    # losing the whole turn's work.
-                    #
-                    # One bare retry is still worth trying (the model often
-                    # just needs another turn).  Once THAT has also come back
-                    # incomplete, a bare retry is proven not to work for this
-                    # turn, so every remaining attempt carries the nudge.
-                    if not interim_replayable or agent._codex_incomplete_retries >= 2:
+                    if not interim_replayable:
                         _last_msg = messages[-1] if messages else None
                         _already_nudged = (
                             isinstance(_last_msg, dict)
@@ -7751,20 +7525,8 @@ def run_conversation(
                     # these add 20-30K tokens the messages-only
                     # estimate misses, which can skip compression
                     # past the configured threshold (#14695).
-                    # Route-aware (#96995/#97602 class): on a compacted
-                    # native-Codex session the generic durable-history
-                    # figure overstates the wire and would false-trigger
-                    # compression here exactly like the pre-API guard —
-                    # this fallback runs precisely when no provider usage
-                    # is available (post-disconnect / gateway restart),
-                    # the unanchored case from #97602's repro.
-                    _real_tokens = _midturn_request_pressure_tokens(
-                        agent,
-                        messages,
-                        active_system_prompt or "",
-                        estimate_request_tokens_rough(
-                            messages, tools=agent.tools or None
-                        ),
+                    _real_tokens = estimate_request_tokens_rough(
+                        messages, tools=agent.tools or None
                     )
 
                 if (

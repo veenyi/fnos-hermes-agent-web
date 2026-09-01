@@ -41,7 +41,6 @@ from hermes_cli.dashboard_auth.cookies import (
     clear_session_cookies,
     clear_sso_attempt_cookie,
     detect_https,
-    parse_pkce_payload,
     read_pkce_cookie,
     read_session_cookies,
     set_pkce_cookie,
@@ -448,10 +447,9 @@ async def auth_callback(
     # ``next`` segment is optional (only present when /auth/login was
     # given a next= query). All keys live in the same flat namespace;
     # ``next`` carries a URL-encoded path so it never contains ``;``.
-    # parse_pkce_payload URL-decodes the wire value (the setter encodes
-    # the whole payload so no raw ``;``/``"``/``\`` reaches the wire)
-    # before the ``;`` split.
-    parts = parse_pkce_payload(pkce_raw)
+    parts = dict(
+        seg.split("=", 1) for seg in pkce_raw.split(";") if "=" in seg
+    )
     provider_name = parts.get("provider", "")
     expected_state = parts.get("state", "")
     verifier = parts.get("verifier", "")
@@ -762,7 +760,9 @@ async def auth_password_login(request: Request, body: _PasswordLoginBody):
     cookie_provider = ""
     pkce_raw = read_pkce_cookie(request)
     if pkce_raw:
-        pkce_parts = parse_pkce_payload(pkce_raw)
+        pkce_parts = dict(
+            seg.split("=", 1) for seg in pkce_raw.split(";") if "=" in seg
+        )
         broker_state = pkce_parts.get("broker", "")
         cookie_provider = pkce_parts.get("provider", "")
     if broker_state and cookie_provider != body.provider:

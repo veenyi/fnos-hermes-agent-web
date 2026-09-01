@@ -55,5 +55,10 @@ CLOSE_PREVIEW_SCHEMA = {
 }
 
 
-# Registration removed: consolidated into the `preview` tool (#95681);
-# this module keeps its functions for the preview_tool.
+registry.register(
+    name="close_preview",
+    toolset="desktop_ui",
+    schema=CLOSE_PREVIEW_SCHEMA,
+    handler=lambda args, **kw: close_preview_tool(url=args.get("url") or ""),
+    emoji="🖼️",
+)
