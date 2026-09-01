@@ -122,6 +122,7 @@ echo "── 打包完整 FPK ──"
   cp "$BUILD_DIR/app.tgz" "$FPK_STAGE/"
   cp fpk/manifest "$FPK_STAGE/"
   cp -r fpk/cmd "$FPK_STAGE/"
+  cp -r fpk/bin "$FPK_STAGE/" 2>/dev/null || true
   cp -r fpk/config "$FPK_STAGE/"
   cp fpk/ICON.PNG fpk/ICON_256.PNG fpk/LICENSE "$FPK_STAGE/" 2>/dev/null || true
   cp -r fpk/wizard "$FPK_STAGE/" 2>/dev/null || true
@@ -133,7 +134,7 @@ echo "── 打包完整 FPK ──"
 
   # 打包 FPK
   tar czf "$DIST/fnos-hermes-agent_v${CUR_VERSION}.fpk" \
-    -C "$FPK_STAGE" manifest app.tgz cmd config ICON.PNG ICON_256.PNG LICENSE wizard 2>/dev/null || \
+    -C "$FPK_STAGE" manifest app.tgz cmd config bin ICON.PNG ICON_256.PNG LICENSE wizard 2>/dev/null || \
   tar czf "$DIST/fnos-hermes-agent_v${CUR_VERSION}.fpk" \
     -C "$FPK_STAGE" manifest app.tgz cmd config ICON.PNG ICON_256.PNG LICENSE
   echo "✓ 完整 FPK: $DIST/fnos-hermes-agent_v${CUR_VERSION}.fpk"
