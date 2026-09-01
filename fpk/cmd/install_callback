@@ -52,7 +52,13 @@ ensure_uv() {
         UV="${UV_BIN}/uv"
         log_msg "uv found (persistent): ${UV}"
     else
-        log_msg "uv not found, installing via curl ..."
+        # 优先使用 bundled uv（避免网络问题）
+        if [ -x "${APP_DIR}/bin/uv" ]; then
+            UV_BIN="${APP_DIR}/bin"
+            UV="${UV_BIN}/uv"
+            log_msg "uv found (bundled): ${UV}"
+        else
+            log_msg "uv not found, installing via curl ..."
         mkdir -p "${UV_BIN}"
         local TMP_DIR
         TMP_DIR="$(mktemp -d)"
@@ -128,6 +134,7 @@ ensure_uv() {
             toast_err "uv 安装失败: $(tail -3 "${LOG_FILE}" 2>/dev/null)"
             exit 1
         fi
+    fi
     fi
 
     log_msg "uv version: $("${UV}" --version 2>&1 || echo 'FAILED')"
